@@ -53,11 +53,13 @@ priority: high
 │ Step 1: verify/format-check                                     │
 │ Step 2: verify/typecheck                                        │
 │ Step 3: verify/lint                                             │
-│ Step 4: verify/security-audit (if --security)                   │
-│ Step 5: test/run-all-tests                                      │
-│ Step 6: verify/coverage-report (if --coverage)                  │
-│ Step 7: verify/build                                            │
-│ Step 8: verify/bundle-size (if configured)                      │
+│ Step 4: verify/security-audit (if --security or configured)     │
+│ Step 5: verify/accessibility (if configured)                    │
+│ Step 6: verify/performance (if configured)                      │
+│ Step 7: test/run-all-tests                                      │
+│ Step 8: verify/coverage-report (if --coverage)                  │
+│ Step 9: verify/build                                            │
+│ Step 10: verify/bundle-size (if configured)                     │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -194,14 +196,17 @@ npm run typecheck
 npm run lint
 ```
 
-### Step 4: Security Audit (if --security)
+### Step 4: Security Audit (if --security or configured)
 
 ```bash
 # Check for known vulnerabilities
 npm audit --audit-level=high
 
-# Check for secrets in staged files (if tool available)
-# npx secretlint [staged-files]
+# Check for secrets (if git-secrets or similar installed)
+# git secrets --scan
+
+# Custom security script
+npm run security 2>/dev/null || true
 ```
 
 **Report:**
@@ -212,6 +217,23 @@ npm audit --audit-level=high
 |-------|--------|---------|
 | npm audit | ✓ Pass / ⚠️ Warnings | [N vulnerabilities] |
 | Secrets scan | ✓ Pass / ✗ Fail | [findings] |
+| Custom checks | ✓ Pass / ✗ Fail | [output] |
+```
+
+### Step 5: Accessibility (if configured)
+
+Check for accessibility issues if script exists:
+
+```bash
+npm run a11y 2>/dev/null || npm run test:a11y 2>/dev/null || true
+```
+
+### Step 6: Performance (if configured)
+
+Check for performance regressions if script exists:
+
+```bash
+npm run perf 2>/dev/null || npm run lighthouse 2>/dev/null || true
 ```
 
 ### Step 5: Unit Tests
@@ -272,12 +294,14 @@ npm run size 2>/dev/null || true
 | 2 | Types | ✓ Pass | 8s |
 | 3 | Lint | ✓ Pass | 5s |
 | 4 | Security | ✓ Pass | 3s |
-| 5 | Tests | ✓ Pass (156 tests) | 45s |
-| 6 | Coverage | ✓ Pass (85%) | - |
-| 7 | Build | ✓ Pass | 12s |
-| 8 | Bundle | ✓ Pass | 2s |
+| 5 | Accessibility | ✓ Pass | 5s |
+| 6 | Performance | ✓ Pass | 10s |
+| 7 | Tests | ✓ Pass (156 tests) | 45s |
+| 8 | Coverage | ✓ Pass (85%) | - |
+| 9 | Build | ✓ Pass | 12s |
+| 10 | Bundle | ✓ Pass | 2s |
 
-**Total time:** ~77s
+**Total time:** ~95s
 
 ---
 ✅ **All CI checks passed** - Ready to push
@@ -540,7 +564,27 @@ Type 'string' is not assignable to type 'number'.
 
 ---
 
-**See Also:**
+---
+ 
+ ## Project Setup for Advanced Validation
+ 
+ To enable advanced checks, add these scripts to your `package.json`:
+ 
+ ```json
+ {
+   "scripts": {
+     "security": "git-secrets --scan && npm audit",
+     "a11y": "pa11y-ci",
+     "perf": "lighthouse-ci"
+   }
+ }
+ ```
+ 
+ The workflow will automatically detect and run these scripts if they exist.
+ 
+ ---
+ 
+ **See Also:**
 - [Workflow: Commit](./commit.prompt.md) - Validate before committing
 - [Workflow: Deps](./deps.prompt.md) - Security audit for dependencies
 - [Workflow: Wrap](./wrap.prompt.md) - Validation as part of session wrap-up

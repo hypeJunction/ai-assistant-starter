@@ -68,6 +68,19 @@ Consider:
 - What edge cases exist?
 - What could go wrong?
 
+### Step 3.1: Complexity Check
+
+**Assess the scale of changes:**
+- > 5 files modified?
+- Core architectural components affected?
+- New external dependencies?
+- Significant database schema changes?
+
+**If YES to any:**
+> **STOP AND CONSIDER:**
+> This task may require architectural review.
+> Suggest switching to **Architect Mode** (`/chatmode architect`) to design the solution first.
+
 ### Step 4: Create Plan
 
 ```markdown

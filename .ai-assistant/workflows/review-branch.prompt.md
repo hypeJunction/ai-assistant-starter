@@ -94,7 +94,13 @@ For any warnings found:
 - [ ] No sensitive data exposed
 - [ ] No hardcoded secrets
 
+#### Performance
+- [ ] No obvious performance bottlenecks (loops, re-renders)
+- [ ] Efficient data fetching
+- [ ] Bundle size impact considered
+
 #### General
+- [ ] Architecture aligns with system design
 - [ ] No `console.log` statements in production code
 - [ ] Error handling present
 - [ ] No dead code or unused imports
