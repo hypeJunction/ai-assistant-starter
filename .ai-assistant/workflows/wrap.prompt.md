@@ -1,19 +1,16 @@
 ---
-workflow: happy-hour
-chatmode: [developer, tester, reviewer]
+workflow: wrap
 priority: high
 ---
 
-# Workflow: Happy Hour - Conclude Unit of Work
+# Wrap
 
 > **Purpose:** Systematically conclude a unit of work by ensuring test coverage, running validation, performing review, and committing when ready
-> **Chatmode:** This workflow orchestrates multiple modes as needed
-> **Prerequisites:** Branch has uncommitted or recent changes to finalize
 > **Related:** [validate.prompt.md](./validate.prompt.md)
 
 ## Overview
 
-The Happy Hour workflow is your end-of-session routine for wrapping up work cleanly. It ensures:
+The Wrap workflow is your end-of-session routine for wrapping up work cleanly. It ensures:
 
 1. All changes are covered by tests
 2. All validation checks pass
@@ -29,6 +26,9 @@ Think of it as your checklist before calling it a day - no loose ends, no surpri
 Get a clear picture of what needs to be wrapped up:
 
 ```bash
+# Get main branch name
+MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+
 # Current branch
 git branch --show-current
 
@@ -36,7 +36,7 @@ git branch --show-current
 git status --short
 
 # Recent commits on branch (vs base)
-git log --oneline main..HEAD
+git log --oneline $MAIN..HEAD
 ```
 
 **Decision point:** If there are uncommitted changes, proceed with full workflow. If only commits exist, skip to Phase 4 (Review).
@@ -49,7 +49,7 @@ Ensure changed code has test coverage.
 
 1. **Identify changed files:**
    ```bash
-   git diff --name-only main..HEAD
+   git diff --name-only $MAIN..HEAD
    git diff --name-only  # Uncommitted changes
    ```
 
@@ -118,7 +118,7 @@ Perform a self-review before committing:
 
 ### Phase 5: Commit
 
-Stage and commit the changes:
+**Requires explicit user confirmation.**
 
 1. **Stage changes:**
    ```bash
@@ -131,7 +131,17 @@ Stage and commit the changes:
    git diff --staged --stat
    ```
 
-3. **Create commit:**
+3. **Show commit preview and ask:**
+   ```markdown
+   Ready to commit with message:
+   \`\`\`
+   <type>: <concise description>
+   \`\`\`
+
+   **Confirm commit?** (yes / edit message / cancel)
+   ```
+
+4. **Only after confirmation:**
    ```bash
    git commit -m "<type>: <concise description>"
    ```
@@ -203,7 +213,7 @@ git add -A && git commit -m "type: description"
 Report the workflow results:
 
 ```markdown
-## Happy Hour Summary
+## Wrap Summary
 
 ### Work Assessed
 - **Branch:** feature/my-feature
@@ -229,13 +239,13 @@ Report the workflow results:
 - SHA: abc1234
 
 ---
-Happy hour complete! Ready to push or call it a day.
+Wrap complete! Ready to push or call it a day.
 ```
 
 If blocked:
 
 ```markdown
-## Happy Hour - Blocked
+## Wrap - Blocked
 
 ### Blocker
 **Validation failed:** Type errors in Component.ts
@@ -251,14 +261,14 @@ npm run typecheck
 \`\`\`
 
 ---
-Fix issues and run `/happy-hour` again.
+Fix issues and run `/wrap` again.
 ```
 
 ## Workflow Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      /happy-hour                            │
+│                         /wrap                               │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐  │
