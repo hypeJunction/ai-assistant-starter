@@ -1,53 +1,134 @@
 ---
-chatmode: [developer, architect]
+workflow: refactor
 priority: high
 ---
 
-# Workflow: Refactor Codebase
+# Refactor
 
 > **Purpose:** Systematic refactoring with proper planning, pattern detection, scope analysis, and parallel execution
-> **Chatmode:** Use developer or architect mode before running this workflow
-> **Prerequisites:** Clear understanding of what needs to be refactored
-> **Related:** [create-file-list.prompt.md](./create-file-list.prompt.md) | [create-todo.prompt.md](./create-todo.prompt.md)
+> **Chatmodes:** Architect (planning) → Developer (execution)
+> **Command:** `/refactor [scope flags] <refactor description>`
+> **Scope:** See [scope.md](../scope.md)
+
+## Gate Enforcement
+
+**CRITICAL:** Refactoring affects multiple files. This workflow has mandatory approval gates at every phase.
+
+**Valid approval responses:**
+- `yes`, `y`, `approved`, `proceed`, `lgtm`, `looks good`, `go ahead`
+
+**Invalid (do NOT treat as approval):**
+- Silence or no response
+- Questions or clarifications
+- Partial acknowledgment ("I see", "okay", "hmm")
+- Requests for more information
+
+**When in doubt:** Ask explicitly: "I need your approval to continue. Please respond with 'yes' to proceed."
+
+## Scope Flags
+
+| Flag | Description |
+|------|-------------|
+| `--files=<paths>` | Limit refactor to specific files/directories |
+| `--project=<path>` | Project root for monorepos |
+
+**Examples:**
+```bash
+/refactor --files=src/components/ rename getUserData to fetchUser
+/refactor --files=src/api/ migrate from axios to fetch
+/refactor --project=packages/web update all imports to use new paths
+```
 
 ## Overview
 
 This workflow guides systematic refactoring through:
-1. Information gathering and clarification
+1. Information gathering and clarification (interactive Q&A)
 2. Pattern analysis and edge case identification
 3. Plan creation with full scope documentation
-4. Parallel execution with progress tracking
+4. User-approved execution with progress tracking
 
 ---
 
-## Phase 1: Information Gathering
+## Phase 1: Gather Context
 
-### 1.1 Understand the Refactor Request
+**Goal:** Understand the refactor through conversation with the user.
 
-Ask clarifying questions to understand:
+### Step 1.0: Parse Scope
 
-| Question | Purpose |
-|----------|---------|
-| **What pattern/code needs to change?** | Identify the target |
-| **What is the new pattern/approach?** | Define the goal |
-| **Why is this refactor needed?** | Understand motivation |
-| **Are there any files/areas to exclude?** | Define boundaries |
-| **Are there related refactors to coordinate?** | Avoid conflicts |
+```bash
+# Get current context
+git branch --show-current
+git status --porcelain
+```
 
-### 1.2 Categorize the Refactor
+**Display scope context:**
 
-Determine the refactor type:
+```markdown
+## Refactor Scope
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `rename` | Renaming symbols (variables, functions, types, files) | `getData` -> `fetchUserData` |
-| `restructure` | Moving code between files/directories | Move utilities to shared lib |
-| `pattern-change` | Changing code patterns or conventions | Class -> functional components |
-| `api-migration` | Updating to new API/library versions | v1 -> v2 API |
-| `cleanup` | Removing dead code, unused imports, etc. | Remove deprecated functions |
-| `type-improvement` | Improving TypeScript types | `any` -> proper types |
+| Scope | Value |
+|-------|-------|
+| Files | [from --files or "entire codebase"] |
+| Project | [from --project or root] |
+| Branch | [current branch] |
 
-### 1.3 Assess Scope and Risk
+**Refactor Description:** [from user input]
+```
+
+### Step 1.1: Clarify Requirements
+
+Start by asking the user about the refactor:
+
+```markdown
+## Understanding the Refactor
+
+Before I analyze the code, let me understand what you need:
+
+1. **What pattern/code needs to change?**
+   What's the current state that needs refactoring?
+
+2. **What's the target state?**
+   What should the code look like after?
+
+3. **Why is this refactor needed?**
+   Technical debt, new pattern adoption, performance?
+
+4. **Are there any areas to exclude?**
+   Files, directories, or patterns to leave unchanged?
+```
+
+**Wait for user response before exploring code.**
+
+### Step 1.2: Explore and Categorize
+
+After understanding requirements, explore the code:
+
+```markdown
+## Initial Analysis
+
+I've explored the codebase. Here's what I found:
+
+**Refactor Type:** {type}
+| Type | Description |
+|------|-------------|
+| `rename` | Renaming symbols (variables, functions, types, files) |
+| `restructure` | Moving code between files/directories |
+| `pattern-change` | Changing code patterns or conventions |
+| `api-migration` | Updating to new API/library versions |
+| `cleanup` | Removing dead code, unused imports |
+| `type-improvement` | Improving TypeScript types |
+
+**Scope Assessment:**
+- Files affected: {N}
+- Risk level: {low/medium/high/critical}
+- Approach: {direct/batched/phased}
+
+Does this categorization match your expectations?
+```
+
+**Wait for user confirmation.**
+
+### Step 1.3: Assess Scope and Risk
 
 | Scope | File Count | Risk Level | Approach |
 |-------|------------|------------|----------|
@@ -60,66 +141,64 @@ Determine the refactor type:
 
 ## Phase 2: Pattern Analysis
 
-### 2.1 Find All Occurrences
+**Goal:** Thoroughly analyze patterns and surface variations to the user.
 
-Search for all instances of the pattern to be refactored:
+### Step 2.1: Find All Occurrences
 
-```bash
-# Search for pattern occurrences
-grep -r "pattern" src/
+Search for all instances of the pattern to be refactored.
 
-# Count occurrences
-grep -r "pattern" src/ | wc -l
-```
-
-### 2.2 Analyze Pattern Variations
-
-Identify different usages of the pattern:
-
-| Variation | Count | Example | Special Handling |
-|-----------|-------|---------|------------------|
-| Standard usage | 15 | `pattern()` | Normal refactor |
-| With options | 5 | `pattern({ opt: true })` | Update options |
-| Edge case | 2 | `pattern?.()` | Handle optional chaining |
-
-### 2.3 Identify Edge Cases
-
-Look for situations that need special handling:
-
-- **Conditional usage:** Pattern used inside conditionals
-- **Dynamic usage:** Pattern constructed dynamically
-- **External references:** Pattern exported/imported across packages
-- **Test dependencies:** Pattern mocked in tests
-- **Configuration:** Pattern referenced in config files
-
-### 2.4 Ask Clarification Questions
-
-If variations or edge cases are unclear, ask before proceeding:
+### Step 2.2: Present Findings
 
 ```markdown
-I found variations in how this pattern is used:
+## Pattern Analysis
 
-1. **Standard usage (15 files):** `oldFunction()`
-2. **With callback (5 files):** `oldFunction(() => {})`
-3. **Edge case (2 files):** `const fn = oldFunction; fn()`
+I've searched the codebase for the pattern. Here's what I found:
 
-> **ACTION REQUIRED:**
-> Please clarify how to handle these variations.
+**Total Occurrences:** {N} across {M} files
+
+**Pattern Variations:**
+| Variation | Count | Example | Notes |
+|-----------|-------|---------|-------|
+| Standard usage | 15 | `pattern()` | Normal refactor |
+| With options | 5 | `pattern({ opt: true })` | May need special handling |
+| Edge case | 2 | `pattern?.()` | Optional chaining |
+
+**Files by complexity:**
+- Simple changes: {list}
+- Complex changes: {list}
+- Potential issues: {list}
 ```
+
+### Step 2.3: Surface Edge Cases
+
+```markdown
+## Edge Cases to Discuss
+
+I've identified some edge cases that need your input:
+
+| Case | Files Affected | Question |
+|------|----------------|----------|
+| Conditional usage | `file1.ts`, `file2.ts` | Transform conditionally too? |
+| Dynamic reference | `utils.ts` | How to handle dynamic lookup? |
+| Exported API | `index.ts` | Breaking change for consumers? |
+| Test mocks | `*.spec.ts` | Update mocks or skip? |
+
+Which of these are relevant? How should we handle them?
+```
+
+**Wait for user guidance on edge cases.**
 
 ---
 
 ## Phase 3: Plan Creation
 
-### 3.1 Create Refactor Plan in /tmp
+**Goal:** Create a detailed plan and get user approval before making changes.
 
-Create a detailed plan document:
+### Step 3.1: Create Refactor Plan
 
-```bash
-/tmp/refactor-plan-{descriptive-name}.md
-```
+Create a detailed plan document in `/tmp/refactor-plan-{name}.md`.
 
-### 3.2 Plan Document Structure
+### Step 3.2: Plan Document Structure
 
 ```markdown
 # Refactor Plan: {Title}
@@ -180,7 +259,7 @@ One-paragraph description of what this refactor accomplishes.
 3. Manual verification of complex cases
 ```
 
-### 3.3 User Approval
+### Step 3.3: Get User Approval
 
 Present the plan summary and ask for approval:
 
@@ -196,20 +275,29 @@ Present the plan summary and ask for approval:
 2. Change B
 3. Change C
 
-**Edge Cases Identified:** {N} (see plan for details)
+**Edge Cases:** {N} handled per our discussion
 
-> **ACTION REQUIRED:**
-> Review the plan above and choose:
-> - **Approve** - Proceed with refactoring
-> - **Modify** - Request changes to the plan
-> - **Cancel** - Abort the refactor
+---
+**Proceed with this refactor?**
+
+Reply with:
+- `yes` or `approved` - Proceed with refactoring
+- `modify: [changes]` - Request changes to the plan
+- `questions` - Need more clarification (I will wait)
+- `cancel` - Abort the refactor
 ```
+
+**⛔ GATE: STOP HERE. Do NOT begin modifying files until user responds with `yes` or `approved`.**
+
+**Waiting for explicit approval before making any changes.**
 
 ---
 
 ## Phase 4: Execution
 
-### 4.1 Create File List for Tracking
+**Goal:** Implement the approved plan with regular progress updates.
+
+### Step 4.1: Create File List for Tracking
 
 Create `.ai-assistant/file-lists/refactor-{name}.md`:
 
@@ -242,145 +330,119 @@ Create `.ai-assistant/file-lists/refactor-{name}.md`:
 [Files that couldn't be refactored with reason]
 ```
 
-### 4.2 Execute in Batches
+### Step 4.2: Execute in Batches
 
-For medium to large refactors, work in batches:
-
-**Batch 1:** Files 1-5
-- Apply pattern transformation
-- Verify no type errors
-- Run tests
-
-**Batch 2:** Files 6-10
-- Apply pattern transformation
-- Verify no type errors
-- Run tests
-
-### 4.3 Handle Discrepancies
-
-If a file doesn't match expected patterns:
-
-1. **Stop and document** - Don't force the change
-2. **Ask for clarification** - Present the discrepancy
-3. **Update the plan** - Add new rule if needed
-4. **Continue** - Apply updated approach
+For medium to large refactors, work in batches with progress updates:
 
 ```markdown
-> **WARNING:**
-> Discrepancy found - file doesn't match expected pattern.
+## Progress Update
+
+**Batch 1 of {N}:** Files 1-5
+- ✓ `file1.ts` - transformed
+- ✓ `file2.ts` - transformed
+- ✓ `file3.ts` - transformed
+
+**Validation:** Type check passed
+
+**Next:** Batch 2 (files 6-10)
+
+Any concerns before I continue?
+```
+
+### Step 4.3: Handle Discrepancies
+
+If a file doesn't match expected patterns, stop and ask:
+
+```markdown
+## Found Something Unexpected
 
 **File:** `src/components/Special.ts`
 **Expected:** `oldPattern()`
 **Found:** `oldPattern.withConfig()`
 
-> **ACTION REQUIRED:**
-> Choose how to proceed:
-> 1. **Skip** - Leave this file unchanged
-> 2. **Transform** - Apply similar transformation
-> 3. **Manual** - Flag for manual review later
+This doesn't match the pattern we discussed.
+
+**Options:**
+1. **Skip** - Leave this file unchanged
+2. **Transform** - Apply similar transformation
+3. **Manual** - Flag for manual review later
+
+Which approach do you prefer?
 ```
+
+**Wait for user decision before continuing.**
 
 ---
 
 ## Phase 5: Validation
 
-### 5.1 Run Type Checking
+**Goal:** Verify changes and get user confirmation before committing.
+
+### Step 5.1: Run Validation
 
 ```bash
-npm run typecheck
+npm run typecheck    # Type checking
+npm run lint         # Linting
+npm run test -- {affected-pattern}  # Affected tests
 ```
 
-### 5.2 Run Linting
-
-```bash
-npm run lint
-```
-
-### 5.3 Run Affected Tests
-
-```bash
-npm run test -- {affected-pattern}
-```
-
-### 5.4 Completion Report
+### Step 5.2: Present Completion Report
 
 ```markdown
 ## Refactor Complete: {Title}
 
 **Files Modified:** {N}
 **Files Skipped:** {N} (with reasons)
-**Issues Found:** {N}
 
 ### Validation Results
+- Type check: ✓ passed
+- Lint: ✓ passed
+- Tests: ✓ {N} tests passing
 
-Type checking: Passed
-Linting: Passed
-Tests: Passed ({N} tests)
+### Summary of Changes
+- [Change 1]
+- [Change 2]
 
-### Manual Review Needed
+### Manual Review Recommended
+- [ ] `file.ts` - Complex edge case, please verify behavior
 
-- [ ] `file.ts` - Complex edge case, verify behavior
+---
+**Can you verify the refactor works as expected?**
 
-### File List
-
-Updated: `.ai-assistant/file-lists/refactor-{name}.md`
+After verification:
+- **Commit** - Ready to commit these changes
+- **Adjust** - Need to fix something
+- **Review** - Show full diff
 ```
 
----
-
-## Rules
-
-### Prohibited
-
-- **Do not change behavior** - Refactors should preserve functionality
-- **Do not skip validation** - Always run type checking and tests
-- **Do not ignore edge cases** - Document and handle all variations
-- **Do not force changes** - Ask about discrepancies
-
-### Required
-
-- **Create a plan first** - No refactoring without documented plan
-- **Get user approval** - For scope > 5 files or risk > low
-- **Track progress** - Use file list for all multi-file refactors
-- **Validate after changes** - Type check and test affected code
-- **Report discrepancies** - Don't silently skip or modify differently
+**Wait for user verification before committing.**
 
 ---
 
-## Quick Checklist Template
+## Principles
 
-Copy this checklist when starting a refactor:
-
-```markdown
-## Refactor: {Title}
-
-### Pre-Refactor
-- [ ] Understand requirements
-- [ ] Search for all occurrences
-- [ ] Document pattern variations
-- [ ] Create plan in `/tmp/refactor-plan-{name}.md`
-- [ ] Get user approval
-
-### Execution
-- [ ] Create file list in `.ai-assistant/file-lists/`
-- [ ] Batch 1: {files} -> Verify: type check
-- [ ] Batch 2: {files} -> Verify: type check
-- [ ] ...
-
-### Validation
-- [ ] Type check
-- [ ] Lint
-- [ ] Tests
-
-### Post-Refactor
-- [ ] Update file list (mark complete)
-- [ ] Report results
-```
+1. **Ask, don't assume** - Clarify requirements and edge cases with user
+2. **Get approval before executing** - Never refactor without explicit approval
+3. **Preserve behavior** - Refactors should not change functionality
+4. **Surface issues early** - Report discrepancies, don't silently skip
+5. **Validate thoroughly** - Type check and test affected code
+6. **Confirm before committing** - User verification required
 
 ---
 
-## References
+## Quick Reference
 
+| Phase | Key Action | Gate |
+|-------|------------|------|
+| Gather Context | Ask questions, explore code | User confirms understanding |
+| Pattern Analysis | Find variations, surface edge cases | User guides edge case handling |
+| Plan | Design solution | **User approves plan** |
+| Execute | Implement with progress updates | User resolves discrepancies |
+| Validate | Verify changes | **User confirms before commit** |
+
+---
+
+**See Also:**
+- [Implement](./implement.prompt.md)
+- [Commit](./commit.prompt.md)
 - [Create File List](./create-file-list.prompt.md)
-- [Create Todo](./create-todo.prompt.md)
-- [TypeScript Guidelines](../domains/typescript.instructions.md)

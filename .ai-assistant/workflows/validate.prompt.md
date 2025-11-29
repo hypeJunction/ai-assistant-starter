@@ -1,198 +1,546 @@
 ---
-chatmode: [developer, tester]
+workflow: validate
 priority: high
 ---
 
-# Validate
+# Workflow: Validate
 
-> **Chatmode:** Use developer or tester mode before running this workflow
+> **Purpose:** Run validation checks to ensure code quality, security, and correctness
+> **Phases:** Quick (scoped) | Full (CI) | Fix (auto-correct)
+> **Command:** `/validate [scope flags]`
+> **Scope:** See [scope.md](../scope.md)
 
-Run validation checks to ensure code quality and correctness. Choose the appropriate scope based on your needs.
+## Scope Flags
 
-## Validation Scopes
+| Flag | Description |
+|------|-------------|
+| `--files=<paths>` | Validate specific files/directories |
+| `--uncommitted` | Validate uncommitted changes (default) |
+| `--staged` | Validate staged changes only |
+| `--full` | Run complete CI pipeline |
+| `--ci` | Mirror exact CI configuration |
+| `--fix` | Auto-fix correctable issues |
+| `--security` | Include security checks |
+| `--coverage` | Include test coverage report |
 
-### Quick Validation (Current Work)
-
-Use during development to validate only what you've changed. Fast feedback loop.
-
+**Examples:**
 ```bash
-/validate
+/validate                           # Quick validation of uncommitted changes
+/validate --files=src/components/   # Specific directory
+/validate --full                    # Complete CI pipeline
+/validate --fix                     # Auto-fix lint/format issues
+/validate --ci                      # Mirror exact CI checks
+/validate --security                # Include npm audit
+/validate --full --coverage         # Full validation with coverage
 ```
 
-### Full Validation (CI Pipeline)
+## Task Composition
 
-Use before pushing to verify all CI checks will pass. Runs complete test suite.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ QUICK VALIDATION (Default)                                      │
+├─────────────────────────────────────────────────────────────────┤
+│ Level 1: verify/format → verify/typecheck → verify/lint         │
+│                              ↓                                  │
+│ Level 2: test/run-scoped-tests                                  │
+│                              ↓                                  │
+│ Level 3: (optional) verify/integration                          │
+└─────────────────────────────────────────────────────────────────┘
 
-```bash
-/validate --full
+┌─────────────────────────────────────────────────────────────────┐
+│ FULL VALIDATION (--full)                                        │
+├─────────────────────────────────────────────────────────────────┤
+│ Step 1: verify/format-check                                     │
+│ Step 2: verify/typecheck                                        │
+│ Step 3: verify/lint                                             │
+│ Step 4: verify/security-audit (if --security)                   │
+│ Step 5: test/run-all-tests                                      │
+│ Step 6: verify/coverage-report (if --coverage)                  │
+│ Step 7: verify/build                                            │
+│ Step 8: verify/bundle-size (if configured)                      │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ FIX MODE (--fix)                                                │
+├─────────────────────────────────────────────────────────────────┤
+│ fix/format → fix/lint → verify/typecheck → test/run-scoped      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Quick Validation
+## Quick Validation (Default)
 
-Run validation checks on current work only, stopping if any level fails.
+**Chatmode:** 🧪 Tester
+**Purpose:** Fast feedback during development - validate only what changed
+
+### Step 0: Determine Scope
+
+```bash
+# Get changed files
+git diff --name-only HEAD
+git diff --name-only --staged  # if --staged flag
+```
+
+```markdown
+## Validation Scope
+
+| Scope | Files |
+|-------|-------|
+| Changed | N files |
+| Pattern | `src/components/Button/*` |
+
+**Running quick validation...**
+```
 
 ### Level 1: Syntax & Style
 
-Type checking and linting - catches syntax errors and style violations.
-
+**Format Check:**
 ```bash
-# Type checking (adapt to your project)
-npm run typecheck
-
-# Linting
-npm run lint
+# Check formatting (don't fix in normal mode)
+npm run format:check 2>/dev/null || npx prettier --check [changed-files]
 ```
 
-**Expected result:** No type errors, no lint errors.
+**Type Check:**
+```bash
+npm run typecheck
+```
+
+**Lint:**
+```bash
+npm run lint -- [changed-files]
+```
+
+**Report:**
+```markdown
+### Level 1: Syntax & Style
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Format | ✓ Pass / ✗ Fail | [N files need formatting] |
+| Types | ✓ Pass / ✗ Fail | [N errors] |
+| Lint | ✓ Pass / ✗ Fail | [N errors, M warnings] |
+```
+
+**If failures, stop and report before Level 2.**
 
 ### Level 2: Scoped Tests
 
-Run tests for changed components/libraries only (never full test suite).
+Run tests only for changed components/files.
 
+**Smart test scoping:**
 ```bash
-# For a specific component
+# Component changes → test that component
 npm run test -- ComponentName
 
-# For a specific test file
-npm run test -- file.spec
+# Utility changes → test that utility
+npm run test -- utils/formatDate
 
-# For a directory
+# Directory changes → test that directory
 npm run test -- "src/components/"
 ```
 
-**Expected result:** All tests pass, no failures.
+**Report:**
+```markdown
+### Level 2: Scoped Tests
+
+| Scope | Tests | Passed | Failed |
+|-------|-------|--------|--------|
+| `Button` | 12 | 12 | 0 |
+| `utils/format` | 8 | 8 | 0 |
+
+**Result:** ✓ All 20 tests passed
+```
 
 ### Level 3: Integration (Optional)
 
-Manual verification of complete user flows when applicable.
+For UI changes, manual verification may be needed.
 
-```bash
-# Start dev server
-npm run dev
+```markdown
+### Level 3: Integration
 
-# Then manually test the feature in the browser
+> **INFO:**
+> UI changes detected. Consider manual verification:
+>
+> ```bash
+> npm run dev
+> ```
+>
+> Then test the affected feature in the browser.
 ```
-
-**Expected result:** Feature works as expected in actual UI.
-
-### Smart Scoping
-
-Determine what to validate based on the work done:
-
-- **Component changes:** Type check + tests for that component
-- **Utility changes:** Type check + unit tests for that utility
-- **Multiple components in same directory:** Type check + directory tests
-- **Configuration changes:** Full type check + subset of tests
 
 ---
 
-## Full Validation (CI Pipeline)
+## Full Validation (--full)
 
-Run the complete CI verification pipeline locally before pushing.
+**Chatmode:** 🧪 Tester
+**Purpose:** Complete CI pipeline verification before push/merge
 
-### Step 1: Type Checking
+### Step 1: Format Check
+
+```bash
+npm run format:check || npx prettier --check .
+```
+
+### Step 2: Type Check
 
 ```bash
 npm run typecheck
 ```
 
-### Step 2: Linting
+### Step 3: Lint
 
 ```bash
 npm run lint
 ```
 
-### Step 3: Unit Tests
+### Step 4: Security Audit (if --security)
+
+```bash
+# Check for known vulnerabilities
+npm audit --audit-level=high
+
+# Check for secrets in staged files (if tool available)
+# npx secretlint [staged-files]
+```
+
+**Report:**
+```markdown
+### Security Audit
+
+| Check | Status | Details |
+|-------|--------|---------|
+| npm audit | ✓ Pass / ⚠️ Warnings | [N vulnerabilities] |
+| Secrets scan | ✓ Pass / ✗ Fail | [findings] |
+```
+
+### Step 5: Unit Tests
 
 ```bash
 npm run test
 ```
 
-### Step 4: Build
+### Step 6: Coverage Report (if --coverage)
+
+```bash
+npm run test -- --coverage
+```
+
+**Report:**
+```markdown
+### Test Coverage
+
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| Statements | 85% | 80% | ✓ Pass |
+| Branches | 78% | 75% | ✓ Pass |
+| Functions | 82% | 80% | ✓ Pass |
+| Lines | 85% | 80% | ✓ Pass |
+```
+
+### Step 7: Build
 
 ```bash
 npm run build
 ```
 
-**Note:** Full validation runs the complete test suite - expect it to take several minutes.
+### Step 8: Bundle Size (if configured)
+
+```bash
+# If bundlesize or size-limit configured
+npm run size 2>/dev/null || true
+```
+
+**Report:**
+```markdown
+### Bundle Size
+
+| Bundle | Size | Limit | Status |
+|--------|------|-------|--------|
+| main.js | 145kb | 150kb | ✓ Pass |
+| vendor.js | 89kb | 100kb | ✓ Pass |
+```
+
+### Full Validation Summary
+
+```markdown
+## Full Validation Results
+
+| Step | Check | Status | Time |
+|------|-------|--------|------|
+| 1 | Format | ✓ Pass | 2s |
+| 2 | Types | ✓ Pass | 8s |
+| 3 | Lint | ✓ Pass | 5s |
+| 4 | Security | ✓ Pass | 3s |
+| 5 | Tests | ✓ Pass (156 tests) | 45s |
+| 6 | Coverage | ✓ Pass (85%) | - |
+| 7 | Build | ✓ Pass | 12s |
+| 8 | Bundle | ✓ Pass | 2s |
+
+**Total time:** ~77s
+
+---
+✅ **All CI checks passed** - Ready to push
+```
 
 ---
 
-## Common Issues
+## Fix Mode (--fix)
+
+**Chatmode:** 👨‍💻 Developer
+**Purpose:** Auto-correct formatting and lint issues
+
+### Step 1: Auto-fix Format
+
+```bash
+npm run format 2>/dev/null || npx prettier --write [changed-files]
+```
+
+### Step 2: Auto-fix Lint
+
+```bash
+npm run lint -- --fix [changed-files]
+```
+
+### Step 3: Verify Fixes
+
+```bash
+# Re-run checks to confirm fixes
+npm run typecheck
+npm run lint -- [changed-files]
+```
+
+### Step 4: Run Scoped Tests
+
+```bash
+npm run test -- [affected-tests]
+```
+
+**Report:**
+```markdown
+## Fix Mode Results
+
+### Auto-fixed
+| Type | Files Fixed | Issues Resolved |
+|------|-------------|-----------------|
+| Format | 5 | 23 |
+| Lint | 3 | 8 |
+
+### Remaining Issues (manual fix required)
+| File | Line | Issue |
+|------|------|-------|
+| `src/utils.ts` | 45 | Type error: cannot assign... |
+
+### Verification
+| Check | Status |
+|-------|--------|
+| Types | ✓ Pass / ✗ N errors remain |
+| Lint | ✓ Pass |
+| Tests | ✓ Pass |
+```
+
+---
+
+## CI Mirror Mode (--ci)
+
+**Purpose:** Run exact same checks as CI pipeline
+
+### Step 1: Detect CI Configuration
+
+```bash
+# Check for CI config files
+ls -la .github/workflows/*.yml 2>/dev/null
+ls -la .gitlab-ci.yml 2>/dev/null
+ls -la Jenkinsfile 2>/dev/null
+```
+
+### Step 2: Extract CI Steps
+
+Parse CI configuration and run equivalent local commands.
+
+```markdown
+## CI Mirror Mode
+
+**Detected:** GitHub Actions (`.github/workflows/ci.yml`)
+
+**Running CI steps locally:**
+
+| CI Job | Local Command | Status |
+|--------|---------------|--------|
+| lint | `npm run lint` | ✓ Pass |
+| typecheck | `npm run typecheck` | ✓ Pass |
+| test | `npm run test -- --ci` | ✓ Pass |
+| build | `npm run build` | ✓ Pass |
+
+**Note:** Some CI-specific checks (e.g., PR labels, branch protection) cannot be verified locally.
+```
+
+---
+
+## E2E Tests (Optional)
+
+For projects with end-to-end tests:
+
+```bash
+# Playwright
+npx playwright test [specific-test]
+
+# Cypress
+npx cypress run --spec [specific-test]
+```
+
+**Include in full validation:**
+```markdown
+### E2E Tests
+
+| Suite | Tests | Passed | Failed | Skipped |
+|-------|-------|--------|--------|---------|
+| Auth | 5 | 5 | 0 | 0 |
+| Checkout | 8 | 8 | 0 | 0 |
+
+**Result:** ✓ All 13 E2E tests passed
+```
+
+---
+
+## Validation Levels Reference
+
+| Level | Checks | When to Use |
+|-------|--------|-------------|
+| **Quick** | Format, Types, Lint, Scoped Tests | During development |
+| **Full** | All checks + Full test suite + Build | Before push/PR |
+| **CI** | Mirror exact CI pipeline | Before important merges |
+| **Fix** | Auto-correct + Verify | When you have many small issues |
+
+---
+
+## Common Issues & Solutions
+
+### Format Errors
+
+```markdown
+**Problem:** Files not formatted
+**Solution:** Run `/validate --fix` or `npm run format`
+```
 
 ### Type Errors
 
-- Check imports - are paths correct?
-- Check prop types - do they match component definition?
-- Check return types - does function return what it claims?
+| Error Pattern | Likely Cause | Solution |
+|---------------|--------------|----------|
+| `Cannot find module` | Missing import | Check path, add dependency |
+| `Type X not assignable to Y` | Type mismatch | Fix types or add assertion |
+| `Property does not exist` | Missing property | Add to interface or check spelling |
+| `Implicit any` | Missing type annotation | Add explicit type |
 
 ### Lint Errors
 
-- Most can be auto-fixed: `npm run lint -- --fix`
-- Unused imports/variables should be removed
-- Follow eslint rule guidance
+| Error | Auto-fixable | Solution |
+|-------|--------------|----------|
+| `no-unused-vars` | No | Remove variable or use it |
+| `prefer-const` | Yes | `--fix` will correct |
+| `quotes` | Yes | `--fix` will correct |
+| `@typescript-eslint/no-explicit-any` | No | Add proper type |
 
 ### Test Failures
 
-- Read error message carefully
-- Check if test data is set up correctly
-- Verify mocks are configured properly
-- Check for timing issues with async tests
+| Symptom | Likely Cause | Solution |
+|---------|--------------|----------|
+| Timeout | Async not awaited | Add `await` or increase timeout |
+| Mock not called | Wrong mock setup | Check mock implementation |
+| Snapshot mismatch | Intentional change | Update snapshot with `-u` |
+| Cannot find element | Selector changed | Update test selector |
 
 ### Build Errors
 
-- Usually caused by unresolved type errors
-- Check for circular dependencies
-- Verify all imports resolve
+| Error | Likely Cause | Solution |
+|-------|--------------|----------|
+| Module not found | Missing dependency | `npm install` |
+| Circular dependency | Import cycle | Refactor imports |
+| Out of memory | Large build | Increase Node memory |
+
+### Security Audit Issues
+
+| Severity | Action |
+|----------|--------|
+| Critical | Fix immediately - `/deps update --security` |
+| High | Fix before release |
+| Moderate | Plan to fix |
+| Low | Track in todo |
 
 ---
 
-## Output Format
+## Output Formats
 
-Report validation results clearly:
+### Success Output
 
 ```markdown
-## Validation Results (Quick)
+## Validation Results
 
-Level 1: Syntax & Style - PASSED
-  - Type checking: No errors
-  - Linting: No errors
+✅ **All checks passed**
 
-Level 2: Scoped Tests - PASSED
-  - ComponentName: 3 tests, all passed
+| Check | Status | Time |
+|-------|--------|------|
+| Format | ✓ | 1s |
+| Types | ✓ | 5s |
+| Lint | ✓ | 3s |
+| Tests | ✓ (24 tests) | 12s |
+
+**Ready to commit/push**
 ```
 
-For full validation:
+### Failure Output
 
 ```markdown
-## CI Verification Results
+## Validation Results
 
-Step 1: Type Checking - PASSED
-Step 2: Linting - PASSED
-Step 3: Unit Tests - PASSED (X tests)
-Step 4: Build - PASSED
+❌ **Validation failed**
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Format | ✓ | - |
+| Types | ✗ | 2 errors |
+| Lint | ✓ | - |
+| Tests | - | Skipped (types failed) |
+
+### Type Errors
+
+**File:** `src/components/Button.tsx:45`
+```
+Type 'string' is not assignable to type 'number'.
+```
+
+**Suggested fix:** Change `count: string` to `count: number` in ButtonProps
 
 ---
-**All CI checks passed** - Ready to push
+**Fix errors and re-run:** `/validate`
+**Auto-fix what's possible:** `/validate --fix`
 ```
 
-If validation fails:
+---
 
-```markdown
-Level 2: Scoped Tests - FAILED
-  - ComponentName: 2/3 tests passed
-  - Failed: "validates user input"
-  - Error: Expected validation error, got none
-  - Cause: Missing validation logic
-  - Fix: Added required field validation
-```
+## Rules
 
-## Notes
+### Prohibited
+- ❌ Skipping type check
+- ❌ Committing with lint errors
+- ❌ Ignoring security vulnerabilities without acknowledgment
+- ❌ Running full test suite when scoped tests suffice
 
-- **Quick validation:** Use during development for fast feedback
-- **Full validation:** Use before pushing to ensure CI will pass
-- **Run incrementally:** Fix level 1 before running level 2
-- **Report clearly:** User needs to know what passed and what failed
-- **Suggest fixes:** Don't just report errors, explain how to fix them
+### Required
+- ✓ Type check must pass before tests
+- ✓ Report all failures clearly with solutions
+- ✓ Stop at first failing level (don't waste time on later checks)
+- ✓ Include file and line numbers for errors
+
+### Recommended
+- 💡 Use `--fix` mode for quick cleanup
+- 💡 Run `--full` before creating PR
+- 💡 Run `--security` periodically
+- 💡 Track coverage trends over time
+
+---
+
+**See Also:**
+- [Workflow: Commit](./commit.prompt.md) - Validate before committing
+- [Workflow: Deps](./deps.prompt.md) - Security audit for dependencies
+- [Workflow: Wrap](./wrap.prompt.md) - Validation as part of session wrap-up
