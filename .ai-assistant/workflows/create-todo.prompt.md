@@ -1,12 +1,11 @@
 ---
-chatmode: [developer, architect]
+workflow: create-todo
 priority: medium
 ---
 
-# Workflow: Create Todo
+# Create Todo
 
 > **Purpose:** Document deferred work, shortcuts, and technical debt for future resolution
-> **Chatmode:** Any chatmode can use this workflow
 > **Template:** [todos/_template.md](../todos/_template.md)
 
 ## When to Create a Todo

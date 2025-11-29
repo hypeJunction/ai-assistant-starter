@@ -1,12 +1,11 @@
 ---
-chatmode: [developer, architect]
+workflow: create-file-list
 priority: medium
 ---
 
-# Workflow: Create File List
+# Create File List
 
 > **Purpose:** Track batches of files that need similar changes for large-scale work
-> **Chatmode:** Any chatmode can use this workflow
 > **Template:** [file-lists/README.md](../file-lists/README.md)
 
 ## When to Create a File List
