@@ -6,7 +6,7 @@ priority: medium
 # Create Todo
 
 > **Purpose:** Document deferred work, shortcuts, and technical debt for future resolution
-> **Template:** [todos/_template.md](../todos/_template.md)
+> **Template:** [.ai-project/todos/_template.md](../../.ai-project/todos/_template.md)
 
 ## When to Create a Todo
 
@@ -42,10 +42,10 @@ Create a todo entry when:
 
 ### Step 1: Create the File
 
-Create a new file in `.ai-assistant/todos/`:
+Create a new file in `.ai-project/todos/`:
 
 ```bash
-.ai-assistant/todos/{descriptive-name}.md
+.ai-project/todos/{descriptive-name}.md
 ```
 
 **Naming conventions:**
@@ -186,5 +186,5 @@ The current API client handles authentication and error logging inline in each r
 
 ## References
 
-- [Todo Template](../todos/_template.md)
-- [Todos README](../todos/README.md)
+- [Todo Template](../../.ai-project/todos/_template.md)
+- [Todos README](../../.ai-project/todos/README.md)

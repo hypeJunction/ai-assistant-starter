@@ -22,10 +22,10 @@ Create a file list when:
 
 ### Step 1: Create the File
 
-Create a new file in `.ai-assistant/file-lists/`:
+Create a new file in `.ai-project/file-lists/`:
 
 ```bash
-.ai-assistant/file-lists/{descriptive-name}.md
+.ai-project/file-lists/{descriptive-name}.md
 ```
 
 **Naming conventions:**

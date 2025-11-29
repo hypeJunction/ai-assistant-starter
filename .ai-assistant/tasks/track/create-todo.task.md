@@ -14,7 +14,7 @@ tools: [read, write, glob]
 
 1. **Identify what's deferred** - What work is being postponed?
 2. **Document context** - Why and what's the impact?
-3. **Create todo file** - In `.ai-assistant/todos/`
+3. **Create todo file** - In `.ai-project/todos/`
 4. **Link resources** - Related code, issues, docs
 
 ## When to Create Todos
@@ -27,7 +27,7 @@ tools: [read, write, glob]
 
 ## Todo Template
 
-Create file at `.ai-assistant/todos/YYYY-MM-DD-name.md`:
+Create file at `.ai-project/todos/YYYY-MM-DD-name.md`:
 
 ```markdown
 # Todo: [Short Title]
@@ -83,7 +83,7 @@ Create file at `.ai-assistant/todos/YYYY-MM-DD-name.md`:
 ## File Naming
 
 ```
-.ai-assistant/todos/
+.ai-project/todos/
 ├── 2024-01-15-auth-refactor.md
 ├── 2024-01-16-test-coverage.md
 └── 2024-01-17-performance-fix.md
@@ -94,7 +94,7 @@ Create file at `.ai-assistant/todos/YYYY-MM-DD-name.md`:
 ```markdown
 ## Todo Created
 
-**File:** `.ai-assistant/todos/2024-01-15-auth-refactor.md`
+**File:** `.ai-project/todos/2024-01-15-auth-refactor.md`
 **Title:** Refactor authentication module
 **Priority:** Medium
 

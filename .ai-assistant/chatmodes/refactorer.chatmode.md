@@ -63,7 +63,7 @@ Count occurrences, find variations.
 - Get user approval
 
 ### 3. Create File List
-Track progress in `.ai-assistant/file-lists/`:
+Track progress in `.ai-project/file-lists/`:
 
 ```markdown
 # Refactor: [Name]

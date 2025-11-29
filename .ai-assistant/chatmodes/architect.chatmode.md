@@ -37,8 +37,8 @@ As an architect, you focus on:
 - Run exploratory commands
 
 **Documentation:**
-- Create ADRs in `.ai-assistant/decisions/`
-- Update `.ai-assistant/.memory.md`
+- Create ADRs in `.ai-project/decisions/`
+- Update `.ai-project/.memory.md`
 - Document architectural patterns
 
 ### Require Explicit Approval
@@ -215,6 +215,6 @@ As an architect:
 ---
 
 **See Also:**
-- [Decisions Directory](../decisions/)
+- [Decisions Directory](../../.ai-project/decisions/)
 - [Global Instructions](../.instructions.md)
-- [Project Memory](../.memory.md)
+- [Project Memory](../../.ai-project/.memory.md)

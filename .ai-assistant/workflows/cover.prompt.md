@@ -134,7 +134,7 @@ Common issues:
 
 ### Optional
 
-- Create file list in `.ai-assistant/file-lists/` if many files need coverage
+- Create file list in `.ai-project/file-lists/` if many files need coverage
 - Add long-term todo if work cannot be completed in one session
 
 ## Output Format

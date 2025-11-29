@@ -236,13 +236,13 @@ Check for performance regressions if script exists:
 npm run perf 2>/dev/null || npm run lighthouse 2>/dev/null || true
 ```
 
-### Step 5: Unit Tests
+### Step 7: Unit Tests
 
 ```bash
 npm run test
 ```
 
-### Step 6: Coverage Report (if --coverage)
+### Step 8: Coverage Report (if --coverage)
 
 ```bash
 npm run test -- --coverage
@@ -260,13 +260,13 @@ npm run test -- --coverage
 | Lines | 85% | 80% | ✓ Pass |
 ```
 
-### Step 7: Build
+### Step 9: Build
 
 ```bash
 npm run build
 ```
 
-### Step 8: Bundle Size (if configured)
+### Step 10: Bundle Size (if configured)
 
 ```bash
 # If bundlesize or size-limit configured

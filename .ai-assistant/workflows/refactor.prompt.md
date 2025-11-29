@@ -299,7 +299,7 @@ Reply with:
 
 ### Step 4.1: Create File List for Tracking
 
-Create `.ai-assistant/file-lists/refactor-{name}.md`:
+Create `.ai-project/file-lists/refactor-{name}.md`:
 
 ```markdown
 # Refactor: {Title}

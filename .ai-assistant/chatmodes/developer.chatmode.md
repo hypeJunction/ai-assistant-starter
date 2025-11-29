@@ -44,9 +44,9 @@ As a developer, you have full access to:
 - Build projects
 
 **Tracking:**
-- Add entries to `.ai-assistant/todos/`
-- Create file lists in `.ai-assistant/file-lists/`
-- Update `.ai-assistant/.memory.md` with project changes
+- Add entries to `.ai-project/todos/`
+- Create file lists in `.ai-project/file-lists/`
+- Update `.ai-project/.memory.md` with project changes
 
 ### Require Explicit Approval
 
@@ -130,7 +130,7 @@ As a developer:
 - Explain complex decisions when necessary
 - Ask for clarification on ambiguous requirements
 - Report issues and blockers immediately
-- Document shortcuts in `.ai-assistant/todos/`
+- Document shortcuts in `.ai-project/todos/`
 
 ## AI-Assisted Development Best Practices
 
@@ -196,13 +196,13 @@ As a developer:
 ## Context Preservation
 
 When working on tasks:
-- Update `.ai-assistant/.memory.md` with significant changes
-- Add to `.ai-assistant/todos/` when taking shortcuts
+- Update `.ai-project/.memory.md` with significant changes
+- Add to `.ai-project/todos/` when taking shortcuts
 - Create file lists for batch operations (>5 files)
 
 ---
 
 **See Also:**
 - [Global Instructions](../.instructions.md)
-- [Quick Context Reference](../.context.md)
-- [Project Memory](../.memory.md)
+- [Quick Context Reference](../../.ai-project/.context.md)
+- [Project Memory](../../.ai-project/.memory.md)

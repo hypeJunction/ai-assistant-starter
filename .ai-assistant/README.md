@@ -52,17 +52,22 @@ your-project/
 ├── .ai-assistant/          # Base framework (submodule/symlink)
 │   ├── .instructions.md    # Global execution protocol
 │   ├── INDEX.md            # Cross-reference index
+│   ├── scope.md            # Framework scope definition
 │   ├── chatmodes/          # Role definitions
 │   ├── domains/            # Technology guidelines
 │   ├── workflows/          # Workflow definitions
 │   ├── tasks/              # Atomic task definitions
+│   ├── providers/          # Provider setup guides
+│   ├── todos/              # Framework todos
 │   ├── .ai-project/        # Template for project layer
 │   └── README.md           # This file
 │
 ├── .ai-project/            # Project-specific (created by /init)
 │   ├── .memory.md          # Project architecture & stack
 │   ├── .context.md         # Project patterns & imports
-│   ├── project/            # Project configuration
+│   ├── config.md           # Project configuration settings
+│   ├── placeholders.md     # Placeholder definitions
+│   ├── project/            # Project commands & structure
 │   ├── domains/            # Override domain rules
 │   ├── workflows/          # Custom workflows
 │   ├── todos/              # Project todos
@@ -72,7 +77,7 @@ your-project/
 │
 ├── .claude/                # Claude-specific entry (commands/)
 ├── CLAUDE.md               # Claude entry point
-├── .cursor/                # Cursor-specific entry (if applicable)
+├── .cursor/                # Cursor-specific entry (optional)
 └── [other providers]       # Other AI provider entry points
 ```
 
@@ -102,6 +107,7 @@ Generic, reusable content:
 - Technology guidelines (TypeScript, testing, git, etc.)
 - Workflow templates (implement, debug, refactor, etc.)
 - Atomic task definitions
+- Provider setup guides (Claude, Cursor, Copilot, etc.)
 
 **Do not modify** - updates come from upstream.
 
@@ -110,12 +116,15 @@ Generic, reusable content:
 Project-specific content:
 - `.memory.md` - Your project's tech stack, architecture, conventions
 - `.context.md` - Common imports, file locations, patterns
+- `config.md` - Project configuration settings
+- `placeholders.md` - Placeholder definitions for templates
 - `project/` - Commands, structure, configuration
 - `domains/` - Override or extend technology rules
 - `workflows/` - Custom workflows for your project
 - `todos/` - Technical debt and deferred work
 - `history/` - Knowledge from past work
 - `decisions/` - Architecture Decision Records
+- `file-lists/` - Batch operation tracking
 
 ## Customization Examples
 
@@ -205,9 +214,11 @@ All guidelines, workflows, and domain-specific instructions are in .ai-assistant
 Project-specific overrides are in .ai-project/ (if present)
 ```
 
+**Note:** Cursor also supports `.cursor/rules/*.mdc` files. See [cursor.provider.md](./providers/cursor.provider.md) for details.
+
 ### Other Providers
 
-Create a similar entry point that references `.ai-assistant/.instructions.md`.
+See `.ai-assistant/providers/` for setup guides for other AI providers (Copilot, Windsurf, Gemini, etc.).
 
 ## File Naming Conventions
 
@@ -217,3 +228,4 @@ Create a similar entry point that references `.ai-assistant/.instructions.md`.
 | Workflows | `{name}.prompt.md` | `implement.prompt.md` |
 | Tasks | `{name}.task.md` | `gather-context.task.md` |
 | Domains | `{domain}.instructions.md` | `typescript.instructions.md` |
+| Providers | `{provider}.provider.md` | `claude.provider.md` |

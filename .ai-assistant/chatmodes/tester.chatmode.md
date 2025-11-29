@@ -126,7 +126,7 @@ After creating or modifying tests:
 
 If you find untested code, create a file list:
 ```bash
-.ai-assistant/file-lists/files-needing-tests.md
+.ai-project/file-lists/files-needing-tests.md
 ```
 
 ## Communication Style

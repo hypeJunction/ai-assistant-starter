@@ -101,4 +101,17 @@ Cursor renders markdown but may not display box characters consistently. Use sim
 
 ---
 
-**Entry Point:** `.cursorrules` → `.ai-assistant/.instructions.md`
+## Entry Points
+
+Cursor supports two entry point formats:
+
+**Option 1: `.cursorrules` (Recommended)**
+- Single file at project root
+- Simple and compatible with older Cursor versions
+
+**Option 2: `.cursor/rules/*.mdc`**
+- Multiple rule files in a directory
+- Supports frontmatter with `globs` and `alwaysApply`
+- More granular control
+
+Both should reference `.ai-assistant/.instructions.md` as the main instruction file.

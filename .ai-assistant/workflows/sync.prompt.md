@@ -85,13 +85,13 @@ For each file in `.ai-assistant/domains/`:
 
 ### Phase 4: Review Decisions & Todos
 
-#### Architecture Decision Records (`.ai-assistant/decisions/`)
+#### Architecture Decision Records (`.ai-project/decisions/`)
 
 1. Check if any decisions have been superseded
 2. Add new ADRs if significant patterns have changed
 3. Update status of existing ADRs if applicable
 
-#### Long-term Todos (`.ai-assistant/todos/`)
+#### Long-term Todos (`.ai-project/todos/`)
 
 1. Mark completed items
 2. Remove stale entries

@@ -13,7 +13,7 @@ tools: [read, write, glob, grep]
 ## Steps
 
 1. **Find all files** - Search for files matching criteria
-2. **Create list** - Document in `.ai-assistant/file-lists/`
+2. **Create list** - Document in `.ai-project/file-lists/`
 3. **Categorize** - Group by type or status
 4. **Track progress** - Update as work proceeds
 
@@ -26,7 +26,7 @@ tools: [read, write, glob, grep]
 
 ## File List Template
 
-Create at `.ai-assistant/file-lists/[name].md`:
+Create at `.ai-project/file-lists/[name].md`:
 
 ```markdown
 # File List: [Operation Name]
@@ -108,7 +108,7 @@ As you complete files:
 ```markdown
 ## File List Created
 
-**File:** `.ai-assistant/file-lists/auth-migration.md`
+**File:** `.ai-project/file-lists/auth-migration.md`
 **Operation:** Migrate auth to new pattern
 **Total files:** 15
 
