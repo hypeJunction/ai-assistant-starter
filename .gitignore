@@ -39,5 +39,6 @@ tmp/
 temp/
 *.tmp
 
-# Claude Code local settings (keep project settings.json)
+# AI provider local settings (keep project settings)
 .claude/settings.local.json
+.cursor/settings.local.json
