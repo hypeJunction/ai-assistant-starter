@@ -1,5 +1,6 @@
 ---
 role: architect
+emoji: 🏗️
 tools: [read, glob, grep, bash]
 priority: high
 ---

@@ -1,5 +1,6 @@
 ---
 role: developer
+emoji: 👨‍💻
 tools: [read, write, edit, bash, glob, grep]
 priority: high
 ---

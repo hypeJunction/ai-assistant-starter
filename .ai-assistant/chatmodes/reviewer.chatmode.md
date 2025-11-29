@@ -1,5 +1,6 @@
 ---
 role: reviewer
+emoji: 👁️
 tools: [read, glob, grep]
 priority: high
 ---
