@@ -92,15 +92,41 @@ git submodule update --remote
 
 ## Key Commands
 
+### Development Workflows
+
 | Command | Purpose |
 |---------|---------|
 | `/explore` | Understand code (read-only) |
 | `/plan` | Design approach before coding |
-| `/implement` | Full workflow: explore → plan → code → commit |
+| `/implement` | Full workflow: explore → plan → code → test → commit |
 | `/debug` | Find and fix bugs |
-| `/validate` | Run type check, lint, tests |
-| `/commit` | Review and commit with confirmation |
 | `/refactor` | Multi-file changes with tracking |
+
+### Quality & Testing
+
+| Command | Purpose |
+|---------|---------|
+| `/validate` | Run type check, lint, tests |
+| `/cover` | Ensure test coverage for changes |
+| `/review` | Review current branch against base |
+
+### Git & Release
+
+| Command | Purpose |
+|---------|---------|
+| `/commit` | Review and commit with confirmation |
+| `/pr` | Create pull request |
+| `/wrap` | End-of-session: test → validate → review → commit |
+| `/hotfix` | Emergency bug fix with abbreviated validation |
+| `/release` | Version bump, changelog, and tagging |
+
+### Utilities
+
+| Command | Purpose |
+|---------|---------|
+| `/deps` | Audit, update, and manage dependencies |
+| `/docs` | Add or improve documentation |
+| `/revert` | Safely rollback changes |
 | `/add-story` | Create Storybook stories |
 
 See [INDEX.md](.ai-assistant/INDEX.md) for all commands.
@@ -108,10 +134,18 @@ See [INDEX.md](.ai-assistant/INDEX.md) for all commands.
 ## How It Works
 
 ```
-Explore → Plan → [User Approval] → Code → Validate → [User Confirm] → Commit
+Explore → Plan → [Approval] → Code → Test → Validate → Review → [Confirm] → Commit
+                                 ↓
+                            (Optional: Docs)
 ```
 
-The framework enforces a disciplined workflow where the AI explores before coding, plans before implementing, and confirms before committing.
+The framework enforces a disciplined workflow:
+- **Explore before coding** - understand the codebase first
+- **Plan before implementing** - design the approach
+- **Test coverage required** - all code changes need tests
+- **Validate before commit** - type check, lint, tests must pass
+- **Review before merge** - self-review catches issues
+- **Confirm before commit** - explicit user approval required
 
 ## Structure
 
