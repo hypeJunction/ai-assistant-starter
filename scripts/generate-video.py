@@ -10,8 +10,8 @@ from pathlib import Path
 SLIDES_DIR = Path("assets/slides")
 SCRIPTS_DIR = Path("scripts")
 OUTPUT_DIR = Path("assets/video-parts")
-VOICE = "en-US-GuyNeural"
-RATE = "-5%"
+VOICE = "en-GB-RyanNeural"  # British accent
+RATE = "-8%"
 EDGE_TTS = "/home/ismayilkhayredinov/.local/bin/edge-tts"
 
 def generate_audio(text: str, output_path: Path):
@@ -49,7 +49,7 @@ def create_slide_video(slide_path: Path, audio_path: Path, output_path: Path, du
         "-pix_fmt", "yuv420p",
         "-t", str(total_duration),
         "-af", "adelay=500|500,apad=pad_dur=0.5",
-        "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=#1a1a2e",
+        "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=#050007",
         str(output_path)
     ], check=True, capture_output=True)
     print(f"  Video: {output_path.name}")
