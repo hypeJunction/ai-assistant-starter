@@ -6,7 +6,7 @@ priority: high
 # Workflow: Implement
 
 > **Purpose:** Full feature implementation workflow
-> **Phases:** Explore → Plan → Code → Commit
+> **Phases:** Explore → Plan → Code → Cover → Commit
 > **Command:** `/implement [scope flags] <task description>`
 > **Scope:** See [scope.md](../scope.md)
 
@@ -67,10 +67,18 @@ priority: high
 ├─────────────────────────────────────────────────────────────────┤
 │ implement/edit-file (repeat) → verify/run-typecheck              │
 │                              → verify/run-lint                   │
-│                              → test/run-tests (scoped)           │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
-                         ⛔ GATE: User confirms ready
+                         ⛔ GATE: User confirms implementation
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ COVER PHASE (Tester)                                             │
+├─────────────────────────────────────────────────────────────────┤
+│ test/write-tests → test/write-stories → test/run-tests (scoped)  │
+│                 (unit tests, component tests, stories, etc.)     │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+                         ⛔ GATE: All tests pass
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ DOCS PHASE (Developer) - OPTIONAL                                │
@@ -277,7 +285,7 @@ Reply with:
 ## Phase 3: Code (Developer)
 
 **Chatmode:** 👨‍💻 Developer
-**Tasks:** `implement/edit-file`, `verify/run-typecheck`, `verify/run-lint`, `test/run-tests`
+**Tasks:** `implement/edit-file`, `verify/run-typecheck`, `verify/run-lint`
 
 ### Step 3.1: Implement
 
@@ -317,9 +325,9 @@ Which approach?
 
 **⏸️ Wait for decision.**
 
-### Step 3.3: Validate (Scoped)
+### Step 3.3: Validate Code (Pre-Tests)
 
-Use `verify/run-checks` with scope:
+Run type check and lint before writing tests:
 
 ```bash
 # Type check (full - fast)
@@ -327,21 +335,182 @@ npm run typecheck
 
 # Lint (full - fast)
 npm run lint
-
-# Tests (SCOPED to changed files only)
-npm run test -- [changed-files-pattern]
 ```
 
 ```markdown
-## Validation (Scoped)
+## Code Validation
 
 | Check | Scope | Status |
 |-------|-------|--------|
 | Type check | Full | ✓ Pass |
 | Lint | Full | ✓ Pass |
-| Tests | `[scope]` | ✓ Pass |
 
-Ready to review changes?
+Ready to add test coverage?
+```
+
+---
+
+### Scope Handoff → Cover Phase
+
+```markdown
+---
+**Scope carried forward:**
+- Files changed: [list of modified files]
+- Branch: [branch name]
+- Task: [task description]
+- Code validation: [passed]
+---
+```
+
+---
+
+## Phase 4: Cover (Tester)
+
+**Chatmode:** 🧪 Tester
+**Tasks:** `test/write-tests`, `test/write-stories`, `test/run-tests`
+
+> **Purpose:** Ensure new code has appropriate test coverage before committing.
+
+### TDD Preference
+
+**When possible, prefer Test-Driven Development (TDD):**
+
+If the project has testing infrastructure in place and the feature scope is clear:
+1. Write tests first (during Plan phase, before Code phase)
+2. Run tests to see them fail
+3. Implement code to make tests pass
+4. Refactor while keeping tests green
+
+**Enabling TDD:**
+
+If TDD is desired but infrastructure is missing, identify blockers:
+
+```markdown
+## TDD Readiness Check
+
+| Requirement | Status | Action Needed |
+|-------------|--------|---------------|
+| Test runner configured | ✓/✗ | [action if missing] |
+| Test utilities available | ✓/✗ | [e.g., add testing-library] |
+| Mocking setup | ✓/✗ | [e.g., configure jest mocks] |
+| Component test support | ✓/✗ | [e.g., add jsdom environment] |
+| Storybook configured | ✓/✗ | [e.g., initialize Storybook] |
+
+**Missing infrastructure:**
+- [List what needs to be set up]
+
+**Want to set up TDD infrastructure first?** (yes / skip for now)
+```
+
+> **Note:** If TDD infrastructure setup is non-trivial, create a separate task or todo for it.
+
+### Step 4.1: Analyze Coverage Needs
+
+Categorize changed files by verification type needed:
+
+```markdown
+## Coverage Analysis
+
+**Files requiring verification:**
+
+| File | Type | Verification Method |
+|------|------|---------------------|
+| `src/utils/helper.ts` | Utility | Unit tests (`.spec.ts`) |
+| `src/components/Button.tsx` | Component | Component tests + Storybook story |
+| `src/services/api.ts` | Service | Unit tests with mocks |
+| `src/types/user.ts` | Types | No tests needed |
+
+**Test files to create/update:**
+- [ ] `src/utils/helper.spec.ts` - [scenarios to test]
+- [ ] `src/components/Button.spec.tsx` - [component behavior]
+- [ ] `src/components/Button.stories.tsx` - [visual states]
+```
+
+### Step 4.2: Write Tests
+
+For each file requiring tests, create appropriate verification:
+
+**Unit Tests (utilities, services):**
+```typescript
+/**
+ * Test Plan:
+ * - [Scenario 1]: [Expected behavior]
+ * - [Scenario 2]: [Expected behavior]
+ * - Edge case: [What happens when...]
+ */
+
+describe('ModuleName', () => {
+  describe('functionName', () => {
+    it('should [expected behavior] when [condition]', () => {
+      // Arrange
+      // Act
+      // Assert
+    });
+  });
+});
+```
+
+**Component Tests:**
+- Test user interactions
+- Test different states (loading, error, empty, populated)
+- Test accessibility where relevant
+
+**Storybook Stories (UI components):**
+- Create stories for each visual state
+- Include edge cases (long text, empty states)
+- Follow project story conventions
+
+### Step 4.3: Run All Tests in Scope
+
+```bash
+# Run tests for changed and new test files
+npm run test -- [changed-files-pattern]
+
+# Run specific test file
+npm run test -- path/to/file.spec.ts
+
+# Run Storybook build check (if stories added)
+npm run storybook:build --dry-run 2>/dev/null || true
+```
+
+### Step 4.4: Verification Report
+
+```markdown
+## Test Coverage Report
+
+**Tests Written:**
+| File | Tests | Status |
+|------|-------|--------|
+| `helper.spec.ts` | 5 tests | ✓ All passing |
+| `Button.spec.tsx` | 3 tests | ✓ All passing |
+| `Button.stories.tsx` | 4 stories | ✓ Created |
+
+**Tests Run (Scoped):**
+| Check | Scope | Status |
+|-------|-------|--------|
+| Unit tests | Changed files | ✓ Pass (X tests) |
+| Component tests | Changed components | ✓ Pass (Y tests) |
+| Type check | Full | ✓ Pass |
+| Lint | Full | ✓ Pass |
+
+**Coverage Notes:**
+- [Any edge cases not covered and why]
+- [Any tests skipped with justification]
+```
+
+**⛔ GATE: All tests must pass before proceeding.**
+
+If tests fail:
+```markdown
+> **Tests Failing:**
+> [List of failing tests with reasons]
+>
+> **Options:**
+> 1. Fix the implementation
+> 2. Fix the test expectations
+> 3. Skip specific test with justification (requires approval)
+>
+> **How to proceed?**
 ```
 
 ---
@@ -351,16 +520,17 @@ Ready to review changes?
 ```markdown
 ---
 **Scope carried forward:**
-- Files changed: [list of modified files]
+- Files changed: [implementation files]
+- Tests added: [test files]
 - Branch: [branch name]
 - Task: [task description]
-- Validation: [passed]
+- All tests: [passing]
 ---
 ```
 
 ---
 
-## Phase 4: Docs (Developer) - Optional
+## Phase 5: Docs (Developer) - Optional
 
 **Chatmode:** 👨‍💻 Developer
 **Tasks:** `docs/update-docs`
@@ -394,7 +564,7 @@ See [docs/update-docs.task.md](../tasks/docs/update-docs.task.md) for templates.
 
 ---
 
-## Phase 5: Commit (Committer)
+## Phase 6: Commit (Committer)
 
 **Chatmode:** 💾 Committer
 **Tasks:** `commit/show-status`, `commit/stage-changes`, `commit/create-commit`
@@ -453,7 +623,8 @@ Reply with:
 |-------|----------|-------|------|
 | Explore | 🔍 Explorer | gather-context, analyze-code | User confirms |
 | Plan | 📋 Planner | create-plan | **User approves** |
-| Code | 👨‍💻 Developer | edit-file, run-checks | User confirms |
+| Code | 👨‍💻 Developer | edit-file, typecheck, lint | User confirms |
+| Cover | 🧪 Tester | write-tests, write-stories, run-tests | **All tests pass** |
 | Docs | 👨‍💻 Developer | update-docs | *Optional* |
 | Commit | 💾 Committer | create-commit | **User confirms** |
 
@@ -463,5 +634,7 @@ Reply with:
 - [Tasks: explore/](../tasks/explore/)
 - [Tasks: plan/](../tasks/plan/)
 - [Tasks: implement/](../tasks/implement/)
+- [Tasks: test/](../tasks/test/)
 - [Tasks: commit/](../tasks/commit/)
 - [Tasks: docs/](../tasks/docs/)
+- [Workflow: Cover](./cover.prompt.md)

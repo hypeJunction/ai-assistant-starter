@@ -376,28 +376,73 @@ Which approach do you prefer?
 
 ## Phase 5: Validation
 
-**Goal:** Verify changes and get user confirmation before committing.
+**Goal:** Verify changes preserve behavior and all tests pass.
 
-### Step 5.1: Run Validation
+### Step 5.1: Run Full Validation
 
 ```bash
-npm run typecheck    # Type checking
-npm run lint         # Linting
-npm run test -- {affected-pattern}  # Affected tests
+# Type checking (full)
+npm run typecheck
+
+# Linting (full)
+npm run lint
+
+# All tests affected by the refactor
+npm run test -- {affected-pattern}
+
+# Consider running full test suite for large refactors
+npm run test
 ```
 
-### Step 5.2: Present Completion Report
+### Step 5.2: Test Coverage Check
+
+Evaluate if the refactor requires test updates:
+
+```markdown
+## Test Coverage Analysis
+
+**Refactor Type:** {type}
+
+| Scenario | Action Required |
+|----------|-----------------|
+| Renamed public API | Update tests referencing old names |
+| Changed function signatures | Update test calls and mocks |
+| Moved code to new files | Update import paths in tests |
+| New patterns introduced | Consider adding pattern-specific tests |
+| Internal restructure only | Existing tests should suffice |
+
+**Tests requiring updates:**
+- [ ] `test/file.spec.ts` - [reason for update]
+
+**New tests needed:**
+- [ ] None / [list if any]
+```
+
+### Step 5.3: Update Affected Tests
+
+If tests need updates due to the refactor:
+
+1. Update import paths for moved code
+2. Update references to renamed symbols
+3. Update mocks for changed interfaces
+4. Add tests for any new public APIs
+
+### Step 5.4: Verification Report
 
 ```markdown
 ## Refactor Complete: {Title}
 
 **Files Modified:** {N}
 **Files Skipped:** {N} (with reasons)
+**Tests Updated:** {N}
 
 ### Validation Results
-- Type check: ✓ passed
-- Lint: ✓ passed
-- Tests: ✓ {N} tests passing
+| Check | Status |
+|-------|--------|
+| Type check | ✓ Pass |
+| Lint | ✓ Pass |
+| Affected tests | ✓ Pass ({N} tests) |
+| Full test suite | ✓ Pass (if run) |
 
 ### Summary of Changes
 - [Change 1]
@@ -414,6 +459,8 @@ After verification:
 - **Adjust** - Need to fix something
 - **Review** - Show full diff
 ```
+
+**⛔ GATE: All tests must pass before proceeding to commit.**
 
 **Wait for user verification before proceeding.**
 
@@ -480,7 +527,7 @@ refactor: {title}
 2. **Get approval before executing** - Never refactor without explicit approval
 3. **Preserve behavior** - Refactors should not change functionality
 4. **Surface issues early** - Report discrepancies, don't silently skip
-5. **Validate thoroughly** - Type check and test affected code
+5. **All tests must pass** - Update tests for renamed/moved code, run full validation
 6. **Confirm before committing** - User verification required
 
 ---
@@ -493,7 +540,7 @@ refactor: {title}
 | Pattern Analysis | Find variations, surface edge cases | User guides edge case handling |
 | Plan | Design solution | **User approves plan** |
 | Execute | Implement with progress updates | User resolves discrepancies |
-| Validate | Verify changes | User confirms |
+| Validate | Verify changes, update/run all tests | **All tests pass** |
 | Docs | Update documentation | *Optional* |
 | Commit | Commit all changes | **User confirms** |
 

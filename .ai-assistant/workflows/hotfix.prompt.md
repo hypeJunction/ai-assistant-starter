@@ -53,7 +53,7 @@ Use HOTFIX when:
 ┌─────────────────────────────────────────────────────────────────┐
 │ FIX PHASE (Developer) - MINIMAL CHANGES ONLY                    │
 ├─────────────────────────────────────────────────────────────────┤
-│ implement/edit-file → verify/run-typecheck                      │
+│ implement/edit-file → test/write-regression → verify/run-typecheck │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
                          ⛔ GATE: User approves fix
@@ -177,7 +177,30 @@ grep -r "TODO\|FIXME\|HACK" [affected-files]
 
 **Apply the minimal fix.**
 
-### Step 2.3: Type Check
+### Step 2.3: Add Regression Test
+
+> **REQUIRED:** Every hotfix must include a regression test to prevent recurrence.
+
+```markdown
+## Regression Test
+
+**Test file:** `path/to/file.spec.ts`
+**Test case:** [describes the bug scenario]
+
+\`\`\`typescript
+it('should [not reproduce the bug] when [trigger condition]', () => {
+  // Reproduce the exact conditions that caused the bug
+  // Assert that the fix prevents it
+});
+\`\`\`
+```
+
+**Keep regression test minimal but effective:**
+- Test the specific failing scenario
+- Use realistic inputs that triggered the bug
+- Assert the correct behavior after the fix
+
+### Step 2.4: Type Check
 
 ```bash
 npm run typecheck
@@ -208,7 +231,10 @@ npm run typecheck
 # Lint (quick)
 npm run lint -- [affected-files]
 
-# Tests - ONLY affected tests
+# Regression test (MUST pass)
+npm run test -- [regression-test-file]
+
+# Other affected tests
 npm run test -- [affected-test-pattern]
 ```
 
@@ -221,13 +247,16 @@ npm run test -- [affected-test-pattern]
 |-------|-------|--------|
 | Type check | Full | ✓ Pass |
 | Lint | Affected files | ✓ Pass |
-| Tests | Affected tests | ✓ Pass (N tests) |
+| Regression test | New test | ✓ Pass |
+| Affected tests | Existing tests | ✓ Pass (N tests) |
 
 **Manual verification needed:**
 - [ ] [Specific thing to verify manually]
 
 **Verification complete?** (yes / found issues)
 ```
+
+**⛔ GATE: All tests (especially the regression test) must pass before deployment.**
 
 **If tests fail:**
 
@@ -376,8 +405,8 @@ git revert [commit-sha]
 | Phase | Chatmode | Focus | Gate |
 |-------|----------|-------|------|
 | Triage | 🐛 Debugger | Quick root cause | User confirms |
-| Fix | 👨‍💻 Developer | Minimal change | **User approves** |
-| Verify | 🧪 Tester | Scoped tests | Tests pass |
+| Fix | 👨‍💻 Developer | Minimal change + regression test | **User approves** |
+| Verify | 🧪 Tester | Regression + scoped tests | **All tests pass** |
 | Docs | 👨‍💻 Developer | Doc gap check | *Optional* |
 | Deploy | 💾 Committer | Fast PR | User confirms |
 
@@ -396,8 +425,9 @@ git revert [commit-sha]
 - ✓ Minimal fix only - one issue, one fix
 - ✓ User confirmation of root cause
 - ✓ User approval of fix approach
+- ✓ Regression test added for the bug
 - ✓ Type check must pass
-- ✓ Affected tests must pass
+- ✓ All tests (including regression) must pass
 - ✓ Rollback plan documented
 
 ### Recommended
@@ -421,7 +451,7 @@ After the hotfix is deployed:
 
 3. **Update documentation** if not done in Phase 4 (Docs)
 
-4. **Add regression test** to prevent recurrence
+4. **Verify regression test coverage** - confirm the regression test added during the fix adequately covers the bug scenario
 
 ---
 

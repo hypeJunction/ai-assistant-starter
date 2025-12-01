@@ -252,11 +252,10 @@ Reply with:
 
 **Waiting for explicit approval before modifying code.**
 
-### Step 3.2: Implement
+### Step 3.2: Implement Fix
 
 1. Apply fix with `implement/edit-file`
-2. Add regression test with `test/write-tests`
-3. Run type check
+2. Run type check to verify fix compiles
 
 ```markdown
 ## Fix Applied
@@ -264,8 +263,30 @@ Reply with:
 **Changed:**
 - `path/to/file.ts:42` - [fix description]
 
-**Test added:**
-- `path/to/file.spec.ts` - [test scenario]
+Type check: ✓ Pass
+```
+
+### Step 3.3: Add Regression Test
+
+> **REQUIRED:** Every bug fix must include a regression test.
+
+1. Add regression test with `test/write-tests`
+2. Test should reproduce the bug scenario
+3. Assert correct behavior after fix
+
+```markdown
+## Regression Test Added
+
+**Test file:** `path/to/file.spec.ts`
+**Test case:** [describes the bug scenario]
+
+\`\`\`typescript
+it('should [correct behavior] when [bug trigger condition]', () => {
+  // Arrange: Set up the conditions that triggered the bug
+  // Act: Perform the action that previously failed
+  // Assert: Verify the correct behavior
+});
+\`\`\`
 
 Ready to verify?
 ```
@@ -277,7 +298,21 @@ Ready to verify?
 **Chatmode:** 🧪 Tester → 💾 Committer
 **Tasks:** `test/run-tests`, `verify/run-checks`, `commit/create-commit`
 
-### Step 4.1: Verify Fix
+### Step 4.1: Run All Tests
+
+```bash
+# Run the regression test first
+npm run test -- path/to/file.spec.ts
+
+# Run all related/affected tests
+npm run test -- [affected-pattern]
+
+# Type check and lint
+npm run typecheck
+npm run lint
+```
+
+### Step 4.2: Verification Report
 
 ```markdown
 ## Verification
@@ -285,25 +320,45 @@ Ready to verify?
 | Check | Status |
 |-------|--------|
 | Regression test | ✓ Pass |
-| Related tests | ✓ Pass |
+| Related tests | ✓ Pass ({N} tests) |
 | Type check | ✓ Pass |
 | Lint | ✓ Pass |
 
 Can you verify the fix works?
 ```
 
+**⛔ GATE: All tests (especially regression test) must pass before proceeding.**
+
+If tests fail:
+```markdown
+> **Tests Failing:**
+> [List of failing tests]
+>
+> **Options:**
+> 1. Fix the implementation
+> 2. Fix the test expectations
+> 3. Investigate further - the root cause may be different
+>
+> **How to proceed?**
+```
+
 **⏸️ Wait for user verification.**
 
-### Step 4.2: Commit
+### Step 4.3: Commit
 
 ```markdown
 ## Ready to Commit
+
+**Files changed:**
+- `path/to/file.ts` - [fix]
+- `path/to/file.spec.ts` - [regression test]
 
 **Message:**
 ```
 fix: prevent null pointer in user lookup
 
 Adds null check before accessing user properties.
+Includes regression test to prevent recurrence.
 
 Fixes #123
 ```
@@ -321,8 +376,8 @@ Fixes #123
 |-------|----------|-------|------|
 | Understand | 🐛 Debugger | clarify-requirements | User confirms |
 | Investigate | 🐛 Debugger | analyze-code | **User confirms cause** |
-| Fix | 👨‍💻 Developer | create-plan, edit-file | **User approves** |
-| Verify | 🧪 Tester | run-tests | User verifies |
+| Fix | 👨‍💻 Developer | create-plan, edit-file, write-regression-test | **User approves** |
+| Verify | 🧪 Tester | run-tests (regression + related) | **All tests pass** |
 | Commit | 💾 Committer | create-commit | **User confirms** |
 
 ---
