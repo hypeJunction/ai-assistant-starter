@@ -2,6 +2,12 @@
 
 A **provider-agnostic framework** for standardizing AI coding assistant instructions. Write workflows once, use them with Claude Code, Cursor, Copilot, Gemini, and others.
 
+## Overview
+
+[▶️ **Watch Introduction Video** (1 min)](assets/intro-video.mp4) — *An honest conversation about LLMs in software engineering*
+
+📄 [View presentation slides](presentation.md) (Marp-compatible)
+
 ## Why This Exists
 
 AI coding assistants work better with structured guidance. This framework provides:
