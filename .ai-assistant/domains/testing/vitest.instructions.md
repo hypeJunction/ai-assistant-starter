@@ -7,7 +7,7 @@ role: [developer, tester]
 # Testing Guidelines
 
 > **Applies to:** All test files (`*.spec.ts`, `*.test.ts`)
-> **Related:** [typescript.instructions.md](./typescript.instructions.md)
+> **Related:** [typescript.instructions.md](../language/typescript.instructions.md)
 
 ## Test Framework
 
@@ -421,4 +421,4 @@ it('debounces input', async () => {
 ---
 
 **See Also:**
-- [TypeScript Guidelines](./typescript.instructions.md)
+- [TypeScript Guidelines](../language/typescript.instructions.md)

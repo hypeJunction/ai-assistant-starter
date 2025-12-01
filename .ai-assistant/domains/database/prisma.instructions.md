@@ -7,7 +7,7 @@ role: [developer, reviewer]
 # Database Guidelines
 
 > **Applies to:** All database operations and schema design
-> **Related:** [api.instructions.md](./api.instructions.md) | [performance.instructions.md](./performance.instructions.md)
+> **Related:** [api.instructions.md](../api/typescript-rest.instructions.md) | [performance.instructions.md](../performance/typescript.instructions.md)
 
 ## Core Principles
 
@@ -542,6 +542,6 @@ WHERE created_at >= '2024-01-15' AND created_at < '2024-01-16'  -- All day
 ---
 
 **See Also:**
-- [API Guidelines](./api.instructions.md)
-- [Performance Guidelines](./performance.instructions.md)
-- [Security Guidelines](./security.instructions.md)
+- [API Guidelines](../api/typescript-rest.instructions.md)
+- [Performance Guidelines](../performance/typescript.instructions.md)
+- [Security Guidelines](../_universal/security.instructions.md)

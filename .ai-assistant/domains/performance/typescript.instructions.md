@@ -7,7 +7,7 @@ role: [developer, reviewer, architect]
 # Performance Guidelines
 
 > **Applies to:** All application code
-> **Related:** [api.instructions.md](./api.instructions.md) | [database.instructions.md](./database.instructions.md)
+> **Related:** [api.instructions.md](../api/typescript-rest.instructions.md) | [database.instructions.md](../database/prisma.instructions.md)
 
 ## Core Principles
 
@@ -528,6 +528,6 @@ elements.forEach((el, i) => {
 ---
 
 **See Also:**
-- [Database Guidelines](./database.instructions.md)
-- [API Guidelines](./api.instructions.md)
-- [Testing Guidelines](./testing.instructions.md)
+- [Database Guidelines](../database/prisma.instructions.md)
+- [API Guidelines](../api/typescript-rest.instructions.md)
+- [Testing Guidelines](../testing/vitest.instructions.md)

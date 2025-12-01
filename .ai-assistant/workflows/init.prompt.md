@@ -39,6 +39,7 @@ This workflow sets up the project layer for the AI assistant framework. It copie
 ┌────────────────────────────────────────────────────────────────┐
 │ Step 4: Generate Configuration                                  │
 │ - Create .ai-project/ with populated templates                  │
+│ - Copy domain files based on detected stack                     │
 │ - NO {{PLACEHOLDER}} variables left unfilled                    │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -57,6 +58,7 @@ The `.ai-assistant/` directory must exist (symlink to cloned repo, or local copy
 | `.ai-project/project/` | `structure.md` | Directory layout |
 | `.ai-project/project/` | `patterns.md` | Code patterns and conventions |
 | `.ai-project/project/` | `stack.md` | Technology stack |
+| `.ai-project/domains/` | `*.instructions.md` | Stack-specific domain rules (copied based on detection) |
 | Root | Provider entry point | e.g., `CLAUDE.md`, `.cursorrules` |
 
 ---
@@ -348,7 +350,91 @@ Based on dependencies:
 | Testing | Vitest |
 ```
 
-### Step 2.5: Update Provider Entry Point
+### Step 2.5: Copy Domain Files
+
+Copy relevant domain instruction files from `.ai-assistant/domains/` to `.ai-project/domains/` based on detected stack.
+
+#### Domain Selection Rules
+
+**Always copy (universal):**
+```bash
+cp .ai-assistant/domains/_universal/*.md .ai-project/domains/
+```
+
+**Based on detected stack:**
+
+| Detection | Source Directory | Copy When |
+|-----------|------------------|-----------|
+| Language: TypeScript | `language/typescript.instructions.md` | `package.json` has TypeScript |
+| Language: Python | `language/python.instructions.md` | `pyproject.toml` or `requirements.txt` exists |
+| Test: Vitest | `testing/vitest.instructions.md` | Vitest in devDependencies |
+| Test: Jest | `testing/jest.instructions.md` | Jest in devDependencies |
+| Test: Pytest | `testing/pytest.instructions.md` | pytest in Python deps |
+| Framework: React | `framework/react.instructions.md` | React in dependencies |
+| Framework: Vue | `framework/vue.instructions.md` | Vue in dependencies |
+| Framework: Express | `framework/express.instructions.md` | Express in dependencies |
+| Framework: FastAPI | `framework/fastapi.instructions.md` | FastAPI in Python deps |
+| Storybook | `storybook/react.instructions.md` | Storybook in devDependencies + React |
+| ORM: Prisma | `database/prisma.instructions.md` | Prisma in dependencies |
+| ORM: Drizzle | `database/drizzle.instructions.md` | Drizzle in dependencies |
+| Validation: Zod | `validation/zod.instructions.md` | Zod in dependencies |
+| Validation: Pydantic | `validation/pydantic.instructions.md` | Pydantic in Python deps |
+| API: REST (TS) | `api/typescript-rest.instructions.md` | Express/Fastify/Hono detected |
+| API: REST (Python) | `api/python-rest.instructions.md` | FastAPI/Flask detected |
+| Docker: Node | `docker/node.instructions.md` | Dockerfile exists + Node project |
+| Docker: Python | `docker/python.instructions.md` | Dockerfile exists + Python project |
+| CI: GitHub Actions | `ci-cd/github-actions-node.instructions.md` | `.github/workflows/` exists |
+| Error Handling | `error-handling/typescript.instructions.md` | TypeScript project |
+| Logging | `logging/typescript.instructions.md` | TypeScript project |
+| Performance | `performance/typescript.instructions.md` | TypeScript project |
+| Naming | `naming/typescript.instructions.md` | TypeScript project |
+| Env Config | `env-config/node.instructions.md` | Node.js project |
+
+#### Copy Script
+
+```bash
+# Create domains directory if not exists
+mkdir -p .ai-project/domains
+
+# Always copy universal domains
+cp .ai-assistant/domains/_universal/*.md .ai-project/domains/
+
+# Copy stack-specific domains (example for TypeScript + React + Vitest)
+cp .ai-assistant/domains/language/typescript.instructions.md .ai-project/domains/
+cp .ai-assistant/domains/testing/vitest.instructions.md .ai-project/domains/
+cp .ai-assistant/domains/framework/react.instructions.md .ai-project/domains/
+cp .ai-assistant/domains/error-handling/typescript.instructions.md .ai-project/domains/
+cp .ai-assistant/domains/naming/typescript.instructions.md .ai-project/domains/
+# ... etc based on detection
+```
+
+#### Show Selected Domains
+
+Present to user which domains were selected:
+
+```markdown
+### Domain Instructions Copied
+
+Based on your stack, these domain instruction files were added:
+
+**Universal (always included):**
+- git.instructions.md
+- security.instructions.md
+- code-review.instructions.md
+- documentation.instructions.md
+- communication.instructions.md
+
+**Stack-specific:**
+- language/typescript.instructions.md (TypeScript detected)
+- testing/vitest.instructions.md (Vitest detected)
+- framework/react.instructions.md (React detected)
+- validation/zod.instructions.md (Zod detected)
+- storybook/react.instructions.md (Storybook detected)
+
+These files are now in `.ai-project/domains/` and can be customized for your project.
+```
+
+### Step 2.6: Update Provider Entry Point
 
 Generate/update provider-specific entry point (e.g., `CLAUDE.md`, `.cursorrules`):
 - Should be minimal, referencing `.ai-assistant/.instructions.md`
@@ -374,17 +460,23 @@ Show summary of what was generated:
 - [x] `.ai-project/project/structure.md` - Structure
 - [x] `.ai-project/project/patterns.md` - Patterns
 - [x] `.ai-project/project/stack.md` - Tech stack
+- [x] `.ai-project/domains/` - Domain instructions (N files copied)
 - [x] Provider entry point updated
 
 ### Detected Configuration
+- **Language:** [detected]
 - **Framework:** [detected]
 - **Test Runner:** [detected]
 - **Package Manager:** [detected]
 
+### Domain Instructions Copied
+[List of domain files copied based on stack detection]
+
 ### Next Steps
 1. Review generated files for accuracy
-2. Add project-specific patterns
-3. Update any incorrect commands
+2. Customize domain instructions in `.ai-project/domains/` if needed
+3. Add project-specific patterns
+4. Update any incorrect commands
 ```
 
 ### Step 3.2: Ask for Review

@@ -7,7 +7,7 @@ role: [developer, tester]
 # Storybook Guidelines
 
 > **Applies to:** All Storybook story files (`*.stories.ts`, `*.stories.tsx`)
-> **Related:** [testing.instructions.md](./testing.instructions.md) | [documentation.instructions.md](./documentation.instructions.md)
+> **Related:** [testing.instructions.md](../testing/vitest.instructions.md) | [documentation.instructions.md](../_universal/documentation.instructions.md)
 
 ## Overview
 
@@ -490,5 +490,5 @@ npm run test-storybook -- --coverage
 ---
 
 **See Also:**
-- [Testing Guidelines](./testing.instructions.md)
-- [Documentation Guidelines](./documentation.instructions.md)
+- [Testing Guidelines](../testing/vitest.instructions.md)
+- [Documentation Guidelines](../_universal/documentation.instructions.md)

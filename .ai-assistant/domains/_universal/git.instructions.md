@@ -7,7 +7,7 @@ role: [developer, reviewer]
 # Git Guidelines
 
 > **Applies to:** All version control operations
-> **Related:** [code-review.instructions.md](./code-review.instructions.md)
+> **Related:** [code-review.instructions.md](./code-review.instructions.md) | [ci-cd guidelines](../ci-cd/)
 
 ## Core Principles
 
@@ -404,4 +404,4 @@ git add .gitattributes
 
 **See Also:**
 - [Code Review Guidelines](./code-review.instructions.md)
-- [CI/CD Guidelines](./ci-cd.instructions.md)
+- [CI/CD Guidelines](../ci-cd/)

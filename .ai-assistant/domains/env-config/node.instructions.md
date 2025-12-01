@@ -7,7 +7,7 @@ role: [developer, devops]
 # Environment Configuration Guidelines
 
 > **Applies to:** All environment variables and configuration
-> **Related:** [security.instructions.md](./security.instructions.md) | [docker.instructions.md](./docker.instructions.md)
+> **Related:** [security.instructions.md](../_universal/security.instructions.md) | [docker.instructions.md](../docker/node.instructions.md)
 
 ## Core Principles
 
@@ -493,6 +493,6 @@ services:
 ---
 
 **See Also:**
-- [Security Guidelines](./security.instructions.md)
-- [Docker Guidelines](./docker.instructions.md)
-- [CI/CD Guidelines](./ci-cd.instructions.md)
+- [Security Guidelines](../_universal/security.instructions.md)
+- [Docker Guidelines](../docker/node.instructions.md)
+- [CI/CD Guidelines](../ci-cd/)

@@ -7,7 +7,7 @@ role: [developer, reviewer]
 # Data Validation Guidelines
 
 > **Applies to:** All data input, API boundaries, and form handling
-> **Related:** [api.instructions.md](./api.instructions.md) | [security.instructions.md](./security.instructions.md)
+> **Related:** [api.instructions.md](../api/typescript-rest.instructions.md) | [security.instructions.md](../_universal/security.instructions.md)
 
 ## Core Principles
 
@@ -559,6 +559,6 @@ if (!result.success) {
 ---
 
 **See Also:**
-- [API Guidelines](./api.instructions.md)
-- [Security Guidelines](./security.instructions.md)
-- [Error Handling Guidelines](./error-handling.instructions.md)
+- [API Guidelines](../api/typescript-rest.instructions.md)
+- [Security Guidelines](../_universal/security.instructions.md)
+- [Error Handling Guidelines](../error-handling/typescript.instructions.md)

@@ -51,63 +51,78 @@
 
 ## Domain Guidelines
 
+Domains are organized by category. During `/init`, relevant domains are copied to `.ai-project/domains/` based on your stack.
+
+### Universal (Always Included)
+| Domain | File | Topics |
+|--------|------|--------|
+| Git | [git.instructions.md](./domains/_universal/git.instructions.md) | Branches, commits |
+| Code Review | [code-review.instructions.md](./domains/_universal/code-review.instructions.md) | Review guidelines |
+| Security | [security.instructions.md](./domains/_universal/security.instructions.md) | Security practices |
+| Documentation | [documentation.instructions.md](./domains/_universal/documentation.instructions.md) | Doc guidelines |
+| Communication | [communication.instructions.md](./domains/_universal/communication.instructions.md) | User interaction |
+
+### Language
+| Domain | File | Topics |
+|--------|------|--------|
+| TypeScript | [typescript.instructions.md](./domains/language/typescript.instructions.md) | Types, imports, exports |
+
+### Testing
+| Domain | File | Topics |
+|--------|------|--------|
+| Vitest | [vitest.instructions.md](./domains/testing/vitest.instructions.md) | Test plans, mocking (Vitest) |
+
+### Framework
+| Domain | File | Topics |
+|--------|------|--------|
+| Storybook (React) | [react.instructions.md](./domains/storybook/react.instructions.md) | Stories, play functions |
+
+### API & Data
+| Domain | File | Topics |
+|--------|------|--------|
+| REST API (TS) | [typescript-rest.instructions.md](./domains/api/typescript-rest.instructions.md) | REST, requests, responses |
+| Validation (Zod) | [zod.instructions.md](./domains/validation/zod.instructions.md) | Input validation |
+| Database (Prisma) | [prisma.instructions.md](./domains/database/prisma.instructions.md) | Database patterns |
+
 ### Code Quality
 | Domain | File | Topics |
 |--------|------|--------|
-| TypeScript | [typescript.instructions.md](./domains/typescript.instructions.md) | Types, imports, exports |
-| Testing | [testing.instructions.md](./domains/testing.instructions.md) | Test plans, mocking |
-| Storybook | [storybook.instructions.md](./domains/storybook.instructions.md) | Stories, play functions, visual testing |
-| Naming | [naming.instructions.md](./domains/naming.instructions.md) | Naming conventions |
-| Code Review | [code-review.instructions.md](./domains/code-review.instructions.md) | Review guidelines |
+| Naming (TS) | [typescript.instructions.md](./domains/naming/typescript.instructions.md) | Naming conventions |
+| Error Handling (TS) | [typescript.instructions.md](./domains/error-handling/typescript.instructions.md) | Error patterns |
+| Logging (TS) | [typescript.instructions.md](./domains/logging/typescript.instructions.md) | Logging patterns |
+| Performance (TS) | [typescript.instructions.md](./domains/performance/typescript.instructions.md) | Optimization |
 
-### Architecture
+### DevOps
 | Domain | File | Topics |
 |--------|------|--------|
-| API Design | [api.instructions.md](./domains/api.instructions.md) | REST, requests, responses |
-| Error Handling | [error-handling.instructions.md](./domains/error-handling.instructions.md) | Error patterns |
-| Data Validation | [data-validation.instructions.md](./domains/data-validation.instructions.md) | Input validation |
-| Performance | [performance.instructions.md](./domains/performance.instructions.md) | Optimization |
-
-### Operations
-| Domain | File | Topics |
-|--------|------|--------|
-| Git | [git.instructions.md](./domains/git.instructions.md) | Branches, commits |
-| CI/CD | [ci-cd.instructions.md](./domains/ci-cd.instructions.md) | Pipelines |
-| Docker | [docker.instructions.md](./domains/docker.instructions.md) | Containers |
-| Env Config | [env-config.instructions.md](./domains/env-config.instructions.md) | Environment variables |
-
-### Security & Ops
-| Domain | File | Topics |
-|--------|------|--------|
-| Security | [security.instructions.md](./domains/security.instructions.md) | Security practices |
-| Logging | [logging.instructions.md](./domains/logging.instructions.md) | Logging patterns |
-| Database | [database.instructions.md](./domains/database.instructions.md) | Database patterns |
-| Documentation | [documentation.instructions.md](./domains/documentation.instructions.md) | Doc guidelines |
+| CI/CD (GitHub Actions) | [github-actions-node.instructions.md](./domains/ci-cd/github-actions-node.instructions.md) | Pipelines |
+| Docker (Node) | [node.instructions.md](./domains/docker/node.instructions.md) | Containers |
+| Env Config (Node) | [node.instructions.md](./domains/env-config/node.instructions.md) | Environment variables |
 
 ---
 
 ## By Topic
 
 ### TypeScript
-- **Avoid `any` type** → [typescript.instructions.md](./domains/typescript.instructions.md#avoid-any-type)
-- **`satisfies` vs `as`** → [typescript.instructions.md](./domains/typescript.instructions.md#use-satisfies-instead-of-as)
-- **Named exports only** → [typescript.instructions.md](./domains/typescript.instructions.md#named-exports-only)
-- **Type guards** → [typescript.instructions.md](./domains/typescript.instructions.md#type-guards)
+- **Avoid `any` type** → [typescript.instructions.md](./domains/language/typescript.instructions.md#avoid-any-type)
+- **`satisfies` vs `as`** → [typescript.instructions.md](./domains/language/typescript.instructions.md#use-satisfies-instead-of-as)
+- **Named exports only** → [typescript.instructions.md](./domains/language/typescript.instructions.md#named-exports-only)
+- **Type guards** → [typescript.instructions.md](./domains/language/typescript.instructions.md#type-guards)
 
 ### Testing
-- **Test plan format (Gherkin)** → [testing.instructions.md](./domains/testing.instructions.md#test-plan-format)
-- **Testing Library queries** → [testing.instructions.md](./domains/testing.instructions.md#testing-library-queries)
-- **Mocking patterns** → [testing.instructions.md](./domains/testing.instructions.md#mocking)
+- **Test plan format (Gherkin)** → [vitest.instructions.md](./domains/testing/vitest.instructions.md#test-plan-format)
+- **Testing Library queries** → [vitest.instructions.md](./domains/testing/vitest.instructions.md#testing-library-queries)
+- **Mocking patterns** → [vitest.instructions.md](./domains/testing/vitest.instructions.md#mocking)
 
 ### Storybook
-- **Story file structure** → [storybook.instructions.md](./domains/storybook.instructions.md#story-file-structure)
-- **Play functions** → [storybook.instructions.md](./domains/storybook.instructions.md#interaction-tests-with-play)
-- **MSW mocking** → [storybook.instructions.md](./domains/storybook.instructions.md#mocking)
-- **Query strategies** → [storybook.instructions.md](./domains/storybook.instructions.md#query-strategies)
+- **Story file structure** → [react.instructions.md](./domains/storybook/react.instructions.md#story-file-structure)
+- **Play functions** → [react.instructions.md](./domains/storybook/react.instructions.md#interaction-tests-with-play)
+- **MSW mocking** → [react.instructions.md](./domains/storybook/react.instructions.md#mocking)
+- **Query strategies** → [react.instructions.md](./domains/storybook/react.instructions.md#query-strategies)
 
 ### Git
-- **Branch naming** → [git.instructions.md](./domains/git.instructions.md#branch-naming)
-- **Commit messages** → [git.instructions.md](./domains/git.instructions.md#commit-messages)
+- **Branch naming** → [git.instructions.md](./domains/_universal/git.instructions.md#branch-naming)
+- **Commit messages** → [git.instructions.md](./domains/_universal/git.instructions.md#commit-messages)
 
 ---
 

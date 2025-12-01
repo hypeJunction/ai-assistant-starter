@@ -381,4 +381,4 @@ Errors in `catch` blocks are always `unknown`. Use type guards to narrow.
 ---
 
 **See Also:**
-- [Testing Guidelines](./testing.instructions.md)
+- [Testing Guidelines](../testing/vitest.instructions.md)

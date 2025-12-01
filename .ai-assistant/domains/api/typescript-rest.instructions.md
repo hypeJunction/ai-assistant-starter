@@ -7,7 +7,7 @@ role: [developer, architect, reviewer]
 # API Design Guidelines
 
 > **Applies to:** All API endpoints and client code
-> **Related:** [error-handling.instructions.md](./error-handling.instructions.md) | [security.instructions.md](./security.instructions.md)
+> **Related:** [error-handling.instructions.md](../error-handling/typescript.instructions.md) | [security.instructions.md](../_universal/security.instructions.md)
 
 ## Core Principles
 
@@ -531,6 +531,6 @@ Always use ISO 8601 in UTC:
 ---
 
 **See Also:**
-- [Error Handling Guidelines](./error-handling.instructions.md)
-- [Security Guidelines](./security.instructions.md)
-- [Data Validation Guidelines](./data-validation.instructions.md)
+- [Error Handling Guidelines](../error-handling/typescript.instructions.md)
+- [Security Guidelines](../_universal/security.instructions.md)
+- [Data Validation Guidelines](../validation/zod.instructions.md)

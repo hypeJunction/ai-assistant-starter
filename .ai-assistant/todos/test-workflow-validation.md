@@ -83,4 +83,4 @@ tests/
 ## Related
 
 - **Workflows:** `.ai-assistant/workflows/`
-- **Testing Domain:** `.ai-assistant/domains/testing.instructions.md`
+- **Testing Domain:** `.ai-assistant/domains/testing/vitest.instructions.md`

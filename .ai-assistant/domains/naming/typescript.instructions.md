@@ -7,7 +7,7 @@ role: [developer, reviewer]
 # Naming Guidelines
 
 > **Applies to:** All code - variables, functions, files, and more
-> **Related:** [typescript.instructions.md](./typescript.instructions.md) | [documentation.instructions.md](./documentation.instructions.md)
+> **Related:** [typescript.instructions.md](../language/typescript.instructions.md) | [documentation.instructions.md](../_universal/documentation.instructions.md)
 
 ## Core Principles
 
@@ -445,6 +445,6 @@ onClick vs handleClick          // Pick one pattern
 ---
 
 **See Also:**
-- [TypeScript Guidelines](./typescript.instructions.md)
-- [Documentation Guidelines](./documentation.instructions.md)
-- [Code Review Guidelines](./code-review.instructions.md)
+- [TypeScript Guidelines](../language/typescript.instructions.md)
+- [Documentation Guidelines](../_universal/documentation.instructions.md)
+- [Code Review Guidelines](../_universal/code-review.instructions.md)
