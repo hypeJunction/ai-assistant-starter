@@ -73,6 +73,14 @@ priority: high
                          ⛔ GATE: User confirms ready
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
+│ DOCS PHASE (Developer) - OPTIONAL                                │
+├─────────────────────────────────────────────────────────────────┤
+│ docs/update-docs                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+                         ⏸️ OPTIONAL: User chooses to document
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
 │ COMMIT PHASE (Committer)                                         │
 ├─────────────────────────────────────────────────────────────────┤
 │ commit/show-status → commit/stage-changes → commit/create-commit │
@@ -338,7 +346,7 @@ Ready to review changes?
 
 ---
 
-### Scope Handoff → Commit Phase
+### Scope Handoff → Docs Phase
 
 ```markdown
 ---
@@ -352,12 +360,46 @@ Ready to review changes?
 
 ---
 
-## Phase 4: Commit (Committer)
+## Phase 4: Docs (Developer) - Optional
+
+**Chatmode:** 👨‍💻 Developer
+**Tasks:** `docs/update-docs`
+
+Before committing, prompt for documentation:
+
+```markdown
+## Documentation (Optional)
+
+**What was implemented:** [brief summary]
+
+**Consider documenting:**
+
+| Type | When Relevant | Action |
+|------|---------------|--------|
+| AI context | New patterns, decisions, gotchas | Update `.ai-project/` |
+| User docs | User-facing features, API changes | Add to `docs/` |
+| README | Getting started, feature overview | Update `README.md` |
+
+**What would you like to document?**
+- `ai` - Update AI assistant context
+- `user` - Add/update user documentation
+- `readme` - Update README
+- `all` - All of the above
+- `skip` - No documentation needed
+```
+
+**⏸️ Wait for user response. If `skip`, proceed to commit.**
+
+See [docs/update-docs.task.md](../tasks/docs/update-docs.task.md) for templates.
+
+---
+
+## Phase 5: Commit (Committer)
 
 **Chatmode:** 💾 Committer
 **Tasks:** `commit/show-status`, `commit/stage-changes`, `commit/create-commit`
 
-### Step 4.1: Review Changes (Within Scope)
+### Step 5.1: Review Changes (Within Scope)
 
 Show only files within the inherited scope:
 
@@ -376,7 +418,7 @@ Show only files within the inherited scope:
 **Note:** Only showing changes within scope. Use `git status` to see all changes.
 ```
 
-### Step 4.2: Confirm Commit
+### Step 5.2: Confirm Commit
 
 ```markdown
 ## Ready to Commit
@@ -412,6 +454,7 @@ Reply with:
 | Explore | 🔍 Explorer | gather-context, analyze-code | User confirms |
 | Plan | 📋 Planner | create-plan | **User approves** |
 | Code | 👨‍💻 Developer | edit-file, run-checks | User confirms |
+| Docs | 👨‍💻 Developer | update-docs | *Optional* |
 | Commit | 💾 Committer | create-commit | **User confirms** |
 
 ---
@@ -421,3 +464,4 @@ Reply with:
 - [Tasks: plan/](../tasks/plan/)
 - [Tasks: implement/](../tasks/implement/)
 - [Tasks: commit/](../tasks/commit/)
+- [Tasks: docs/](../tasks/docs/)

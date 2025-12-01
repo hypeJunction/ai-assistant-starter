@@ -410,12 +410,67 @@ npm run test -- {affected-pattern}  # Affected tests
 **Can you verify the refactor works as expected?**
 
 After verification:
-- **Commit** - Ready to commit these changes
+- **Commit** - Proceed to documentation check, then commit
 - **Adjust** - Need to fix something
 - **Review** - Show full diff
 ```
 
-**Wait for user verification before committing.**
+**Wait for user verification before proceeding.**
+
+---
+
+## Phase 6: Docs (Developer) - Optional
+
+**Goal:** Update documentation to reflect the refactor before committing.
+
+When user confirms verification, prompt for documentation:
+
+```markdown
+## Documentation (Optional)
+
+**Refactor completed:** {Title}
+
+**Consider documenting:**
+
+| Type | When Relevant | Action |
+|------|---------------|--------|
+| AI context | Pattern changes, new conventions | Update `.ai-project/` |
+| User docs | API changes, breaking changes | Update `docs/` |
+| README | Usage changes | Update `README.md` |
+
+**What would you like to document?**
+- `ai` - Update AI assistant context (recommended for pattern changes)
+- `user` - Add/update user documentation
+- `readme` - Update README
+- `skip` - No documentation needed
+```
+
+**⏸️ Wait for user response. If `skip`, proceed to commit.**
+
+See [docs/update-docs.task.md](../tasks/docs/update-docs.task.md) for templates.
+
+---
+
+## Phase 7: Commit (Committer)
+
+**Goal:** Commit all changes including documentation.
+
+```markdown
+## Ready to Commit
+
+**Files to commit:** [implementation + docs]
+
+**Message:**
+```
+refactor: {title}
+
+{Brief description of refactor}
+```
+
+**Commit?** (yes / edit message / cancel)
+```
+
+**⛔ GATE: Wait for explicit confirmation before committing.**
 
 ---
 
@@ -438,7 +493,9 @@ After verification:
 | Pattern Analysis | Find variations, surface edge cases | User guides edge case handling |
 | Plan | Design solution | **User approves plan** |
 | Execute | Implement with progress updates | User resolves discrepancies |
-| Validate | Verify changes | **User confirms before commit** |
+| Validate | Verify changes | User confirms |
+| Docs | Update documentation | *Optional* |
+| Commit | Commit all changes | **User confirms** |
 
 ---
 
@@ -446,3 +503,4 @@ After verification:
 - [Implement](./implement.prompt.md)
 - [Commit](./commit.prompt.md)
 - [Create File List](./create-file-list.prompt.md)
+- [Tasks: docs/](../tasks/docs/)

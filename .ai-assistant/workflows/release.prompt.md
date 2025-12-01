@@ -64,6 +64,14 @@ priority: high
                          ⛔ GATE: All validations pass
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
+│ DOCS PHASE (Developer) - OPTIONAL                                │
+├─────────────────────────────────────────────────────────────────┤
+│ docs/update-docs                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+                         ⏸️ OPTIONAL: User chooses to document
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
 │ TAG PHASE (Committer)                                           │
 ├─────────────────────────────────────────────────────────────────┤
 │ commit/create-commit → release/create-tag → release/push-tag    │
@@ -299,12 +307,45 @@ npm run build
 
 ---
 
-## Phase 4: Tag (Committer)
+## Phase 4: Docs (Developer) - Optional
+
+**Chatmode:** 👨‍💻 Developer
+**Tasks:** `docs/update-docs`
+
+Before creating the release commit, prompt for documentation:
+
+```markdown
+## Documentation (Optional)
+
+**Release version:** vX.Y.Z
+
+**Consider documenting:**
+
+| Type | When Relevant | Action |
+|------|---------------|--------|
+| AI context | Architecture changes in release | Update `.ai-project/` |
+| User docs | New features, API changes | Update `docs/` |
+| README | Version-specific info, migration notes | Update `README.md` |
+
+**What would you like to document?**
+- `ai` - Update AI assistant context
+- `user` - Add/update user documentation
+- `readme` - Update README (e.g., badge versions, migration notes)
+- `skip` - No documentation needed
+```
+
+**⏸️ Wait for user response. If `skip`, proceed to tag.**
+
+See [docs/update-docs.task.md](../tasks/docs/update-docs.task.md) for templates.
+
+---
+
+## Phase 5: Tag (Committer)
 
 **Chatmode:** 💾 Committer
 **Tasks:** `commit/create-commit`, `release/create-tag`, `release/push-tag`
 
-### Step 4.1: Create Release Commit
+### Step 5.1: Create Release Commit
 
 ```markdown
 ## Release Commit
@@ -332,14 +373,14 @@ git add package.json package-lock.json CHANGELOG.md
 git commit -m "chore(release): vX.Y.Z"
 ```
 
-### Step 4.2: Create Git Tag
+### Step 5.2: Create Git Tag
 
 ```bash
 # Create annotated tag
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
 ```
 
-### Step 4.3: Push Release
+### Step 5.3: Push Release
 
 **If `--dry-run` flag:**
 
@@ -378,7 +419,7 @@ git push origin vX.Y.Z
 
 ---
 
-## Phase 5: Notes (Developer)
+## Phase 6: Notes (Developer)
 
 **Chatmode:** 👨‍💻 Developer
 **Tasks:** `release/generate-notes`, `release/create-github-release`
@@ -461,6 +502,7 @@ gh release create vX.Y.Z \
 | Prepare | 🔍 Explorer | check-status, gather-changes | User confirms scope |
 | Version | 👨‍💻 Developer | bump-version, update-changelog | **User approves** |
 | Validate | 🧪 Tester | typecheck, lint, test, build | **All pass** |
+| Docs | 👨‍💻 Developer | update-docs | *Optional* |
 | Tag | 💾 Committer | create-commit, create-tag, push | **User confirms push** |
 | Notes | 👨‍💻 Developer | generate-notes, github-release | User choice |
 
@@ -492,3 +534,4 @@ gh release create vX.Y.Z \
 **See Also:**
 - [Workflow: Validate](./validate.prompt.md)
 - [Workflow: Commit](./commit.prompt.md)
+- [Tasks: docs/](../tasks/docs/)

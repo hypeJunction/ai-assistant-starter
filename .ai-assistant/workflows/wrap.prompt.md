@@ -116,7 +116,35 @@ Perform a self-review before committing:
 
 **Exit criteria:** No critical issues remain. Warnings documented if deferred.
 
-### Phase 5: Commit
+### Phase 5: Docs (Optional)
+
+Before committing, consider documenting your work:
+
+```markdown
+## Documentation (Optional)
+
+**Session work:** [brief summary]
+
+**Consider documenting:**
+
+| Type | When Relevant | Action |
+|------|---------------|--------|
+| AI context | Patterns learned, gotchas discovered | Update `.ai-project/` |
+| User docs | User-facing changes | Update `docs/` |
+| README | Getting started changes | Update `README.md` |
+
+**What would you like to document?**
+- `ai` - Update AI assistant context
+- `user` - Add/update user documentation
+- `readme` - Update README
+- `skip` - No documentation needed
+```
+
+**⏸️ Wait for user response. If `skip`, proceed to commit.**
+
+See [docs/update-docs.task.md](../tasks/docs/update-docs.task.md) for templates.
+
+### Phase 6: Commit
 
 **Requires explicit user confirmation.**
 
@@ -155,7 +183,7 @@ Perform a self-review before committing:
 - `style:` - Formatting, no code change
 - `chore:` - Maintenance tasks
 
-### Phase 6: Final Verification (Optional)
+### Phase 7: Final Verification (Optional)
 
 If preparing to push:
 
@@ -283,6 +311,12 @@ Fix issues and run `/wrap` again.
 │       │                                           │        │
 │       │                                           ▼        │
 │       │                                    ┌─────────┐     │
+│       │                                    │  Docs   │     │
+│       │                                    │(optional│     │
+│       │                                    └─────────┘     │
+│       │                                           │        │
+│       │                                           ▼        │
+│       │                                    ┌─────────┐     │
 │       └─────────(no changes)──────────────▶│ Commit  │     │
 │                                            └─────────┘     │
 │                                                  │         │
@@ -295,3 +329,4 @@ Fix issues and run `/wrap` again.
 
 - [Validate](./validate.prompt.md)
 - [Testing Guidelines](../domains/testing.instructions.md)
+- [Tasks: docs/](../tasks/docs/)

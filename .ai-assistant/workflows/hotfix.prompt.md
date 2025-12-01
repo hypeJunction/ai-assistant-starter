@@ -65,6 +65,12 @@ Use HOTFIX when:
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
+│ DOCS PHASE (Developer) - OPTIONAL, LIGHTWEIGHT                   │
+├─────────────────────────────────────────────────────────────────┤
+│ docs/update-docs (if issue revealed doc gap)                     │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
 │ DEPLOY PHASE (Committer)                                        │
 ├─────────────────────────────────────────────────────────────────┤
 │ commit/create-commit → release/create-pr                        │
@@ -239,12 +245,33 @@ npm run test -- [affected-test-pattern]
 
 ---
 
-## Phase 4: Deploy (Committer)
+## Phase 4: Docs (Developer) - Optional
+
+**Chatmode:** 👨‍💻 Developer
+**Goal:** Quick documentation if issue revealed a gap
+
+> **Note:** Keep this lightweight. Hotfixes need to ship fast.
+
+```markdown
+## Documentation (Optional)
+
+**Did this issue reveal a documentation gap?**
+
+- `ai` - Update AI context (gotcha, edge case discovered)
+- `readme` - Update README (if user-facing)
+- `skip` - No docs needed (default for most hotfixes)
+```
+
+**⏸️ If `skip` (most common), proceed immediately to deploy.**
+
+---
+
+## Phase 5: Deploy (Committer)
 
 **Chatmode:** 💾 Committer
 **Goal:** Fast-track commit and PR
 
-### Step 4.1: Create Hotfix Commit
+### Step 5.1: Create Hotfix Commit
 
 ```markdown
 ## Hotfix Commit
@@ -275,7 +302,7 @@ git commit -m "fix: [description]
 Root cause: [explanation]"
 ```
 
-### Step 4.2: Create PR or Push
+### Step 5.2: Create PR or Push
 
 **If on feature branch:**
 
@@ -318,7 +345,7 @@ git push -u origin HEAD
 gh pr create --title "[HOTFIX] [description]" --body "..." --label hotfix,priority:critical
 ```
 
-### Step 4.3: Deployment Notes
+### Step 5.3: Deployment Notes
 
 ```markdown
 ## Hotfix Ready
@@ -351,6 +378,7 @@ git revert [commit-sha]
 | Triage | 🐛 Debugger | Quick root cause | User confirms |
 | Fix | 👨‍💻 Developer | Minimal change | **User approves** |
 | Verify | 🧪 Tester | Scoped tests | Tests pass |
+| Docs | 👨‍💻 Developer | Doc gap check | *Optional* |
 | Deploy | 💾 Committer | Fast PR | User confirms |
 
 ---
@@ -391,7 +419,7 @@ After the hotfix is deployed:
 
 2. **Schedule post-mortem** for critical issues
 
-3. **Update documentation** if the issue revealed a gap
+3. **Update documentation** if not done in Phase 4 (Docs)
 
 4. **Add regression test** to prevent recurrence
 
@@ -401,3 +429,4 @@ After the hotfix is deployed:
 - [Workflow: Debug](./debug.prompt.md) - For non-urgent bugs
 - [Workflow: Commit](./commit.prompt.md)
 - [Workflow: Create PR](./create-pr.prompt.md)
+- [Tasks: docs/](../tasks/docs/)
