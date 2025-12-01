@@ -113,6 +113,19 @@ npm run typecheck
 npm run lint -- [changed-files]
 ```
 
+**Secrets Scan (always runs):**
+```bash
+# Scan changed files for potential secrets
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
+  -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" [changed-files]
+
+# Check for base64-encoded secrets (common pattern)
+grep -rn -E "['\"][A-Za-z0-9+/]{40,}={0,2}['\"]" [changed-files]
+
+# Check for hardcoded URLs with credentials
+grep -rn -E "https?://[^:]+:[^@]+@" [changed-files]
+```
+
 **Report:**
 ```markdown
 ### Level 1: Syntax & Style
@@ -122,6 +135,7 @@ npm run lint -- [changed-files]
 | Format | ✓ Pass / ✗ Fail | [N files need formatting] |
 | Types | ✓ Pass / ✗ Fail | [N errors] |
 | Lint | ✓ Pass / ✗ Fail | [N errors, M warnings] |
+| Secrets | ✓ Pass / ⚠️ Review | [N potential secrets found] |
 ```
 
 **If failures, stop and report before Level 2.**

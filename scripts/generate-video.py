@@ -3,7 +3,8 @@
 
 import json
 import subprocess
-import os
+import shutil
+import sys
 from pathlib import Path
 
 # Configuration
@@ -12,7 +13,37 @@ SCRIPTS_DIR = Path("scripts")
 OUTPUT_DIR = Path("assets/video-parts")
 VOICE = "en-GB-RyanNeural"  # British accent
 RATE = "-8%"
-EDGE_TTS = "/home/ismayilkhayredinov/.local/bin/edge-tts"
+EDGE_TTS = shutil.which("edge-tts") or "edge-tts"
+
+
+def validate_narrations(narrations: list) -> None:
+    """Validate narration data structure and content."""
+    if not isinstance(narrations, list):
+        raise ValueError("Narrations must be a list")
+
+    seen_slides = set()
+    for i, entry in enumerate(narrations):
+        if not isinstance(entry, dict):
+            raise ValueError(f"Entry {i} must be an object")
+
+        if "slide" not in entry or "text" not in entry:
+            raise ValueError(f"Entry {i} missing required 'slide' or 'text' field")
+
+        slide = entry["slide"]
+        text = entry["text"]
+
+        if not isinstance(slide, int) or slide < 1:
+            raise ValueError(f"Entry {i}: slide must be a positive integer")
+
+        if slide in seen_slides:
+            raise ValueError(f"Entry {i}: duplicate slide number {slide}")
+        seen_slides.add(slide)
+
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError(f"Entry {i}: text must be a non-empty string")
+
+        if len(text) > 5000:
+            raise ValueError(f"Entry {i}: text exceeds 5000 character limit")
 
 def generate_audio(text: str, output_path: Path):
     """Generate TTS audio using edge-tts CLI."""
@@ -80,6 +111,12 @@ def main():
 
     with open(SCRIPTS_DIR / "slide-narrations.json") as f:
         narrations = json.load(f)
+
+    try:
+        validate_narrations(narrations)
+    except ValueError as e:
+        print(f"Error: Invalid narrations file - {e}", file=sys.stderr)
+        sys.exit(1)
 
     video_segments = []
     print("Generating slide videos...\n")

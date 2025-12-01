@@ -100,9 +100,42 @@ grep -rn "query.*\${" src/
 # Find exec/spawn calls
 grep -rn "exec\|spawn\|execSync" src/
 
-# Find hardcoded secrets
+# Find hardcoded secrets (basic)
 grep -rn "password\|secret\|api.key\|token" src/ --include="*.ts"
 ```
+
+## Secrets Scanning (Critical)
+
+```bash
+# API keys and credentials in code
+grep -rn -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]\s*['\"][^'\"]+['\"]" .
+
+# Base64-encoded secrets (40+ chars)
+grep -rn -E "['\"][A-Za-z0-9+/]{40,}={0,2}['\"]" .
+
+# URLs with embedded credentials
+grep -rn -E "https?://[^:]+:[^@]+@" .
+
+# AWS keys pattern
+grep -rn -E "AKIA[0-9A-Z]{16}" .
+
+# Private keys
+grep -rn -E "-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----" .
+
+# Environment variable assignments with secrets
+grep -rn -E "(API_KEY|SECRET|PASSWORD|TOKEN|PRIVATE_KEY)\s*=\s*['\"][^'\"]+['\"]" .
+
+# Common secret file patterns
+find . -name "*.pem" -o -name "*.key" -o -name ".env.local" -o -name "credentials.json"
+```
+
+## Files to Always Check
+
+- `*.json` - Config files may contain hardcoded secrets
+- `.env*` files - Should be gitignored, flag if committed
+- `settings*.json` - IDE/tool settings may leak paths or credentials
+- `docker-compose*.yml` - May contain environment secrets
+- `*config*.js/ts` - Application configs
 
 ## Output Format
 
