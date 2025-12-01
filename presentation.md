@@ -62,28 +62,6 @@ style: |
     background: transparent;
     padding: 0;
   }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1em 0;
-  }
-  th {
-    background: #4D74FF;
-    color: #ffffff;
-    padding: 0.5em 1em;
-    text-align: left;
-  }
-  td {
-    background: #1a1a2e;
-    color: #ffffff;
-    padding: 0.5em 1em;
-    border-bottom: 1px solid #333;
-  }
-  .diagram {
-    font-family: monospace;
-    font-size: 1.1em;
-    line-height: 1.4;
-  }
   blockquote {
     border-left: 4px solid #FF5128;
     padding-left: 1em;
@@ -92,147 +70,9 @@ style: |
   }
 ---
 
-# LLMs in Software Engineering
+# AI Assistant Starter
 
-### An honest conversation
-
----
-
-## Let's Be Precise
-
-```
-"AI" ≠ Artificial General Intelligence
-
-LLMs = Statistical Text Predictors
-       └── Subset of Machine Learning
-```
-
-*Marketing hijacked the term*
-
----
-
-## The Year I Tried
-
-- Moments of genuine awe
-- Code materialising in seconds
-- Felt like magic
-
----
-
-## But Those Moments Were Rare
-
-```
-  My Reality              The Internet
-  ───────────            ─────────────
-  Bad prompts?      vs   "Built entire app
-  What am I doing        in 5 minutes!"
-  wrong?
-```
-
----
-
-## The Productivity Paradox
-
-### Feeling faster ≠ Being faster
-
-```
-┌─────────────────────────────────┐
-│  Perceived:  +24% faster        │
-│  Actual:     -19% slower        │
-│                      — METR     │
-└─────────────────────────────────┘
-```
-
----
-
-## **19% Slower**
-
-When measured objectively
-
-*METR Study*
-
----
-
-## The Hidden Costs
-
-| Metric | Impact |
-|--------|--------|
-| Time fixing AI errors | **62%** |
-| Pull request size | **+154%** |
-| PR review time | **+91%** |
-
----
-
-## The Trust Problem
-
-```
-┌──────────────────────────────┐
-│                              │
-│   76% use AI tools           │
-│                              │
-│   But don't trust results    │
-│                              │
-└──────────────────────────────┘
-```
-
----
-
-## **42%** Hallucinations
-
-```javascript
-// AI-generated code
-import { validateUser } from 'auth-utils';
-//       ^^^^^^^^^^^^
-//       This function doesn't exist
-```
-
-*Presented confidently*
-
----
-
-## Security Nightmare
-
-```
-Privilege escalation:  +322%  ██████████████████
-Secrets exposure:      +40%   ██████
-```
-
-*Learned from all the bad code*
-
----
-
-## Natural Language vs Code
-
-| Natural Language | Code |
-|-----------------|------|
-| Ambiguous | Precise |
-| Probabilistic | Deterministic |
-
-```
-"Make it faster" → Which part? How much?
-```
-
----
-
-## The Real Problem
-
-- We blame ourselves
-- Assume others figured it out
-- Nobody's calling it out
-
----
-
-## But I Don't Want to Discount LLMs
-
-- The potential is real
-- Good for mundane tasks
-- **With guardrails**
-
----
-
-## AI Assistant Starter
-
-### A pragmatic framework
+### Agentic primitives for controlled AI-assisted development
 
 ```
 github.com/hypeJunction/ai-assistant-starter
@@ -240,13 +80,85 @@ github.com/hypeJunction/ai-assistant-starter
 
 ---
 
-## Three Principles
+## The Reality
+
+### METR Study, 2024
+
+```
+Measured productivity    Perceived productivity
+
+      ████████████             ████████████████████
+      -19%                     +20%
+```
+
+*Developers felt faster but were actually slower*
+
+---
+
+## Hidden Costs
+
+```
+Where the time actually goes:
+
+██████████████████████████████████  62%  Fixing AI errors
+████████████████████                43%  Longer code reviews
+████████████████                    38%  Larger PR sizes
+```
+
+---
+
+## The Trust Problem
+
+```
+┌──────────────────────────────────────────┐
+│  78% of developers use AI tools          │
+│  but only 32% trust the output           │
+└──────────────────────────────────────────┘
+
+        42% of AI code contains
+        hallucinated APIs or functions
+```
+
+*Productivity tool or liability?*
+
+---
+
+## The Language Problem
+
+### Natural language is ambiguous. Code is not.
+
+```
+You say:          AI hears:
+
+"Make it faster"  → Which part? By how much?
+"Clean this up"   → Refactor? Delete? Rename?
+"Add tests"       → Unit? Integration? E2E?
+```
+
+*Probability cannot produce precision*
+
+---
+
+## What This Does
+
+```
+Reusable agentic primitives for the software lifecycle
+
+├── Workflows with approval gates
+├── Role constraints for unambiguous scope
+├── Persistent context across sessions
+└── Course correction at every phase
+```
+
+---
+
+## Three Core Principles
 
 ```
 1. Human remains in control
-   └── Explicit gatekeeping
+   └── Explicit approval gates
 
-2. Structure reduces chaos
+2. Unambiguous scope
    └── Defined phases and roles
 
 3. Context must persist
@@ -264,13 +176,35 @@ github.com/hypeJunction/ai-assistant-starter
 ├── domains/            └── decisions/
 └── guidelines/
     ↓                       ↓
-  Shared                Your context
+  Agentic               Your context
   primitives            (gitignored)
 ```
 
 ---
 
-## Structured Workflows
+## Atomic Composition
+
+### Small units. Clear scope. Composable.
+
+```
+┌─────────────────────────────────────────────┐
+│  Task: smallest unit of work                │
+│  └── Disambiguated intent                   │
+│  └── Project-aware context                  │
+│  └── Constrained tool access                │
+│                                             │
+│  Workflow: composed of tasks                │
+│  └── /implement = explore + plan + code     │
+└─────────────────────────────────────────────┘
+```
+
+*"find" is vague. `grep -r` is precise.*
+
+---
+
+## Software Lifecycle Phases
+
+### Course correction at every gate
 
 ```
 ┌─────────┐   ┌──────┐   ┌──────┐   ┌──────┐   ┌────────┐
@@ -283,7 +217,9 @@ github.com/hypeJunction/ai-assistant-starter
 
 ---
 
-## Constrained Roles
+## Unambiguous Scope
+
+### Constrained roles prevent overreach
 
 ```yaml
 Explorer:
@@ -298,9 +234,34 @@ Developer:
   files: [src/feature/*.ts]
 ```
 
+*One chatmode per task. No role confusion.*
+
 ---
 
-## Explicit Approval
+## Scoped Access
+
+### Limited blast radius per task
+
+```
+Task: "Add user validation"
+
+Allowed:
+  ✓ src/features/user/*.ts
+  ✓ src/utils/validation.ts
+
+Blocked:
+  ✗ src/core/*
+  ✗ src/config/*
+  ✗ Everything else
+```
+
+*AI can't refactor what it can't touch*
+
+---
+
+## Course Correction
+
+### Explicit approval enables intervention
 
 ```
 AI: "Do you approve this plan?"
@@ -314,11 +275,11 @@ AI: "Do you approve this plan?"
 ✗ [silence]
 ```
 
-*Silence is not consent*
-
 ---
 
 ## Persistent Memory
+
+### Context survives across sessions
 
 ```markdown
 <!-- .ai-project/context.md -->
@@ -330,24 +291,167 @@ AI: "Do you approve this plan?"
 
 ## Decisions
 - Using React Query for caching
-- Tailwind for styling
 ```
 
 ---
 
-## What This Won't Fix
+## Captured Knowledge
 
-- LLMs are still probabilistic
-- You still review everything
-- Experience can't be replaced
+### No more tribal knowledge
+
+```
+Before:                     After:
+┌──────────────────┐        ┌──────────────────┐
+│ Alice knows auth │        │                  │
+│ Bob knows billing│   →    │  Single source   │
+│ Carol left...    │        │  of truth        │
+│ "Ask Dave"       │        │                  │
+└──────────────────┘        └──────────────────┘
+```
+
+*Domain evolution lives in the repo, not in heads*
 
 ---
 
-## What This Will Do
+## Fresh Documentation
 
-- Reduce verification burden
-- Prevent scope creep
-- Maintain context
+### Docs always drift. AI keeps them aligned.
+
+```
+/sync command:
+
+1. AI scans codebase for changes
+2. Compares against context.md
+3. Flags stale documentation
+4. Proposes updates for approval
+```
+
+*Documentation that stays current*
+
+---
+
+## Evolving Instructions
+
+### Regression testing for AI behaviour
+
+```
+┌─────────────────────────────────────────────────┐
+│  1. AI produces undesired output                │
+│  2. Tell AI what went wrong                     │
+│  3. AI updates its own instructions             │
+│  4. Same mistake won't happen again             │
+└─────────────────────────────────────────────────┘
+```
+
+*Instructions improve like a test suite*
+
+---
+
+## Positive Prompting
+
+### Tell AI what TO do, not what NOT to do
+
+```
+✗ "Don't write verbose code"
+✓ "Write concise functions under 20 lines"
+
+✗ "Avoid complex logic"
+✓ "Use early returns and guard clauses"
+
+✗ "Don't forget error handling"
+✓ "Wrap external calls in try-catch"
+```
+
+---
+
+## Template from Your Code
+
+### Point AI to YOUR patterns, not generic ones
+
+```
+✗ "Write a React component"
+  → Generic patterns from training data
+
+✓ "Follow src/components/Button.tsx"
+  → YOUR conventions, YOUR patterns
+```
+
+*Don't let AI invent. Let it replicate.*
+
+---
+
+## Enforced SDLC
+
+### No more cutting corners
+
+```
+Steps we skip under pressure:
+
+✗ Exploration    → "I know this codebase"
+✗ Planning       → "Let's just start coding"
+✗ Testing        → "Ship it, we'll fix later"
+✗ Documentation  → "The code is self-documenting"
+```
+
+*AI in the loop ensures every step happens*
+
+---
+
+## Natural Language Test Plans
+
+### Documentation that becomes implementation
+
+```typescript
+/**
+ * Test Plan: UserAuth
+ *
+ * Scenario: Happy path
+ *   Given valid credentials
+ *   When user submits login
+ *   Then JWT token returned
+ *
+ * Scenario: Account lockout
+ *   Given 5 failed attempts
+ *   Then account is locked
+ */
+```
+
+*Readable specs → AI generates actual tests*
+
+---
+
+## Commands as Entry Points
+
+### Clear intent. No missed steps.
+
+```
+Freeform:              Structured:
+"help me with this"    /implement feature-x
+"can you review"       /review
+"let's commit"         /commit
+
+     ↓                      ↓
+  Ambiguous            Predefined workflow
+  Incomplete           All steps included
+```
+
+---
+
+## Human-First Workflow
+
+### You write. AI follows up.
+
+```
+┌─────────────────────────────────────────┐
+│  Human writes mission-critical code     │
+│              ↓                          │
+│  AI generates tests for it              │
+│  AI writes documentation                │
+│  AI replicates pattern to similar files │
+└─────────────────────────────────────────┘
+```
+
+*Focus your expertise. Delegate the rest.*
 
 ---
 
@@ -373,14 +477,6 @@ AI: "Do you approve this plan?"
 
 ---
 
-## The Craft Remains Human
-
-- Gut feeling
-- Deep context
-- Accountability
-
----
-
 ## Get Started
 
 ```bash
@@ -392,14 +488,6 @@ git submodule add \
 # Initialize project layer
 /init
 ```
-
----
-
-## Key Takeaways
-
-- **Be skeptical** of the hype
-- **Guardrails** are essential
-- **Human oversight** is non-negotiable
 
 ---
 

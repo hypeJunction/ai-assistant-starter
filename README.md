@@ -4,7 +4,7 @@ A **provider-agnostic framework** for standardizing AI coding assistant instruct
 
 ## Overview
 
-[▶️ **Watch Presentation** (6 min)](https://github.com/hypeJunction/ai-assistant-starter/releases/download/v0.1.0/presentation-video.mp4) | [📄 Slides](assets/slides/presentation.html) | [📝 Slide deck source](presentation.md)
+[▶️ **Watch Presentation** (11 min)](assets/presentation-video.mp4) | [📄 Slides](assets/slides/presentation.html) | [📝 Slide deck source](presentation.md)
 
 *An honest conversation about LLMs in software engineering — pragmatism over hype.*
 

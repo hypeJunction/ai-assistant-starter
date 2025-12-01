@@ -1,114 +1,110 @@
 [
   {
     "slide": 1,
-    "text": "I want to have an honest conversation about large language models in software engineering. Not the hype. Not the marketing. Just what I've actually learned using these tools over the past year."
+    "text": "AI Assistant Starter. Before I show you what this framework does, let me share why I built it. Because the hype around AI coding tools doesn't match reality."
   },
   {
     "slide": 2,
-    "text": "Before we go further, let's agree on terminology. What gets called AI today is actually a very specific thing. Large language models are statistical text predictors, a small subset of machine learning. The term AI has been hijacked. Decades of research in robotics, computer vision, and reinforcement learning, all reduced to a buzzword."
+    "text": "The METR study measured developers using AI tools against a control group. The results were surprising. Those who felt twenty percent faster were actually nineteen percent slower when measured objectively. The productivity gains aren't real."
   },
   {
     "slide": 3,
-    "text": "I spent the past year genuinely trying to make LLMs work for me. And there were moments of real awe. Watching code materialise in seconds from a simple description. It felt like we'd crossed some threshold into the future."
+    "text": "Where does the time actually go? More than sixty percent fixing what the AI got wrong. Code reviews take nearly half again as long. Pull requests balloon in size. You're not saving time. You're trading typing for debugging."
   },
   {
     "slide": 4,
-    "text": "But here's what nobody talks about. Everyone online was building entire applications with a few keystrokes. Tech companies claimed they'd replaced half their workforce. Meanwhile, I was struggling with the basics. Surely I was doing something wrong. Surely my prompts were the problem."
+    "text": "Here's the paradox. Most developers use these tools. But only a third trust what comes out. Forty two percent of AI-generated code contains hallucinated functions or APIs. That's not a productivity tool. That's a liability."
   },
   {
     "slide": 5,
-    "text": "When I started digging into actual research, I found something troubling. The METR study measured developers using AI tools against a control group. The results were surprising. Those who felt faster were actually slower."
+    "text": "There's a fundamental mismatch here. We invented programming languages to escape ambiguity. Natural language is inherently fuzzy. Code must be precise. Make it faster, you say. Which part? By how much? The model will guess. We're using a tool built on probability to produce artefacts that require certainty."
   },
   {
     "slide": 6,
-    "text": "This is the number that stuck with me. Nineteen percent slower when measured objectively. Not faster. Slower. Despite everyone feeling like they were flying through tasks."
+    "text": "So I built AI Assistant Starter. It's a collection of agentic primitives, reusable building blocks that constrain LLM behaviour. Workflows with approval gates. Role constraints for unambiguous scope. Persistent context. And course correction at every phase."
   },
   {
     "slide": 7,
-    "text": "The hidden costs paint an even clearer picture. More than half your time goes to fixing what the AI got wrong. Pull requests balloon in size. Reviews take nearly twice as long. You're not saving time. You're trading typing for debugging."
+    "text": "The framework is built on three principles. First, humans stay in control through explicit approval gates. Second, unambiguous scope through defined phases and roles. Third, context persists across sessions. Memory survives."
   },
   {
     "slide": 8,
-    "text": "Here's the paradox that keeps me up at night. Most developers are using these tools. But they don't trust what comes out. That's not a productivity tool. That's a liability."
+    "text": "The architecture has two layers. The base layer contains shared primitives. Workflows, chatmodes, domains, guidelines. It's versioned and can be updated independently. The project layer contains your specific context. Architecture decisions, domain knowledge. This stays gitignored and travels with your project."
   },
   {
     "slide": 9,
-    "text": "Look at this code snippet. Looks reasonable, right? Except that function doesn't exist. Never did. The model invented it with complete confidence. Up to forty two percent of AI-generated code contains these hallucinations. Phantom functions and nonexistent APIs."
+    "text": "At the heart of the framework is atomic composition. Think of it like atomic design principles. A task is the smallest unit of work. Each task has disambiguated intent, project-aware context, and constrained tool access. The word find is vague. The command grep dash r is precise. Workflows are composed of these atomic tasks. Slash implement combines explore, plan, and code into a single orchestrated flow."
   },
   {
     "slide": 10,
-    "text": "The security implications are alarming. The model learned from the entire internet, including all the bad code, the vulnerable patterns, the exposed secrets. And it reproduces them confidently."
+    "text": "Every task follows a structured workflow. Explore first in read-only mode. Then plan without writing code. Then hit an approval gate where you explicitly approve or reject. Only after your yes does the model write code. Finally, verified commits. Each phase has clear boundaries. No skipping ahead."
   },
   {
     "slide": 11,
-    "text": "There's a fundamental mismatch here. We invented programming languages to escape ambiguity. Natural language is inherently fuzzy. Code must be precise. We're using a tool built on probability to produce artefacts that require certainty. Make it faster, you say. Which part? By how much? The model will guess."
+    "text": "Role constraints define exactly what the LLM can do. Each task gets exactly one chatmode. An Explorer can read but not write. A Planner can design but not code. A Developer is limited to specific files. No role confusion. No scope creep. These constraints prevent the creative tangents that derail sessions."
   },
   {
     "slide": 12,
-    "text": "Too many of us are blaming ourselves for bad prompts when the tool itself is fundamentally limited. We assume everyone else has figured it out because they're not complaining publicly. But they're having the same problems. They're just not saying it."
+    "text": "Each task gets scoped file access. When you ask the AI to add user validation, it can only touch the files you specify. User feature files, validation utilities. Everything else is blocked. Core modules, config files, off limits. The AI can't refactor what it can't touch. Limited blast radius means limited damage."
   },
   {
     "slide": 13,
-    "text": "I don't want to discount LLMs entirely. The potential is real. I'm happy to delegate mundane tasks to them. But they work better with explicit, structured instructions than with freeform conversation. The tool needs guardrails. And if nobody else is providing them, we need to build them ourselves."
+    "text": "The approval gate is explicit and unambiguous. After presenting a plan, the LLM asks and waits. Valid approvals are clear affirmatives. Yes. Approved. Proceed. Anything ambiguous like sounds good or maybe doesn't count. Neither does silence."
   },
   {
     "slide": 14,
-    "text": "That's why I built AI Assistant Starter. It's not a silver bullet. It's a collection of agentic primitives, reusable building blocks that constrain LLM behaviour. Think of it as damage control, not a cure."
+    "text": "Context lives in a markdown file that captures your project's DNA. When you document your API routes, your authentication approach, your database setup, that context carries forward. New sessions start with understanding, not explanations."
   },
   {
     "slide": 15,
-    "text": "The framework is built on three principles. First, humans stay in control through explicit approval gates. Second, structure reduces chaos through defined phases and roles. Third, context persists, so you stop re-explaining the same things every session."
+    "text": "This solves a bigger problem too. Domain knowledge usually gets scattered across the team. Alice knows authentication. Bob knows billing. Carol left and took her knowledge with her. Need something? Ask Dave. With the framework, the full story lives in the repository. Product evolution is captured and versioned. No more tribal knowledge that walks out the door."
   },
   {
     "slide": 16,
-    "text": "The architecture has two layers. The base layer contains shared primitives, workflows, roles, guidelines. It's versioned and can be updated independently. The project layer contains your specific context, your architecture decisions, your patterns. This stays with your project."
+    "text": "Documentation always drifts from reality. You write it once, then the code changes, and the docs go stale. The framework includes a sync command. AI scans the codebase, compares it against your context file, flags what's outdated, and proposes updates for your approval. Documentation that actually stays current."
   },
   {
     "slide": 17,
-    "text": "Every task follows a structured workflow. Explore first, read-only. Then plan, no code allowed yet. Then hit an approval gate where you explicitly approve or reject. Only after your yes does the model write code. Each phase has clear boundaries. No skipping ahead."
+    "text": "Here's something powerful. The AI generates and maintains its own instructions. When it produces an undesired output, you tell it what went wrong. It updates the instructions. That mistake won't happen again. Think of it as regression testing for AI behaviour. The instructions evolve and improve over time, just like a test suite catches bugs before they ship."
   },
   {
     "slide": 18,
-    "text": "Chatmodes constrain what the LLM can do in each role. An Explorer can browse the codebase but cannot make changes. A Planner can design but cannot implement. A Developer is limited to specific files. These constraints prevent the creative tangents that derail sessions."
+    "text": "When writing instructions, use positive prompting. Tell the AI what to do, not what to avoid. Negatives are ambiguous. Don't write verbose code could mean anything. But write concise functions under twenty lines is concrete and measurable. Specific affirmatives give the model a clear target to hit."
   },
   {
     "slide": 19,
-    "text": "The approval gate is explicit and unambiguous. After presenting a plan, the LLM asks for approval and waits. Valid approvals are clear affirmatives. Anything else, including silence, means wait. Sounds good doesn't count."
+    "text": "It's all about templating. Point the AI to specific files in your codebase that represent best practices. Don't say write a React component and get generic patterns from training data. Say follow this file and get your conventions, your patterns. Don't let the AI invent. Let it replicate what already works."
   },
   {
     "slide": 20,
-    "text": "Context lives in a markdown file that captures your project's DNA. Architecture decisions, key patterns, technology choices. When you document that your API routes live under slash api slash v one, that context carries forward. You stop re-explaining every session."
+    "text": "Here's an uncomfortable truth. We all know what a proper software development lifecycle looks like. Exploration before coding. Planning before building. Testing before shipping. Documentation for maintenance. But under pressure, we cut corners. We skip steps. The code is self-documenting, we say. With AI in the loop, every step actually happens. The framework enforces the discipline we know we need but rarely maintain."
   },
   {
     "slide": 21,
-    "text": "Let me be clear about what this framework won't fix. LLMs are still probabilistic at their core. You still need to review everything they produce. And no framework can replace the experience and intuition that takes years to develop."
+    "text": "Test plans in natural language serve double duty. The framework uses Gherkin-style scenarios as comments at the top of test files. Given, When, Then. It's readable documentation right in the code. Given valid credentials. When user submits login. Then token returned. But it's also a spec that AI can turn into actual test implementations below. Write the scenario in plain English, then let AI generate the test code. For hard-to-test edge cases, the plan evolves alongside your understanding. Documentation that becomes implementation."
   },
   {
     "slide": 22,
-    "text": "But it does make working with LLMs more manageable. Structured output reduces the verification burden. Constrained roles prevent scope creep. Persistent context means less time spent on setup and more time on actual work."
+    "text": "Commands serve as entry points. Instead of freeform conversation like help me with this, you use structured commands. Slash implement. Slash review. Slash commit. Each command triggers a predefined workflow with all the necessary steps baked in. No ambiguity about intent. No missed steps. The workflow handles the structure so you can focus on the work."
   },
   {
     "slide": 23,
-    "text": "Some tasks are genuinely good fits for LLMs. Boilerplate code, test scaffolding, documentation drafts, regex patterns. What these share in common: they're well-defined, easily verified, and don't require deep understanding of your specific system."
+    "text": "This leads to a human-first workflow. You write the mission-critical code. The parts that need your expertise, your judgment, your understanding of the domain. Then AI follows up. It generates tests for your code. It writes documentation. It replicates your pattern to similar files. Focus your expertise where it matters. Delegate the mechanical follow-up work."
   },
   {
     "slide": 24,
-    "text": "But know when to keep tasks human. Novel architecture decisions need deep thinking. Security-critical code is too high stakes for probabilistic output. Complex debugging requires intuition built from experience. Core business logic must be fully understood by you, not delegated."
+    "text": "Some tasks are genuine good fits for LLMs. Boilerplate code is well-defined and verifiable. Test scaffolding follows known patterns. Documentation drafts can be reviewed and refined. Regex patterns are easy to test. What these share: they're mechanical, not creative."
   },
   {
     "slide": 25,
-    "text": "The craft of software engineering remains fundamentally human. That gut feeling when something is off. The deep context of your domain. The accountability for what ships. A model can assist, but it cannot develop these. Your intuition comes from years of mistakes. No shortcut exists."
+    "text": "But know when to keep tasks human. Novel architecture needs deep thinking. Security-critical code is too high stakes. Complex debugging requires intuition. Core business logic must be fully understood by you. The model assists. It doesn't replace judgment."
   },
   {
     "slide": 26,
-    "text": "Getting started takes five minutes. Add the repository as a git submodule, then run the init command to set up your project layer. The framework handles the rest."
+    "text": "Getting started takes five minutes. Add the repository as a git submodule. Then run slash init to set up your project layer. The framework handles the rest. You're up and running."
   },
   {
     "slide": 27,
-    "text": "Here's what I want you to take away. Be skeptical of the hype. LLMs need guardrails, not blind trust. Human oversight is non-negotiable. Some tasks still need human craft. And the framework can help make LLMs useful enough to keep around, on your terms."
-  },
-  {
-    "slide": 28,
-    "text": "The repository is available on GitHub. Give it a try. It won't solve everything, but it might make working with LLMs less frustrating. Pragmatism over hype. Honesty over marketing. Thanks for listening."
+    "text": "Questions? The repository is on GitHub. Give it a try. It won't solve everything, but it makes working with LLMs less frustrating. Pragmatism over hype."
   }
 ]
