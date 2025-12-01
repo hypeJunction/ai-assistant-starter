@@ -4,9 +4,9 @@ A **provider-agnostic framework** for standardizing AI coding assistant instruct
 
 ## Overview
 
-[▶️ **Watch Introduction Video** (1 min)](assets/intro-video.mp4) — *An honest conversation about LLMs in software engineering*
+[▶️ **Watch Presentation** (6 min)](assets/presentation-video.mp4) | [📄 Slides](assets/slides/presentation.html) | [📝 Slide deck source](presentation.md)
 
-📄 [View presentation slides](presentation.md) (Marp-compatible)
+*An honest conversation about LLMs in software engineering — pragmatism over hype.*
 
 ## Why This Exists
 

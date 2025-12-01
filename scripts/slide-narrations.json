@@ -1,0 +1,122 @@
+[
+  {
+    "slide": 1,
+    "text": "I want to share some thoughts I've been sitting with for a while now."
+  },
+  {
+    "slide": 2,
+    "text": "I keep hearing AI this, AI that. But what we're actually using are language models. Pattern matchers trained on text. Calling it AI sets wrong expectations."
+  },
+  {
+    "slide": 3,
+    "text": "When I first started using these tools, I blamed myself when things went wrong. Bad prompt, I thought. Try harder. Sound familiar?"
+  },
+  {
+    "slide": 4,
+    "text": "LinkedIn is full of people claiming ten x productivity. But have you noticed nobody shows the debugging sessions? The reverts? The rewrites?"
+  },
+  {
+    "slide": 5,
+    "text": "So I looked at actual research. Turns out developers feel faster but measure slower. And most companies have already had production issues from generated code."
+  },
+  {
+    "slide": 6,
+    "text": "Here's what I realized. I wasn't saving time. I was just moving the work from typing to reading and fixing. Different effort, same hours."
+  },
+  {
+    "slide": 7,
+    "text": "The trust problem hit me hard. I'd use the output but then spend ages verifying it. What's the point if I don't trust what it gives me?"
+  },
+  {
+    "slide": 8,
+    "text": "Security data scared me. The models learned from Stack Overflow and GitHub, good and bad code alike. No filter for vulnerabilities."
+  },
+  {
+    "slide": 9,
+    "text": "The context problem is maddening. Every session, I start over. Explain the project again. Watch it forget what I told it ten minutes ago."
+  },
+  {
+    "slide": 10,
+    "text": "Programming languages exist because English is imprecise. Why are we going backwards? Determinism matters in engineering."
+  },
+  {
+    "slide": 11,
+    "text": "I think many of us feel this but don't say it. Fear of looking outdated. Fear of missing out. It's okay to be critical."
+  },
+  {
+    "slide": 12,
+    "text": "And let's talk about the business model. Trained on our code, sold back to us. No warranty. No refunds when it wastes hours."
+  },
+  {
+    "slide": 13,
+    "text": "I'm not saying abandon these tools. I'm saying use them differently. With constraints. With skepticism. With explicit approval gates."
+  },
+  {
+    "slide": 14,
+    "text": "So I built something. A framework that adds structure. Not magic, just discipline."
+  },
+  {
+    "slide": 15,
+    "text": "The core idea is simple. Keep humans in control. Add structure to reduce chaos. Make context persist across sessions."
+  },
+  {
+    "slide": 16,
+    "text": "It's two layers. A shared base everyone uses. A project layer you customize. Override what doesn't fit."
+  },
+  {
+    "slide": 17,
+    "text": "Instead of just asking for code, you explore first. Then plan. Then wait for approval. Then implement. Forced discipline."
+  },
+  {
+    "slide": 18,
+    "text": "Different modes for different jobs. Exploration mode can't write files. Developer mode can't do massive refactors. Constraints prevent disasters."
+  },
+  {
+    "slide": 19,
+    "text": "Approval gates are explicit. The model asks, you say yes or no. Silence isn't consent. Questions aren't approval. Clear rules."
+  },
+  {
+    "slide": 20,
+    "text": "Context files persist between sessions. Your tech stack, your patterns, your decisions. No more re-explaining from scratch."
+  },
+  {
+    "slide": 21,
+    "text": "Domains capture your standards. How you write TypeScript, how you test, how you handle errors. Written rules the model can follow."
+  },
+  {
+    "slide": 22,
+    "text": "Works with whatever tool you use. Claude, Cursor, Copilot. Same constraints apply everywhere."
+  },
+  {
+    "slide": 23,
+    "text": "I want to be clear about what this doesn't do. It won't make language models reliable. They're still probabilistic. This is about managing that reality."
+  },
+  {
+    "slide": 24,
+    "text": "What it does is make the chaos manageable. Easier to review. Harder to go off track. Teams stay consistent."
+  },
+  {
+    "slide": 25,
+    "text": "I've learned when these tools help and when they hurt. Boilerplate, yes. Novel design, no. Test scaffolding, yes. Security logic, no."
+  },
+  {
+    "slide": 26,
+    "text": "Your intuition as an engineer comes from years of mistakes. A model can't give you that. The craft is still yours."
+  },
+  {
+    "slide": 27,
+    "text": "Setup takes five minutes. Clone the repo, link to your project, run one command."
+  },
+  {
+    "slide": 28,
+    "text": "My ask is simple. Be honest about what works and what doesn't. Add guardrails. Stay in control. Pragmatism over hype."
+  },
+  {
+    "slide": 29,
+    "text": "If this resonates, check out the repo. If it doesn't, that's fine too. At least we're having an honest conversation."
+  },
+  {
+    "slide": 30,
+    "text": "Research links are in the repo if you want to dig deeper."
+  }
+]
