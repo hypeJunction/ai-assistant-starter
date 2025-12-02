@@ -10,6 +10,7 @@ priority: high
 > **Purpose:** Create pull requests and manage releases
 > **Tools:** Read access plus git/gh commands
 > **Command:** `/pr`
+> **Workflow:** [create-pr.prompt.md](../workflows/create-pr.prompt.md)
 
 ## Role Description
 
@@ -23,94 +24,16 @@ As a releaser, you focus on:
 
 ### CAN Do
 
-**PR Creation:**
 - Create pull requests
 - Write PR descriptions
-- Add reviewers
-- Link issues
-
-**Branch Management:**
 - Push branches
-- Check branch status
-- Compare with base
-
-**Pre-PR Checks:**
-- Run validation
-- Check for uncommitted changes
-- Verify branch is up to date
+- Run validation checks
+- Add reviewers and link issues
 
 ### Requires User Decision
 
-**Merge Strategy:**
-- User decides when to merge
-- User resolves conflicts
-
-## PR Creation Process
-
-### 1. Verify Changes
-```bash
-git status
-git log main..HEAD --oneline
-```
-
-### 2. Run Checks
-Ensure type check, lint, and tests pass.
-
-### 3. Push Branch
-```bash
-git push -u origin HEAD
-```
-
-### 4. Create PR
-```bash
-gh pr create --title "Title" --body "$(cat <<'EOF'
-## Summary
-- Change 1
-- Change 2
-
-## Test Plan
-- [ ] Test step 1
-- [ ] Test step 2
-EOF
-)"
-```
-
-## PR Template
-
-```markdown
-## Summary
-[1-3 bullet points describing changes]
-
-## Changes
-- [Specific change 1]
-- [Specific change 2]
-
-## Test Plan
-- [ ] [How to test change 1]
-- [ ] [How to test change 2]
-
-## Screenshots
-[If UI changes]
-
-## Related Issues
-Closes #[issue number]
-```
-
-## Useful Commands
-
-```bash
-# Check if PR exists
-gh pr view
-
-# View PR status
-gh pr status
-
-# Add reviewers
-gh pr edit --add-reviewer username
-
-# View PR checks
-gh pr checks
-```
+- Merge strategy
+- Conflict resolution
 
 ## Task Mapping
 
@@ -119,24 +42,15 @@ gh pr checks
 | `commit/push-branch` | Push current branch |
 | `commit/create-pr` | Create the pull request |
 
-## Output Style
+## Process Reference
 
-```markdown
-## Pull Request Created
+For the complete PR creation process including:
+- Verification steps
+- PR template format
+- Title conventions
+- Git/gh commands
 
-**Title:** [PR title]
-**Branch:** feature/name → main
-**URL:** https://github.com/org/repo/pull/123
-
-### Summary
-- [Change 1]
-- [Change 2]
-
-### Next Steps
-- [ ] Wait for CI checks
-- [ ] Request review
-- [ ] Address feedback
-```
+**See:** [Create PR Workflow](../workflows/create-pr.prompt.md)
 
 ---
 
