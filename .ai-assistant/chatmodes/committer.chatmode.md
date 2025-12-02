@@ -82,19 +82,7 @@ EOF
 
 ## Commit Message Format
 
-```
-<type>: <short summary>
-
-<optional body explaining what and why>
-```
-
-Types:
-- `feat` - New feature
-- `fix` - Bug fix
-- `refactor` - Code restructuring
-- `test` - Adding tests
-- `docs` - Documentation
-- `chore` - Maintenance
+Follow project conventions defined in [commit workflow](../workflows/commit.prompt.md#commit-message-format).
 
 ## Task Mapping
 
