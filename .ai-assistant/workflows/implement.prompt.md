@@ -6,7 +6,7 @@ priority: high
 # Workflow: Implement
 
 > **Purpose:** Full feature implementation workflow
-> **Phases:** Explore → Plan → Code → Cover → Commit
+> **Phases:** Explore → Plan → Code → Cover → Validate → Document → Sync → Commit
 > **Command:** `/implement [scope flags] <task description>`
 > **Scope:** See [scope.md](../scope.md)
 
@@ -81,12 +81,29 @@ priority: high
                          ⛔ GATE: All tests pass
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ DOCS PHASE (Developer) - OPTIONAL                                │
+│ VALIDATE PHASE (Tester)                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ verify/typecheck → verify/lint → verify/security-scan            │
+│                              → verify/build                      │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+                         ⛔ GATE: All validations pass
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ DOCUMENT PHASE (Developer) - OPTIONAL                            │
 ├─────────────────────────────────────────────────────────────────┤
 │ docs/update-docs                                                 │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
                          ⏸️ OPTIONAL: User chooses to document
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ SYNC PHASE (Developer) - OPTIONAL                                │
+├─────────────────────────────────────────────────────────────────┤
+│ sync/update-memory → sync/update-context → sync/update-index     │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+                         ⏸️ OPTIONAL: User chooses to sync AI docs
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ COMMIT PHASE (Committer)                                         │
@@ -515,7 +532,7 @@ If tests fail:
 
 ---
 
-### Scope Handoff → Docs Phase
+### Scope Handoff → Validate Phase
 
 ```markdown
 ---
@@ -530,12 +547,85 @@ If tests fail:
 
 ---
 
-## Phase 5: Docs (Developer) - Optional
+## Phase 5: Validate (Tester)
+
+**Chatmode:** 🧪 Tester
+**Tasks:** `verify/typecheck`, `verify/lint`, `verify/security-scan`, `verify/build`
+
+> **Purpose:** Run full validation to ensure code is production-ready before committing.
+
+### Step 5.1: Run Full Validation
+
+```bash
+# Type check (full project)
+npm run typecheck
+
+# Lint (full project)
+npm run lint
+
+# Security scan for secrets
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
+  -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" src/
+
+# Build check
+npm run build
+```
+
+### Step 5.2: Validation Report
+
+```markdown
+## Validation Results
+
+| Check | Scope | Status |
+|-------|-------|--------|
+| Type check | Full | ✓ Pass |
+| Lint | Full | ✓ Pass |
+| Secrets scan | Changed files | ✓ Pass |
+| Build | Full | ✓ Pass |
+
+**All validations passed** - Ready for documentation review.
+```
+
+**⛔ GATE: All validations must pass before proceeding.**
+
+If validation fails:
+```markdown
+> **Validation Failed:**
+> [List of failing checks with details]
+>
+> **Options:**
+> 1. Fix the issues
+> 2. Add to technical debt (requires justification)
+>
+> **How to proceed?**
+```
+
+---
+
+### Scope Handoff → Document Phase
+
+```markdown
+---
+**Scope carried forward:**
+- Files changed: [implementation files]
+- Tests added: [test files]
+- Branch: [branch name]
+- Task: [task description]
+- All tests: [passing]
+- All validations: [passing]
+---
+```
+
+---
+
+## Phase 6: Document (Developer) - Optional
 
 **Chatmode:** 👨‍💻 Developer
 **Tasks:** `docs/update-docs`
 
-Before committing, prompt for documentation:
+> **Purpose:** Add documentation for user-facing changes or complex implementations.
+
+Before continuing, prompt for documentation:
 
 ```markdown
 ## Documentation (Optional)
@@ -546,30 +636,127 @@ Before committing, prompt for documentation:
 
 | Type | When Relevant | Action |
 |------|---------------|--------|
-| AI context | New patterns, decisions, gotchas | Update `.ai-project/` |
+| Code docs | Complex logic, public APIs | Add JSDoc comments |
 | User docs | User-facing features, API changes | Add to `docs/` |
 | README | Getting started, feature overview | Update `README.md` |
 
 **What would you like to document?**
-- `ai` - Update AI assistant context
+- `code` - Add JSDoc/inline comments for complex logic
 - `user` - Add/update user documentation
 - `readme` - Update README
 - `all` - All of the above
 - `skip` - No documentation needed
 ```
 
-**⏸️ Wait for user response. If `skip`, proceed to commit.**
+**⏸️ Wait for user response. If `skip`, proceed to sync.**
 
 See [docs/update-docs.task.md](../tasks/docs/update-docs.task.md) for templates.
 
 ---
 
-## Phase 6: Commit (Committer)
+### Scope Handoff → Sync Phase
+
+```markdown
+---
+**Scope carried forward:**
+- Files changed: [implementation files]
+- Tests added: [test files]
+- Branch: [branch name]
+- Task: [task description]
+- All tests: [passing]
+- All validations: [passing]
+- Documentation: [added/skipped]
+---
+```
+
+---
+
+## Phase 7: Sync (Developer) - Optional
+
+**Chatmode:** 👨‍💻 Developer
+**Tasks:** `sync/update-memory`, `sync/update-context`, `sync/update-index`
+
+> **Purpose:** Keep AI assistant documentation aligned with code changes.
+
+### Step 7.1: Assess Sync Needs
+
+Prompt for AI documentation sync:
+
+```markdown
+## AI Documentation Sync (Optional)
+
+**Changes made:** [brief summary]
+
+**Consider syncing if:**
+- New patterns or conventions were established
+- Architecture or structure changed significantly
+- New common imports or utilities were added
+- Key decisions were made that affect future work
+
+**What needs syncing?**
+
+| File | When to Update | Relevant? |
+|------|----------------|-----------|
+| `.ai-project/.memory.md` | Architecture, recent work | [yes/no] |
+| `.ai-project/.context.md` | Common patterns, imports | [yes/no] |
+| `.ai-assistant/INDEX.md` | New error patterns, topics | [yes/no] |
+
+**Would you like to sync AI documentation?**
+- `memory` - Update project memory with this work
+- `context` - Add new patterns to quick reference
+- `index` - Update cross-reference index
+- `all` - Sync all relevant files
+- `skip` - No sync needed
+```
+
+**⏸️ Wait for user response. If `skip`, proceed to commit.**
+
+### Step 7.2: Update AI Documentation
+
+Based on user selection:
+
+**For `.memory.md`:**
+- Update "Recent Work Areas" with current feature/area
+- Add any architectural decisions made
+- Note any new patterns established
+
+**For `.context.md`:**
+- Add new import patterns if any
+- Document new utility functions
+- Add common patterns discovered
+
+**For `INDEX.md`:**
+- Add new error patterns encountered
+- Cross-reference new components/modules
+
+See [workflows/sync.prompt.md](./sync.prompt.md) for full sync workflow.
+
+---
+
+### Scope Handoff → Commit Phase
+
+```markdown
+---
+**Scope carried forward:**
+- Files changed: [implementation files]
+- Tests added: [test files]
+- Branch: [branch name]
+- Task: [task description]
+- All tests: [passing]
+- All validations: [passing]
+- Documentation: [added/skipped]
+- AI docs synced: [yes/no]
+---
+```
+
+---
+
+## Phase 8: Commit (Committer)
 
 **Chatmode:** 💾 Committer
 **Tasks:** `commit/show-status`, `commit/stage-changes`, `commit/create-commit`
 
-### Step 5.1: Review Changes (Within Scope)
+### Step 8.1: Review Changes (Within Scope)
 
 Show only files within the inherited scope:
 
@@ -588,7 +775,7 @@ Show only files within the inherited scope:
 **Note:** Only showing changes within scope. Use `git status` to see all changes.
 ```
 
-### Step 5.2: Confirm Commit
+### Step 8.2: Confirm Commit
 
 ```markdown
 ## Ready to Commit
@@ -621,12 +808,14 @@ Reply with:
 
 | Phase | Chatmode | Tasks | Gate |
 |-------|----------|-------|------|
-| Explore | 🔍 Explorer | gather-context, analyze-code | User confirms |
-| Plan | 📋 Planner | create-plan | **User approves** |
-| Code | 👨‍💻 Developer | edit-file, typecheck, lint | User confirms |
-| Cover | 🧪 Tester | write-tests, write-stories, run-tests | **All tests pass** |
-| Docs | 👨‍💻 Developer | update-docs | *Optional* |
-| Commit | 💾 Committer | create-commit | **User confirms** |
+| 1. Explore | 🔍 Explorer | gather-context, analyze-code | User confirms |
+| 2. Plan | 📋 Planner | create-plan | **User approves** |
+| 3. Code | 👨‍💻 Developer | edit-file, typecheck, lint | User confirms |
+| 4. Cover | 🧪 Tester | write-tests, write-stories, run-tests | **All tests pass** |
+| 5. Validate | 🧪 Tester | typecheck, lint, security-scan, build | **All validations pass** |
+| 6. Document | 👨‍💻 Developer | update-docs | *Optional* |
+| 7. Sync | 👨‍💻 Developer | update-memory, update-context | *Optional* |
+| 8. Commit | 💾 Committer | create-commit | **User confirms** |
 
 ---
 
@@ -638,3 +827,5 @@ Reply with:
 - [Tasks: commit/](../tasks/commit/)
 - [Tasks: docs/](../tasks/docs/)
 - [Workflow: Cover](./cover.prompt.md)
+- [Workflow: Validate](./validate.prompt.md)
+- [Workflow: Sync](./sync.prompt.md)
