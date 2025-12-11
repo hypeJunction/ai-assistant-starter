@@ -267,8 +267,32 @@ Which matter? How to handle?
 ### Edge Cases
 - [Case] - [handling]
 
-### Test Strategy
-- [How to verify - scoped tests only]
+### Checklist
+
+**Code Phase:**
+- [ ] Implement [component/feature]
+- [ ] Update [related file]
+- [ ] [Additional implementation step]
+
+**Cover Phase:**
+- [ ] Write unit tests for [module]
+- [ ] Write component tests for [component]
+- [ ] Add Storybook story (if UI component)
+
+**Validate Phase:**
+- [ ] Type check passes
+- [ ] Lint passes
+- [ ] Security scan passes
+- [ ] Build succeeds
+
+**Document Phase (if needed):**
+- [ ] Add JSDoc for public APIs
+- [ ] Update user documentation
+- [ ] Update README
+
+**Sync Phase (if needed):**
+- [ ] Update `.ai-project/.memory.md`
+- [ ] Update `.ai-project/.context.md`
 
 ---
 **Approve this plan?**
