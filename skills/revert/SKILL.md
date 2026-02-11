@@ -85,18 +85,7 @@ git log --oneline [range]
 gh pr view [number] --json commits
 ```
 
-**Display commits:**
-
-```markdown
-## Commits to Revert
-
-| # | SHA | Author | Date | Message |
-|---|-----|--------|------|---------|
-| 1 | abc123 | @user | 2024-01-15 | feat: add feature |
-| 2 | def456 | @user | 2024-01-15 | fix: related fix |
-
-**Total:** 2 commits
-```
+**Display commits:** See [references/revert-display-templates.md](references/revert-display-templates.md) for full display format.
 
 #### Step 1.3: Show What Will Change
 
@@ -105,41 +94,11 @@ gh pr view [number] --json commits
 git diff [sha]^..[sha]
 ```
 
-**Display changes:**
-
-```markdown
-## Changes That Will Be Reverted
-
-**Files affected:** N files
-
-| File | Changes |
-|------|---------|
-| `src/feature.ts` | +50 / -10 (will be removed) |
-| `src/utils.ts` | +5 / -2 (will be removed) |
-| `tests/feature.spec.ts` | +30 / -0 (will be removed) |
-
-**Summary:**
-- Lines added that will be removed: X
-- Lines removed that will be restored: Y
-```
+**Display changes:** See [references/revert-display-templates.md](references/revert-display-templates.md) for full display format.
 
 #### Step 1.4: Confirm Target
 
-```markdown
-## Confirm Revert Target
-
-**You are about to revert:**
-- Commit(s): `[sha(s)]`
-- Message(s): "[commit message(s)]"
-- Files: N files affected
-
-**This will:**
-- Remove changes introduced by these commit(s)
-- Create new revert commit(s)
-- NOT delete history (commits remain in log)
-
-**Proceed with revert?** (yes / show diff / change target / abort)
-```
+**Display confirmation prompt:** See [references/revert-display-templates.md](references/revert-display-templates.md) for full display format.
 
 **GATE: User must confirm target.**
 
@@ -159,28 +118,7 @@ git log --oneline [sha]..HEAD
 git log --oneline --merges [sha]..HEAD
 ```
 
-**If dependent commits found:**
-
-```markdown
-> **WARNING:**
-> Found commits that may depend on the target:
->
-> | SHA | Message | Risk |
-> |-----|---------|------|
-> | xyz789 | feat: uses reverted code | High |
->
-> **Reverting may cause:**
-> - Type errors in dependent code
-> - Runtime errors
-> - Test failures
->
-> **Options:**
-> 1. Revert all dependent commits too
-> 2. Proceed anyway (will need manual fixes)
-> 3. Abort and investigate
->
-> **How to proceed?**
-```
+**If dependent commits found:** See [references/revert-display-templates.md](references/revert-display-templates.md) for warning display format.
 
 Wait for decision.
 
@@ -191,19 +129,7 @@ Wait for decision.
 git diff --name-only [sha] HEAD
 ```
 
-**If conflicts likely:**
-
-```markdown
-> **INFO:**
-> Files modified since target commit:
->
-> | File | Status | Conflict Risk |
-> |------|--------|---------------|
-> | `src/feature.ts` | Modified | High |
-> | `src/utils.ts` | Unchanged | Low |
->
-> **Conflicts may require manual resolution.**
-```
+**If conflicts likely:** See [references/revert-display-templates.md](references/revert-display-templates.md) for conflict risk display format.
 
 #### Step 2.3: Present Revert Plan
 
@@ -271,23 +197,7 @@ git revert [older]..[newer] --no-commit
 
 #### Step 3.2: Handle Conflicts
 
-**If conflicts occur:**
-
-```markdown
-> **ACTION REQUIRED:**
-> Merge conflicts detected in:
->
-> | File | Conflict Type |
-> |------|---------------|
-> | `src/feature.ts` | Content conflict |
->
-> **Options:**
-> 1. Let me resolve the conflicts
-> 2. Show conflict details
-> 3. Abort revert
->
-> **How to proceed?**
-```
+**If conflicts occur:** See [references/revert-display-templates.md](references/revert-display-templates.md) for conflict resolution display format.
 
 Wait for decision.
 
@@ -298,28 +208,7 @@ Wait for decision.
 git diff --name-only --diff-filter=U
 ```
 
-**For each conflicted file:**
-
-```markdown
-## Conflict in `src/feature.ts`
-
-**Conflict:**
-```diff
-<<<<<<< HEAD
-// Current code (will be kept if we choose "ours")
-const newFeature = true;
-=======
-// Original code (will be restored if we choose "theirs")
->>>>>>> parent of abc123
-```
-
-**Resolution options:**
-1. Keep current (abort this file's revert)
-2. Restore original (apply revert)
-3. Manual merge (edit file)
-
-**Choose resolution:**
-```
+**For each conflicted file:** See [references/revert-display-templates.md](references/revert-display-templates.md) for per-file conflict display format.
 
 **After resolution:**
 
@@ -473,70 +362,6 @@ This reverts commit [sha].
 To undo this revert: `git revert [new-sha]`
 ```
 
-## Special Cases
-
-### Revert a Merge Commit
-
-```bash
-# Revert merge commit (specify parent)
-git revert -m 1 [merge-sha]  # Keep main branch changes
-git revert -m 2 [merge-sha]  # Keep feature branch changes
-```
-
-```markdown
-> **ACTION REQUIRED:**
-> This is a merge commit. Which parent should be the mainline?
->
-> - `1` - Keep changes from main branch (revert feature)
-> - `2` - Keep changes from feature branch (revert main)
->
-> **Usually you want option 1 to revert a merged feature.**
-```
-
-### Revert PR Commits
-
-```bash
-# Get PR commits
-gh pr view [number] --json commits -q '.commits[].oid'
-
-# Revert in reverse chronological order
-git revert [newest-sha] [older-sha] [oldest-sha] --no-commit
-```
-
-### Partial Revert (Specific Files)
-
-```bash
-# Revert specific files from a commit
-git checkout [sha]^ -- path/to/file.ts
-git add path/to/file.ts
-```
-
-## Recovery Options
-
-### Undo a Revert
-
-```bash
-# Revert the revert (restores original changes)
-git revert [revert-commit-sha]
-```
-
-### Abort In-Progress Revert
-
-```bash
-# If revert not committed yet
-git reset --hard HEAD
-```
-
-### View Reverted Content
-
-```bash
-# The original commit is still in history
-git show [original-sha]
-
-# Cherry-pick to restore specific commits
-git cherry-pick [original-sha]
-```
-
 ## Rules
 
 ### Prohibited
@@ -558,3 +383,8 @@ git cherry-pick [original-sha]
 - Create follow-up todo if revert is temporary
 - Notify team of significant reverts
 - Consider PR for reverts on shared branches
+
+## Additional References
+
+- [Special Cases & Recovery Options](references/revert-special-cases.md) — Merge commit reverts, PR reverts, partial reverts, and recovery procedures
+- [Display Templates](references/revert-display-templates.md) — Full markdown display templates for user-facing output in each phase
