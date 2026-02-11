@@ -1,10 +1,10 @@
 # AI Assistant Starter
 
-Reusable skills for AI coding assistants, distributed via [skills.sh](https://skills.sh).
+Reusable skills for AI coding assistants, following the [Agent Skills specification](https://agentskills.io/specification) and distributed via [skills.sh](https://skills.sh).
 
 ## Overview
 
-[▶️ **Watch Presentation** (11 min)](assets/presentation-video.mp4) | [📄 Slides](assets/slides/presentation.html) | [📝 Slide deck source](presentation.md)
+[Watch Presentation (11 min)](assets/presentation-video.mp4) | [Slides](assets/slides/presentation.html) | [Slide deck source](presentation.md)
 
 *An honest conversation about LLMs in software engineering — pragmatism over hype.*
 
@@ -30,6 +30,17 @@ npx skills add hypefi/ai-assistant-starter -s validate
 ```
 
 Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as `/name` commands.
+
+## Specification Compatibility
+
+Skills in this repository follow the [Agent Skills specification](https://agentskills.io/specification):
+
+- Each skill is a directory containing a `SKILL.md` file with YAML frontmatter
+- Required fields: `name` (matches directory name), `description`
+- Progressive disclosure: metadata loaded at startup, full instructions on activation
+- Optional `references/` and `assets/` directories for supplementary content
+
+**Extension:** Background skills use `user-invocable: false` in frontmatter — a [skills.sh](https://skills.sh) runtime extension not part of the base spec. Skills without this field (or with it omitted) are user-invocable by default.
 
 ## Key Skills
 
@@ -102,7 +113,7 @@ The skills enforce a disciplined workflow:
 - **Review before merge** — self-review catches issues
 - **Confirm before commit** — explicit user approval required
 
-## Project Setup
+## Project Setup & Context Layering
 
 After installing skills, run `/init` to scaffold project-specific configuration:
 
@@ -114,10 +125,47 @@ your-project/
     ├── .memory.md           # Architecture overview
     ├── .context.md          # Patterns and imports
     ├── config.md            # Framework settings
+    ├── project/             # Project configuration
+    │   ├── commands.md      # Build/test/lint commands
+    │   ├── structure.md     # Directory layout
+    │   ├── patterns.md      # Code patterns and conventions
+    │   └── stack.md         # Technology stack
+    ├── domains/             # Stack-specific domain rules
+    │   └── *.instructions.md
     ├── todos/               # Technical debt tracking
     ├── decisions/           # Architecture decision records
     └── history/             # Work history
 ```
+
+### Context Layers
+
+The system uses two layers, with project-specific context taking precedence:
+
+| Layer | Source | Purpose |
+|-------|--------|---------|
+| **Base skills** | `skills/<name>/SKILL.md` | Reusable workflows and domain guidelines |
+| **Project context** | `.ai-project/` | Project-specific overrides, patterns, and state |
+
+**How `/init` connects them:**
+1. Detects your tech stack from `package.json` / config files
+2. Generates project-specific context in `.ai-project/project/`
+3. Copies relevant domain instruction files to `.ai-project/domains/`
+4. Creates `CLAUDE.md` with project-level instructions
+
+### Local Domain Customization
+
+To add project-specific domain rules, create files in `.ai-project/domains/`:
+
+```markdown
+<!-- .ai-project/domains/my-api.instructions.md -->
+# My API Conventions
+
+- All endpoints return `{ data, error, meta }` envelope
+- Use `zod` for request validation
+- Rate limiting: 100 req/min per API key
+```
+
+These supplement (and can override) the base domain guideline skills.
 
 ## Updating
 

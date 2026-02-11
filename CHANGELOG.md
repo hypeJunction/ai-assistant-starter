@@ -1,34 +1,39 @@
 # Changelog
 
-All notable changes to the AI Assistant Framework will be documented in this file.
+All notable changes to AI Assistant Starter will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.0] - 2025-12-15
+
 ### Added
-- Provider-specific configurations in `.ai-assistant/providers/`
-  - `claude.provider.md` - Full feature support documentation
-  - `cursor.provider.md` - Adapted workflows for Cursor
-  - `copilot.provider.md` - GitHub Copilot limitations
-  - `windsurf.provider.md` - Windsurf/Codeium configuration
-  - `gemini.provider.md` - Google Gemini support
-- Provider compatibility matrix in `providers/README.md`
-- Explicit gate enforcement patterns in all workflows
-- Interactive wizard flow for `/init` command
-- Template population rules to eliminate unfilled placeholders
+- [Agent Skills](https://agentskills.io/specification) compatible skill format
+- Distribution via [skills.sh](https://skills.sh) (`npx skills add hypefi/ai-assistant-starter`)
+- Selective skill installation (`npx skills add hypefi/ai-assistant-starter -s commit`)
+- 40 self-contained skills in `skills/<name>/SKILL.md` format
+- New workflow skills: `/cover`, `/deps`, `/docs`, `/hotfix`, `/release`, `/revert`, `/sync`, `/wrap`, `/add-story`, `/create-todo`, `/file-list`
+- 18 background domain guideline skills (auto-loaded when relevant)
+- Progressive disclosure: metadata at startup, full instructions on activation
+- `/init` scaffolds `.ai-project/` with domain-aware context layering
+- Explicit gate enforcement patterns with valid/invalid response lists
 
 ### Changed
-- Strengthened gate enforcement language in `implement.prompt.md`
-- Strengthened gate enforcement language in `refactor.prompt.md`
-- Strengthened gate enforcement language in `debug.prompt.md`
-- Strengthened gate enforcement language in `commit.prompt.md`
-- Enhanced `/init` workflow with confirmation and preference steps
+- **BREAKING:** Migrated from `.ai-assistant/` monolithic framework to flat `skills/` directory
+- **BREAKING:** Removed chatmode system (explorer, planner, developer, etc.) — replaced by workflow skills
+- **BREAKING:** Removed `tasks/` atomic task definitions — consolidated into skill instructions
+- **BREAKING:** Removed provider-specific adapter files (`.cursorrules`, `.windsurfrules`, `AGENTS.md`, etc.) — skills are provider-agnostic
+- **BREAKING:** Removed `.claude/commands/` directory — replaced by skill invocation via `/name`
+- Skills follow the [Agent Skills specification](https://agentskills.io/specification) frontmatter format
+- Codebase reduced ~70% (from ~15,100 lines across 90+ files to ~4,300 lines across 40 skills)
 
-### Fixed
-- Gates now include explicit list of valid approval responses
-- Gates now list invalid responses that should NOT be treated as approval
+### Removed
+- `.ai-assistant/` directory (chatmodes, tasks, workflows, providers, universal instructions)
+- Provider entry point files (`.cursorrules`, `.windsurfrules`, `.clinerules`, `.junie/`, `AGENTS.md`, `GEMINI.md`, `JULES.md`, `.github/copilot-instructions.md`)
+- `.claude/commands/` slash command definitions
+- `INDEX.md`, `scope.md`, `.instructions.md`
 
 ## [1.0.0] - 2025-11-29
 
@@ -43,67 +48,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `/commit` - Review and commit changes
   - `/pr` - Create pull requests
 - Chatmode system for role-based permissions
-  - Explorer, Planner, Developer, Tester, Reviewer
-  - Architect, Debugger, Committer, Refactorer, Releaser
-- Domain instruction files
-  - TypeScript, Testing, Git, API, Security, etc.
+- Domain instruction files (TypeScript, Testing, Git, API, Security, etc.)
 - Atomic task definitions in `tasks/`
 - Scope system with `--files`, `--uncommitted`, `--branch` flags
-- Communication templates with visual hierarchy
 - Provider entry points: CLAUDE.md, .cursorrules, .github/copilot-instructions.md
 
 ---
 
 ## Upgrading
 
-### From Pre-1.0 to 1.0.0
+### From 1.0 to 2.0
 
-If you were using an earlier version:
+The 2.0 release is a complete rewrite. To migrate:
 
-1. Pull the latest `.ai-assistant/` submodule or update symlink
-2. Run `/init --update` to refresh project configuration
-3. Review any custom overrides in `.ai-project/` for compatibility
+1. Remove old framework files:
+   ```bash
+   rm -rf .ai-assistant .claude/commands
+   rm -f .cursorrules .windsurfrules .clinerules AGENTS.md GEMINI.md JULES.md
+   rm -rf .junie .github/copilot-instructions.md
+   ```
+2. Install skills:
+   ```bash
+   npx skills add hypefi/ai-assistant-starter
+   ```
+3. Re-initialize project context:
+   ```
+   /init --update
+   ```
+4. Review `.ai-project/` for compatibility with the new skill format
 
 ### Version Compatibility
 
-| Framework Version | Compatible Providers |
-|-------------------|---------------------|
-| 1.0.x | Claude Code, Cursor, Copilot, Windsurf, Gemini |
+| Version | Format | Distribution |
+|---------|--------|--------------|
+| 2.0.x | [Agent Skills spec](https://agentskills.io/specification) | [skills.sh](https://skills.sh) |
+| 1.0.x | Custom `.ai-assistant/` framework | Git submodule / copy |
 
 ---
 
-## Migration Notes
-
-### Gate Enforcement Changes
-
-If you have custom workflows, update gate patterns to match the new format:
-
-**Old:**
-```markdown
-**Approve?** (yes / no)
-
-**⛔ GATE: Wait for approval.**
-```
-
-**New:**
-```markdown
-**Approve?**
-
-Reply with:
-- `yes` or `approved` - Proceed
-- `no` - Cancel
-- `modify: [changes]` - Request changes
-
-**⛔ GATE: STOP HERE. Do NOT proceed until user responds with explicit approval.**
-
-**Waiting for:** `yes`, `approved`, `proceed`, `lgtm`, or `go ahead`
-```
-
-### Provider-Specific Behavior
-
-If using multiple providers, check `providers/README.md` for the compatibility matrix. Some workflows may need adaptation for providers other than Claude Code.
-
----
-
-[Unreleased]: https://github.com/hypefi/ai-assistant-starter/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/hypefi/ai-assistant-starter/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/hypefi/ai-assistant-starter/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/hypefi/ai-assistant-starter/releases/tag/v1.0.0

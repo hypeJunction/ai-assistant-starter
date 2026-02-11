@@ -1,6 +1,6 @@
 # AI Assistant Starter
 
-This repository provides reusable AI coding assistant skills distributed via [skills.sh](https://skills.sh).
+This repository provides reusable AI coding assistant skills following the [Agent Skills specification](https://agentskills.io/specification), distributed via [skills.sh](https://skills.sh).
 
 ## Installation
 
@@ -12,11 +12,16 @@ npx skills add hypefi/ai-assistant-starter
 npx skills add hypefi/ai-assistant-starter -s commit
 ```
 
+## Skill Format
+
+Each skill is a `skills/<name>/SKILL.md` file with YAML frontmatter (`name`, `description`) per the [Agent Skills spec](https://agentskills.io/specification). Background skills add `user-invocable: false` (a skills.sh extension).
+
 ## Project Setup
 
 After installing skills, run `/init` to scaffold project-specific configuration:
 - `CLAUDE.md` — Project context (tech stack, architecture, conventions)
 - `.ai-project/` — Todos, decisions, history, file lists
+- `.ai-project/domains/` — Stack-specific domain rules (auto-detected by `/init`)
 
 ## Available Skills
 

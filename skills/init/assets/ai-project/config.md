@@ -14,7 +14,6 @@ use_emojis: true  # Set to 'false' to disable emojis
 
 **When `use_emojis: false`:**
 - Status indicators use text: `[DONE]`, `[ERROR]`, `[WARNING]`, `[ACTION]`
-- Chatmode labels use text: `[Explorer]`, `[Developer]`, etc.
 - Box frames still appear for visual structure
 
 ### Message Format

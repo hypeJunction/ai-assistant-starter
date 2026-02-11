@@ -60,12 +60,12 @@ Creates:
 - `.ai-project/.context.md` -- Quick reference template
 - `.ai-project/config.md` -- Configuration overrides
 - `.ai-project/project/` -- Project configuration
+- `.ai-project/domains/` -- Stack-specific domain rules (populated in Phase 2)
+- `.ai-project/workflows/` -- Custom workflow extensions
 - `.ai-project/todos/` -- Technical debt tracking
 - `.ai-project/history/` -- Work history
 - `.ai-project/decisions/` -- ADRs
 - `.ai-project/file-lists/` -- Batch tracking
-- `.ai-project/domains/` -- Domain rules
-- `.ai-project/workflows/` -- Custom workflows
 
 ### Phase 1: Analyze Project
 
@@ -299,14 +299,14 @@ Based on dependencies:
 | Testing | Vitest |
 ```
 
-#### Step 2.5: Copy Domain Files
+#### Step 2.5: Generate Domain Context Files
 
-Copy relevant domain instruction files to `.ai-project/domains/` based on detected stack.
+Generate project-specific domain instruction files in `.ai-project/domains/` based on detected stack. These complement the base background skills (installed via skills.sh) with project-specific conventions.
 
-**Domain Selection Rules:**
+**Domain Detection Rules:**
 
-| Detection | Copy When |
-|-----------|-----------|
+| Detection | Generate When |
+|-----------|---------------|
 | Language: TypeScript | `package.json` has TypeScript |
 | Language: Python | `pyproject.toml` or `requirements.txt` exists |
 | Test: Vitest | Vitest in devDependencies |
@@ -324,32 +324,51 @@ Copy relevant domain instruction files to `.ai-project/domains/` based on detect
 | Docker | Dockerfile exists |
 | CI: GitHub Actions | `.github/workflows/` exists |
 
-Present to user which domains were selected:
+**What to generate:** For each detected domain, create a `<domain>.instructions.md` file containing project-specific conventions observed from the codebase (e.g., import patterns, naming conventions, test organization). These override and supplement the generic base guideline skills.
+
+**Example generated file:**
+```markdown
+<!-- .ai-project/domains/typescript.instructions.md -->
+# TypeScript — Project Conventions
+
+## Import Order
+1. Node built-ins
+2. External packages
+3. Internal aliases (@/components, @/utils)
+4. Relative imports
+
+## Path Aliases
+- `@/` maps to `src/`
+- `@test/` maps to `tests/`
+
+## Patterns
+- Prefer `type` imports for type-only usage
+- Use barrel exports in `index.ts` files
+```
+
+Present to user which domains were detected:
 
 ```markdown
-### Domain Instructions Copied
+### Domain Context Generated
 
-Based on your stack, these domain instruction files were added:
+Based on your stack, project-specific domain files were created in `.ai-project/domains/`:
 
-**Universal (always included):**
-- git.instructions.md
-- security.instructions.md
-- code-review.instructions.md
-- documentation.instructions.md
-- communication.instructions.md
-
-**Stack-specific:**
+**Detected domains:**
 - typescript.instructions.md (TypeScript detected)
 - vitest.instructions.md (Vitest detected)
 - react.instructions.md (React detected)
+
+These contain project-specific conventions observed from your codebase.
+Base domain guideline skills (installed via skills.sh) provide generic best practices.
+Project domain files take precedence when rules conflict.
 ```
 
-#### Step 2.6: Update Provider Entry Point
+#### Step 2.6: Update Project Entry Point
 
-Generate/update provider-specific entry point (e.g., `CLAUDE.md`, `.cursorrules`):
-- Should be minimal
-- Include quick command reference
-- Link to detailed docs
+Generate/update `CLAUDE.md` at the project root:
+- Should be minimal — project name, stack summary, key commands
+- Reference `.ai-project/` for detailed configuration
+- Skills are provider-agnostic (managed by skills.sh)
 
 ### Phase 3: Verify
 
@@ -368,8 +387,8 @@ Show summary of what was generated:
 - [x] `.ai-project/project/structure.md` - Structure
 - [x] `.ai-project/project/patterns.md` - Patterns
 - [x] `.ai-project/project/stack.md` - Tech stack
-- [x] `.ai-project/domains/` - Domain instructions (N files copied)
-- [x] Provider entry point updated
+- [x] `.ai-project/domains/` - Domain context (N files generated)
+- [x] `CLAUDE.md` - Project entry point updated
 
 ### Detected Configuration
 - **Language:** [detected]
