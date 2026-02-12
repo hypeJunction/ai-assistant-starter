@@ -4,7 +4,7 @@ Reusable skills for AI coding assistants, following the [Agent Skills specificat
 
 ## Overview
 
-[Watch Presentation (11 min)](assets/presentation-video.mp4) | [Slides](assets/slides/presentation.html) | [Slide deck source](presentation.md)
+[Watch Presentation (11 min)](assets/presentation-video.mp4) | [Slides](assets/slides) | [Slide deck source](presentation.md)
 
 *An honest conversation about LLMs in software engineering — pragmatism over hype.*
 
@@ -61,12 +61,14 @@ Skills in this repository follow the [Agent Skills specification](https://agents
 | `/validate` | Run type check, lint, tests |
 | `/cover` | Ensure test coverage for changes |
 | `/review` | Review current branch against base |
+| `/security-review` | Systematic security audit with confidence-based reporting |
 
 ### Git & Release
 
 | Skill | Purpose |
 |-------|---------|
 | `/commit` | Review and commit with confirmation |
+| `/iterate-pr` | Iterate on PR until CI passes and feedback addressed |
 | `/pr` | Create pull request |
 | `/wrap` | End-of-session: test → validate → review → commit |
 | `/hotfix` | Emergency bug fix with abbreviated validation |

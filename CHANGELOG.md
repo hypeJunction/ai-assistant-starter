@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `/security-review` skill — systematic security audit with confidence-based reporting
+- `/iterate-pr` skill — iterate on PR until CI passes and feedback addressed
+- `LICENSE` file (MIT)
+
 ## [2.0.0] - 2025-12-15
 
 ### Added
@@ -15,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Selective skill installation (`npx skills add hypefi/ai-assistant-starter -s commit`)
 - 40 self-contained skills in `skills/<name>/SKILL.md` format
 - New workflow skills: `/cover`, `/deps`, `/docs`, `/hotfix`, `/release`, `/revert`, `/sync`, `/wrap`, `/add-story`, `/create-todo`, `/file-list`
-- 18 background domain guideline skills (auto-loaded when relevant)
+- 19 background skills: core execution protocol + 18 domain guideline skills (auto-loaded when relevant)
 - Progressive disclosure: metadata at startup, full instructions on activation
 - `/init` scaffolds `.ai-project/` with domain-aware context layering
 - Explicit gate enforcement patterns with valid/invalid response lists

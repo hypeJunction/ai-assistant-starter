@@ -40,13 +40,25 @@ description: Review changes and create a git commit with user confirmation. Use 
 
 ## Workflow
 
-### Step 0: Parse Scope
+### Step 0: Branch Safety + Parse Scope
 
 ```bash
-git branch --show-current
+CURRENT_BRANCH=$(git branch --show-current)
 git status --porcelain
 MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
 ```
+
+**Branch check:** If `$CURRENT_BRANCH` is `main` or `master`:
+
+```markdown
+⚠️ **You are on `[branch]`.** Committing directly to the default branch is discouraged.
+
+Options:
+- **branch** — Create a feature branch first (recommended)
+- **continue** — Commit directly to `[branch]` (requires explicit confirmation)
+```
+
+**STOP HERE if on main/master. Wait for user response.**
 
 Determine scope:
 - `--files=<paths>` → filter to specified paths
@@ -96,7 +108,7 @@ npm run test -- [affected]
 
 Suggested commit message:
 \`\`\`
-[type]: [description]
+[type](scope): [description]
 
 [optional body]
 \`\`\`
@@ -133,7 +145,7 @@ Scope handling:
 ## Committed
 
 **SHA:** `abc1234`
-**Message:** [type]: [description]
+**Message:** [type](scope): [description]
 **Files:** X files changed
 
 ---
@@ -143,12 +155,14 @@ Scope handling:
 ## Commit Message Format
 
 ```
-[type]: [short description]
+[type](scope): [short description]
 
 [optional longer description]
 
 [optional footer: references, breaking changes]
 ```
+
+Scope is optional, in kebab-case. Omit for project-wide changes.
 
 ### Types
 
@@ -162,6 +176,8 @@ Scope handling:
 | `style` | Formatting (no code change) |
 | `chore` | Maintenance, dependencies |
 | `perf` | Performance improvement |
+| `ci` | CI/CD pipeline changes |
+| `build` | Build system or external dependency changes |
 
 ### Subject Line Rules
 
@@ -170,3 +186,31 @@ Scope handling:
 - Max 50 characters (72 for body lines)
 - Capitalize first letter
 - Reference issues when applicable
+
+### Anti-Generic Messages
+
+NEVER use vague commit messages. These are all **banned**:
+- "update code", "fix bug", "changes", "misc", "wip", "stuff", "updates"
+
+Every message must answer: **what** changed and **why**.
+
+### Issue References
+
+| Syntax | Effect |
+|--------|--------|
+| `Fixes #123` | Closes the issue on merge |
+| `Closes #123` | Closes the issue on merge |
+| `Refs #123` | Links to the issue without closing |
+
+Place in the commit footer (after blank line).
+
+### AI Attribution
+
+When AI generated the majority of committed code, add a trailer:
+
+```
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**Include when:** AI wrote most of the code or made the key decisions.
+**Omit when:** User dictated the implementation and AI only transcribed, or changes are trivial (typos, formatting).

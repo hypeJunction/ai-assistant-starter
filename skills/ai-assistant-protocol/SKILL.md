@@ -16,6 +16,27 @@ Core rules that apply to all files and all roles.
 4. **Document deviations** — Only deviate with explicit user approval
 5. **Verify completion** — Confirm all steps completed before marking done
 
+## Verification Before Completion
+
+**Universal rule: No claims without fresh evidence.**
+
+Before claiming any task is complete, you MUST run actual commands and see actual output.
+
+**What does NOT count as verification:**
+- Previous test runs (even from minutes ago)
+- Partial checks ("lint passed, so it probably works")
+- Confidence or assumptions ("this should work")
+- Memory of earlier output
+
+**Red flag language — never use when reporting results:**
+- "should work", "probably fine", "seems correct"
+- Premature "Done!", "All set!", "Perfect!" before running verification
+
+**Required before claiming completion:**
+1. Run the relevant command (test, build, lint, typecheck)
+2. Read the actual output
+3. Report what the output says, not what you expect it to say
+
 ## Priority Order (When Instructions Conflict)
 
 1. User's explicit request (highest)
