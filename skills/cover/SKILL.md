@@ -24,17 +24,15 @@ description: Analyze branch changes and ensure adequate test coverage. Creates m
 
 ## When NOT to Use
 
-- Writing tests for code you haven't read yet -> `/explore` first
-- Debugging a test failure -> `/debug`
-- Full CI validation -> `/validate`
-- Writing integration/E2E tests for API routes -> `/api-test`
+- Writing tests before code → `/tdd`
+- Debugging a test failure → `/debug`
+- Full CI validation → `/validate`
 
 ## Constraints
 
 - Create test files (`.spec.ts`, `.test.ts`) freely
 - Do not modify non-test source files without approval
-- Do not run full test suites unless necessary -- scope tests to changes
-- Do not test type definitions or config files
+- Scope tests to changes — don't run full suites unless necessary
 - Every test file MUST include a test plan as a comment
 
 ## Scope Flags
@@ -45,29 +43,36 @@ description: Analyze branch changes and ensure adequate test coverage. Creates m
 | `--branch=<name>` | Compare against specific branch (default: main) |
 | `--uncommitted` | Cover only uncommitted changes |
 
-**Examples:**
-```bash
-/cover                              # Cover all changes on current branch
-/cover --files=src/utils/parser.ts  # Cover specific file
-/cover --files=src/auth/            # Cover specific directory
-/cover --branch=develop             # Compare against develop branch
-```
-
----
-
 ## Test Quality Criteria
-
-Every test written by this skill must meet ALL of the following:
 
 | Criterion | Rule | Smell if Violated |
 |-----------|------|-------------------|
-| **Independent** | No shared mutable state between tests | Tests pass alone but fail together (or vice versa) |
-| **Fast** | Mock external dependencies (DB, API, filesystem) | Test suite takes minutes instead of seconds |
-| **Readable** | Clear Given/When/Then structure | Can't understand the test without reading the source |
+| **Independent** | No shared mutable state between tests | Tests pass alone but fail together |
+| **Fast** | Mock external dependencies (DB, API, filesystem) | Suite takes minutes |
+| **Readable** | Clear Arrange/Act/Assert structure | Can't understand without reading source |
 | **Focused** | One behavior per test | Test name contains "and" |
-| **Deterministic** | Same input always produces same output | Flaky tests that pass sometimes |
+| **Deterministic** | Same input → same output | Flaky tests |
 
-## Coverage Targets by File Type
+## Don't Test
+
+- **Types / interfaces** — no runtime behavior
+- **Trivial getters/setters** — one-line property access with no logic
+- **Framework internals** — React rendering, Express routing itself
+- **Constants / enums** — static values
+- **Generated code** — Prisma client, GraphQL codegen
+
+## Test Smell Detection
+
+| Smell | Fix |
+|-------|-----|
+| **Testing implementation details** (spying on private methods) | Test the public API output |
+| **Multi-concern tests** (name has "and") | Split into focused tests |
+| **Mirror tests** (structure mirrors implementation) | Test inputs/outputs |
+| **No meaningful assertions** (only checks no error thrown) | Assert on return values or side effects |
+| **Testing the mock** (assertions only on mock calls) | Assert on behavior the mock enables |
+| **Coverage theater** (tests execute code without meaningful assertions) | Add real assertions or delete the test |
+
+## Coverage Targets
 
 | File Type | Target | Focus |
 |-----------|--------|-------|
@@ -76,84 +81,41 @@ Every test written by this skill must meet ALL of the following:
 | API routes / handlers | 70%+ | Happy path + error codes |
 | UI components | 60%+ | User interactions, states |
 
-## Don't Test
-
-- **Types / interfaces** -- no runtime behavior to verify
-- **Trivial getters/setters** -- one-line property access with no logic
-- **Framework internals** -- React rendering, Express routing itself
-- **Constants / enums** -- static values that never change
-- **Generated code** -- Prisma client, GraphQL codegen, etc.
-
-## Test Smell Detection
-
-Before finalizing tests, check for these anti-patterns:
-
-| Smell | Example | Fix |
-|-------|---------|-----|
-| **Testing implementation details** | Spying on internal private methods | Test the public API output instead |
-| **Multi-concern tests** | Test name has "and" (e.g., "validates and saves") | Split into two focused tests |
-| **Mirror tests** | Test structure mirrors implementation line-by-line | Test inputs/outputs, not internal steps |
-| **No meaningful assertions** | Test only checks that no error was thrown | Assert on return values or side effects |
-| **Testing the mock** | Assertions only verify mock was called correctly | Assert on the behavior the mock enables |
-
 ---
 
 ## Workflow
 
-### Step 1: Analyze Current Changes
+### Step 1: Analyze Changes
 
 ```bash
 MAIN_BRANCH=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')
-
-git status --short
-git log --oneline $MAIN_BRANCH..HEAD
 git diff --name-only $MAIN_BRANCH..HEAD
 ```
 
-If `--files` flag was provided, scope analysis to those paths only.
+### Step 2: Categorize and Identify Missing Coverage
 
-### Step 2: Categorize Changed Files
-
-| File Type | Test Type Needed | Priority |
-|-----------|------------------|----------|
+| File Type | Test Type | Priority |
+|-----------|-----------|----------|
 | `*.ts` utilities/services | Unit tests (`.spec.ts`) | High |
 | `*.tsx` components | Component tests | High |
-| `*.ts` types/interfaces | No tests needed | Skip |
-| Config/build files | No tests needed | Skip |
+| `*.ts` types/interfaces | Skip | — |
+| Config/build files | Skip | — |
 
-### Step 3: Identify Missing Coverage
+### Step 3: Design Test Plans
 
-```bash
-# For each .ts file (excluding tests), check for .spec.ts
-for file in $(git diff --name-only $MAIN_BRANCH..HEAD | grep '\.ts$' | grep -v '\.spec\.' | grep -v '\.test\.'); do
-  spec="${file%.ts}.spec.ts"
-  if [ ! -f "$spec" ]; then
-    echo "Missing spec: $file"
-  fi
-done
-```
-
-### Step 4: Design Test Plans
-
-For each file needing tests, design a plan BEFORE writing code:
+For each file needing tests:
 
 ```markdown
 ## Test Plan: [ModuleName]
 
-**Functions to test:**
 | Function | Behaviors | Edge Cases |
 |----------|-----------|------------|
 | `functionA` | happy path, error path | null input, empty array |
-| `functionB` | transform, validate | boundary values |
-
-**Estimated tests:** N
 ```
 
-### Step 5: Write Missing Tests
+### Step 4: Write Tests
 
-For each file needing tests, create a `.spec.ts` file with:
-
-**Required test plan format (Gherkin):**
+**Required test plan (Gherkin) as comment:**
 ```typescript
 /**
  * Test Plan: ModuleName
@@ -178,78 +140,46 @@ describe('ModuleName', () => {
 });
 ```
 
-**Coverage priorities:**
-- Happy path behavior
-- Edge cases (null, empty, boundary values)
-- Error conditions
-- Async operations
+**Coverage priorities:** Happy path → Edge cases (null, empty, boundary) → Error conditions → Async operations
 
-### Step 6: Run and Verify Tests
+**For utilities with well-defined contracts**, consider property-based testing (e.g., with fast-check) to catch edge cases that example-based tests miss.
+
+### Step 5: Run and Fix
 
 ```bash
-npm run test -- path/to/file.spec.ts     # Single file
-npm run test -- "src/utils/"              # Directory
+npm run test -- path/to/file.spec.ts
 ```
 
-### Step 7: Fix Failures and Re-run
+If failures: fix mocks, assertions, missing `await`, or isolation issues. Re-run until green.
 
-Common issues:
-- Missing mocks for dependencies
-- Incorrect assertions
-- Missing `await` for async operations
-- Test isolation issues (shared state)
-
-### Step 8: Report Results
+### Step 6: Report
 
 ```markdown
 ## Test Coverage Report
 
-### Changed Files Analyzed
-- X TypeScript utilities
-- Y existing test files
-- Z files not requiring tests
-
 ### Tests Created
-- utility.spec.ts - 8 tests, all passing
-- service.spec.ts - 5 tests, all passing
-
-### Tests Verified
-- existingUtil.spec.ts - passing
+- utility.spec.ts — 8 tests, all passing
+- service.spec.ts — 5 tests, all passing
 
 ### Skipped (No Tests Needed)
-- types.ts - type definitions only
-- config.ts - configuration file
+- types.ts — type definitions only
 
 ### Test Quality Check
 | Criterion | Status |
 |-----------|--------|
-| Independent | All tests pass in isolation |
-| Fast | Suite completes in < Ns |
-| Readable | Given/When/Then structure used |
-| Focused | No multi-concern test names |
-| Deterministic | No flaky tests detected |
-
-### Issues Found
-- [any issues discovered during testing]
+| Independent | ✓ |
+| Fast | ✓ |
+| Focused | ✓ |
+| Deterministic | ✓ |
 ```
-
-## Test File Locations
-
-| Source File | Test File |
-|-------------|-----------|
-| `src/utils/foo.ts` | `src/utils/foo.spec.ts` |
-| `src/services/bar.ts` | `src/services/bar.spec.ts` |
-| `libs/core/src/baz.ts` | `libs/core/src/baz.spec.ts` |
 
 ## Quick Reference
 
-| Phase | Action | Gate |
-|-------|--------|------|
-| 1. Analyze | Diff branch, list changed files | -- |
-| 2. Categorize | Determine test types needed | -- |
-| 3. Identify | Find missing test files | -- |
-| 4. Design | Plan tests per file | -- |
-| 5. Write | Create test files | -- |
-| 6. Run | Execute tests | **All tests pass** |
-| 7. Fix | Resolve failures | **All tests pass** |
-| 8. Report | Summary with quality check | -- |
+| Phase | Gate |
+|-------|------|
+| 1. Analyze | — |
+| 2. Categorize | — |
+| 3. Design | — |
+| 4. Write | — |
+| 5. Run | **All tests pass** |
+| 6. Report | — |

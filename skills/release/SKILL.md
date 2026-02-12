@@ -136,7 +136,25 @@ npm run test
 npm run build
 ```
 
-#### Step 3.2: Report Validation Results
+#### Step 3.2: Security Audit
+
+```bash
+# Dependency vulnerabilities
+npm audit --audit-level=high
+
+# Secrets scan across entire source
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
+  -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" src/
+
+# Insecure patterns
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
+  -E "(eval\(|new Function\(|innerHTML\s*=|dangerouslySetInnerHTML|rejectUnauthorized:\s*false)" src/
+```
+
+**If high/critical vulnerabilities found:** Do NOT release. Fix or document exemption with user approval.
+**If secrets or insecure patterns found:** Flag for user review before proceeding.
+
+#### Step 3.3: Report Validation Results
 
 ```markdown
 ## Validation Results
@@ -147,6 +165,8 @@ npm run build
 | Lint | Pass / Fail | [errors if any] |
 | Tests | Pass / Fail | X passed, Y failed |
 | Build | Pass / Fail | [errors if any] |
+| Security audit | Pass / Fail | [vulnerabilities if any] |
+| Secrets scan | Pass / Fail | [findings if any] |
 ```
 
 **If any failures:** Present options (fix and re-run, or abort). Wait for decision.

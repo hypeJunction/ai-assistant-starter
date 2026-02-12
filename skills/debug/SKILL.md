@@ -6,14 +6,15 @@ description: Systematic bug investigation and fixing with hypotheses, root cause
 # Debug
 
 > **Purpose:** Systematic bug investigation and fixing
-> **Phases:** Understand → Investigate → Analyze Patterns → Fix → Verify
+> **Phases:** Reproduce → Analyze → Narrow → Fix → Verify
 > **Usage:** `/debug [scope flags] <bug description>`
 
 ## Iron Laws
 
 1. **NO FIXES WITHOUT ROOT CAUSE** — Never apply a fix without first identifying and confirming the root cause. Guessing is not debugging.
-2. **EVERY BUG FIX NEEDS A REGRESSION TEST** — A fix without a test is a fix that will break again.
-3. **THREE FAILURES MEANS RETHINK** — If 3 fix attempts fail, the bug is a design problem, not a code problem. Stop patching and escalate to architectural review.
+2. **ANALYZE FIRST, FIX SECOND** — AI excels at analysis but struggles when simultaneously diagnosing and fixing. Complete all analysis before proposing any fix.
+3. **EVERY BUG FIX NEEDS A REGRESSION TEST** — A fix without a test is a fix that will break again.
+4. **THREE FAILURES MEANS RETHINK** — If 3 fix attempts fail, the bug is a design problem. Stop patching and escalate.
 
 ## When to Use
 
@@ -25,7 +26,6 @@ description: Systematic bug investigation and fixing with hypotheses, root cause
 ## When NOT to Use
 
 - Known fix, just needs implementation → `/implement`
-- Code works but needs restructuring → `/refactor`
 - Adding new functionality → `/implement`
 - Investigating code without a bug → `/explore`
 
@@ -34,20 +34,7 @@ description: Systematic bug investigation and fixing with hypotheses, root cause
 - **Never suppress an error to "fix" it** — Catching and ignoring is hiding, not fixing
 - **Never fix symptoms instead of root cause** — If the symptom is a null pointer, the root cause is why it's null
 - **Never apply a fix you don't understand** — "It works but I don't know why" means it will break again
-- **Never skip the regression test** — The bug will recur. Write the test.
 - **Never make multiple changes at once** — Change one thing, verify, then change the next
-
-## Gate Enforcement
-
-**CRITICAL:** This workflow requires confirmation before applying fixes.
-
-**Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `go ahead`
-**Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
-
-**Key gates:**
-1. Confirm root cause understanding before proposing fix
-2. Approve fix plan before implementation
-3. Confirm before committing
 
 ## Scope Flags
 
@@ -56,56 +43,35 @@ description: Systematic bug investigation and fixing with hypotheses, root cause
 | `--files=<paths>` | Limit investigation to specific files |
 | `--branch=<name>` | Compare against specific branch |
 
-**Examples:**
-```bash
-/debug --files=src/api/client.ts network timeout errors
-/debug --files=src/auth/ login fails with special characters
-/debug users can't save their profile
-```
-
 ---
 
-## Phase 1: Understand
+## Phase 1: Reproduce
 
-**Mode:** Read-only investigation — gather symptoms and context.
-
-### Step 1.0: Parse Scope
-
-```bash
-git branch --show-current
-git status --porcelain
-```
+**Mode:** Read-only — gather symptoms and establish reproduction.
 
 ### Step 1.1: Gather Symptoms
 
 ```markdown
 ## Bug Investigation
 
-1. **What's happening?**
-   - Expected: [what should happen]
-   - Actual: [what does happen]
-
-2. **When does it occur?**
-   - Always / Sometimes / Specific conditions
-
+1. **What's happening?** Expected vs. Actual
+2. **When does it occur?** Always / Sometimes / Specific conditions
 3. **Reproduction steps?**
-
 4. **Recent changes?**
 ```
 
 **Wait for response.**
 
-### Step 1.2: Technical Context
+### Step 1.2: Establish Minimal Reproduction
 
-Collect error messages, environment details, stack traces, relevant logs.
-
-**Wait for details.**
+Before investigating, identify the smallest possible reproduction case:
+- What's the minimal input that triggers the bug?
+- Can the bug be reproduced in a test?
+- If a test reproduces it, that becomes the regression test.
 
 ### Step 1.3: Confirm Understanding
 
 ```markdown
-## Summary
-
 **Issue:** [restate problem]
 **Conditions:** [when it happens]
 **Impact:** [who/what affected]
@@ -117,97 +83,84 @@ Is this correct?
 
 ---
 
-## Phase 2: Investigate
+## Phase 2: Analyze
 
-**Mode:** Read-only — form and test hypotheses.
+**Mode:** Read-only — form hypotheses. Do NOT propose fixes yet.
 
-### Step 2.1: Form Hypothesis
+### Step 2.1: Form Hypotheses
 
 ```markdown
-## Hypothesis
+## Hypotheses
 
-Possible causes:
-
-1. **[Hypothesis A]**
-   - Why: [reasoning]
-   - Check: [how to verify]
-
-2. **[Hypothesis B]**
-   - Why: [reasoning]
-   - Check: [how to verify]
+1. **[Hypothesis A]** — Why: [reasoning] — Check: [how to verify]
+2. **[Hypothesis B]** — Why: [reasoning] — Check: [how to verify]
 ```
 
-### Step 2.2: Trace the Bug
+### Step 2.2: Investigate
 
-```bash
-grep -rn "functionName" src/
-git log --oneline -10 path/to/file.ts
-git blame path/to/file.ts | head -50
-```
-
-### Debugging Decision Tree
-
-Use this to select your investigation strategy:
+Use the debugging decision tree to select strategy:
 
 | Symptom | Strategy |
 |---------|----------|
-| Error message present | Read carefully, trace to source via stack trace |
-| Intermittent failure | Suspect race condition, timing, shared mutable state |
-| Works locally, fails in CI | Environment difference (env vars, Node version, OS) |
-| Worked before a specific date | Use `git bisect` to find the breaking commit |
-| Works for some inputs | Boundary analysis — test edge cases around the failing input |
-| Silent wrong output | Add logging at each transformation step, compare expected vs actual |
-| Performance regression | Profile first — don't guess where time is spent |
+| Error message present | Read stack trace, trace to source |
+| Intermittent failure | Suspect race condition, timing, shared state |
+| Works locally, fails in CI | Environment difference (env vars, Node version) |
+| Worked before a specific date | `git bisect` to find breaking commit |
+| Works for some inputs | Boundary analysis around failing input |
+| Silent wrong output | Add logging at each transformation step |
+| Performance regression | Profile first — don't guess |
 
----
+### Step 2.3: Compare Working vs. Broken
 
-## Phase 3: Analyze Patterns
-
-**Mode:** Read-only — compare working vs broken code.
-
-### Step 3.1: Find Working Examples
-
-Search the codebase for similar functionality that works correctly:
-
-```bash
-grep -rn "similar_pattern" src/
-```
-
-### Step 3.2: Compare Working vs Broken
-
-```markdown
-## Pattern Analysis
-
-**Working example:** `path/to/working.ts:42`
-**Broken code:** `path/to/broken.ts:17`
-
-**Differences:**
-1. [Difference 1]
-2. [Difference 2]
-
-**Relevant recent changes:**
-```
+Search for similar functionality that works correctly. Document differences.
 
 ```bash
 git log --oneline -20 -- path/to/broken.ts
 ```
 
+---
+
+## Phase 3: Narrow
+
+**Mode:** Read-only — converge on root cause with user input.
+
+### Step 3.1: Present Analysis
+
+```markdown
+## Analysis Results
+
+**Investigated:** [what was checked]
+**Eliminated:** [hypotheses ruled out and why]
+**Most likely:** [remaining hypothesis with evidence]
+```
+
+### Step 3.2: Narrow Focus with User
+
+Ask the user to help eliminate hypotheses:
+
+```markdown
+Based on the analysis, I've narrowed to these possibilities:
+
+1. [Hypothesis X] — Evidence: [what supports it]
+2. [Hypothesis Y] — Evidence: [what supports it]
+
+Can you help narrow further? (e.g., "it's not X because..." or "check Z")
+```
+
 ### Step 3.3: Confirm Root Cause
 
 ```markdown
-## Root Cause Found
+## Root Cause
 
 **Location:** `path/to/file.ts:42`
 **Problem:** [what's wrong]
 **Why:** [explanation]
-**Evidence:**
-- [Finding 1]
-- [Finding 2]
+**Evidence:** [findings that confirm this]
 
 Does this make sense?
 ```
 
-**GATE: Wait for confirmation.**
+**GATE: Wait for confirmation before proposing fix.**
 
 ---
 
@@ -215,71 +168,54 @@ Does this make sense?
 
 **Mode:** Full access — implement the approved fix.
 
-**Constraints:**
-- Actual fixes require user approval first
-- Every bug fix must include a regression test
-
 ### Step 4.1: Propose Fix
 
 ```markdown
 ## Fix Plan
 
-### Root Cause
-[Brief summary]
-
-### Solution
-[What will change]
-
-### Files
-- `path/to/file.ts` - [fix]
-
-### Regression Test
-- Test for [scenario]
-
-### Risks
-- [Any concerns]
+**Root Cause:** [brief summary]
+**Solution:** [what will change]
+**Files:** `path/to/file.ts` — [fix description]
+**Regression Test:** Test for [scenario]
+**Security impact:** [Does the fix touch input handling, auth, or data access? If yes, verify no security regression]
+**Risks:** [any concerns]
 
 ---
 **Approve fix?** (yes / no / modify)
 ```
 
-**STOP HERE. Do NOT implement the fix until user responds with explicit approval.**
+**GATE: Do NOT implement until user approves.**
 
 ### Step 4.2: Implement Fix
 
 1. Apply fix — one change at a time
-2. Run type check to verify
+2. Run typecheck after change
 
 ### Step 4.3: Add Regression Test
 
-**REQUIRED:** Every bug fix must include a regression test.
-
-1. Test should reproduce the bug scenario
-2. Assert correct behavior after fix
+**REQUIRED.** The test should reproduce the bug scenario and assert correct behavior:
 
 ```typescript
 it('should [correct behavior] when [bug trigger condition]', () => {
-  // Arrange: Set up conditions that triggered the bug
-  // Act: Perform the action that previously failed
-  // Assert: Verify correct behavior
+  // Arrange: conditions that triggered the bug
+  // Act: action that previously failed
+  // Assert: correct behavior
 });
 ```
 
 ### Escalation Rule
 
-If your fix attempt fails:
-
 | Attempt | Action |
 |---------|--------|
 | 1st failure | Re-examine root cause, form new hypothesis |
 | 2nd failure | Expand investigation scope, check assumptions |
-| 3rd failure | **STOP.** The bug is likely a design problem. Present architectural concerns to user before attempting another fix. |
+| 3rd failure | **STOP.** Present architectural concerns. Don't attempt another fix. |
 
 ---
 
 ## Phase 5: Verify
 
-**Mode:** Testing + git operations with user confirmation.
+**Mode:** Testing + git operations.
 
 ### Step 5.1: Run All Tests
 
@@ -298,60 +234,29 @@ npm run lint
 | Check | Status |
 |-------|--------|
 | Regression test | ✓ Pass |
-| Related tests | ✓ Pass ({N} tests) |
+| Related tests | ✓ Pass (N tests) |
 | Type check | ✓ Pass |
 | Lint | ✓ Pass |
 
 Can you verify the fix works?
 ```
 
-**GATE: All tests (especially regression test) must pass.**
-
-**Wait for user verification.**
+**GATE: All tests must pass. Wait for user verification.**
 
 ### Step 5.3: Commit
 
-```markdown
-## Ready to Commit
+Present commit message with root cause explanation and `Fixes #issue` reference.
 
-**Files changed:**
-- `path/to/file.ts` - [fix]
-- `path/to/file.spec.ts` - [regression test]
-
-**Message:**
-\`\`\`
-fix: prevent null pointer in user lookup
-
-Adds null check before accessing user properties.
-Includes regression test to prevent recurrence.
-
-Fixes #123
-\`\`\`
-
-**Commit?** (yes / no / edit)
-```
-
-**STOP HERE. Wait for explicit approval before committing.**
+**GATE: Wait for explicit approval before committing.**
 
 ---
-
-## Debugging Tips
-
-| Pattern | Check For |
-|---------|-----------|
-| Null/undefined | Missing null checks, optional chaining |
-| Race condition | Async timing, missing await, shared state |
-| State mutation | Unintended side effects, reference vs value |
-| Type mismatch | Incorrect type assertions, any casts |
-| Import errors | Circular dependencies, wrong paths |
-| Environment | Missing env vars, wrong config |
 
 ## Quick Reference
 
 | Phase | Mode | Gate |
 |-------|------|------|
-| 1. Understand | Read-only | User confirms symptoms |
-| 2. Investigate | Read-only | Hypotheses formed |
-| 3. Analyze Patterns | Read-only | **User confirms root cause** |
+| 1. Reproduce | Read-only | User confirms symptoms |
+| 2. Analyze | Read-only | Hypotheses formed |
+| 3. Narrow | Read-only | **User confirms root cause** |
 | 4. Fix | Full access | **User approves fix plan** |
 | 5. Verify | Testing + git | **All tests pass + user confirms** |

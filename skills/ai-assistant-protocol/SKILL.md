@@ -110,7 +110,7 @@ Before claiming any task is complete, you MUST run actual commands and see actua
 2. **Follow existing patterns** — Match surrounding code style
 3. **No premature optimization** — Clear code first, optimize when needed
 4. **Test as you go** — Run tests for changed components only
-5. **Security awareness** — Avoid XSS, SQL injection, OWASP Top 10
+5. **Security by default** — See Security Standards below
 6. **Scope awareness** — Redirect 6+ file changes to refactor workflow
 
 ### Comments Policy
@@ -127,6 +127,41 @@ Avoid comments for:
 
 - Use project's logger (not `console.log`)
 - Log levels: `debug`, `info`, `warn`, `error`
+
+## Security Standards
+
+These rules apply to all code written or modified. Violations are **blockers** — fix before proceeding.
+
+### Never Write
+
+| Pattern | Risk | Alternative |
+|---------|------|-------------|
+| `eval(userInput)` / `new Function(userInput)` | Code injection | Avoid dynamic code execution; use a safe parser |
+| `element.innerHTML = userInput` | XSS | Use `textContent` or framework escaping (`{variable}` in JSX) |
+| `dangerouslySetInnerHTML={{__html: userInput}}` | XSS | Sanitize with DOMPurify first, or avoid entirely |
+| `` `SELECT * FROM x WHERE id = '${id}'` `` | SQL injection | Use parameterized queries or ORM |
+| `exec(userInput)` / `execSync(userInput)` | Command injection | Use `execFile()` with explicit argument array |
+| `const KEY = 'sk_live_abc123'` | Secret exposure | Use `process.env.KEY` with validation |
+| `rejectUnauthorized: false` | TLS bypass | Fix certificates; never disable in production |
+| `--no-verify` on git hooks | Bypasses safety | Fix the hook failure instead |
+
+### Always Do
+
+- **Validate input at system boundaries** — API routes, form handlers, webhook receivers
+- **Use parameterized queries** — ORM calls or tagged template literals for raw SQL
+- **Hash passwords with bcrypt** (12+ rounds) or argon2
+- **Set security headers** — Use `helmet` or equivalent
+- **Check auth and authz** on every protected route and operation
+- **Scan for secrets before committing** — grep for API keys, tokens, credentials
+
+### When to Flag for Review
+
+If any of these appear in changed code, flag them for the user even if they look safe:
+- `child_process` usage (any variant)
+- Raw SQL queries (even parameterized — verify correctness)
+- Redirect URLs constructed from user input
+- File system operations with user-controlled paths
+- Cryptographic operations (verify algorithm choice)
 
 ## Testing Requirements
 

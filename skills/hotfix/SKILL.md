@@ -117,7 +117,19 @@ npm run test -- [regression-test-file]
 npm run test -- [affected-test-pattern]
 ```
 
-#### Step 3.2: Verification Report
+#### Step 3.2: Security Quick-Check
+
+Even under emergency conditions, verify the fix doesn't introduce security issues:
+
+```bash
+# Check fix files for insecure patterns
+grep -rn -E "(eval\(|innerHTML\s*=|dangerouslySetInnerHTML|\\\$\{.*\}.*WHERE|exec\(|rejectUnauthorized:\s*false)" [affected-files]
+grep -rn -E "(api[_-]?key|secret|password|token|credential)\s*[:=]" [affected-files]
+```
+
+**If any match:** Verify they are not exploitable before proceeding. Emergency is never an excuse for introducing vulnerabilities.
+
+#### Step 3.3: Verification Report
 
 Present verification report (see `references/hotfix-templates.md` -- Verification Report).
 
@@ -176,15 +188,6 @@ Present completion summary (see `references/hotfix-templates.md` -- Deploy: Comp
 1. **Create follow-up todo** if the fix is a workaround
 2. **Schedule post-mortem** for critical issues
 3. **Update documentation** if not done in Phase 4
-4. **Verify regression test coverage**
-
-## Rules
-
-**Prohibited:** Refactoring, adding features, code cleanup, skipping type check, deploying with failing tests (without explicit approval).
-
-**Required:** Minimal fix (one issue, one fix), user confirmation of root cause, user approval of fix, regression test, type check pass, all tests pass, rollback plan documented.
-
-**Recommended:** Link to ticket/issue, add `[HOTFIX]` label to PR, document root cause, create follow-up todo if hotfix is a workaround.
 
 ## References
 

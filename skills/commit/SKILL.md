@@ -9,19 +9,18 @@ description: Review changes and create a git commit with user confirmation. Use 
 > **Mode:** Git operations with user confirmation required
 > **Usage:** `/commit [scope flags]`
 
+## Iron Laws
+
+1. **NEVER COMMIT WITHOUT EXPLICIT APPROVAL** — "yes", "commit", "lgtm", "go ahead" are valid. Silence, questions, "okay" are NOT.
+2. **NEVER COMMIT SECRETS** — .env, credentials, API keys. Scan before staging.
+3. **ONE CONCERN PER COMMIT** — If changes include both a feature and a refactor, suggest splitting into separate commits.
+
 ## Constraints
 
 - **Read + git only** — Do not modify source code
-- **Never commit without explicit user approval** ("yes", "commit", "lgtm", "go ahead")
 - **Never force push** without explicit request
 - **Never amend commits you didn't create**
 - **Never skip hooks** without explicit request
-- **Never commit secrets** (.env, credentials, API keys)
-
-**Invalid approval (do NOT treat as confirmation):**
-- Silence, questions, "I see", "okay", "looks fine"
-
-**Rule:** If ANY ambiguity, ask: "Please confirm with 'yes' to commit these changes."
 
 ## Scope Flags
 
@@ -31,16 +30,9 @@ description: Review changes and create a git commit with user confirmation. Use 
 | `--uncommitted` | Commit all uncommitted changes (default) |
 | `--staged` | Commit only already-staged files |
 
-**Examples:**
-```bash
-/commit                           # All uncommitted changes
-/commit --files=src/auth/         # Only auth directory
-/commit --staged                  # Only staged files
-```
-
 ## Workflow
 
-### Step 0: Branch Safety + Parse Scope
+### Step 0: Branch Safety
 
 ```bash
 CURRENT_BRANCH=$(git branch --show-current)
@@ -48,52 +40,60 @@ git status --porcelain
 MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
 ```
 
-**Branch check:** If `$CURRENT_BRANCH` is `main` or `master`:
+**If on main/master:** Warn and suggest creating a feature branch. **Wait for response.**
 
-```markdown
-⚠️ **You are on `[branch]`.** Committing directly to the default branch is discouraged.
-
-Options:
-- **branch** — Create a feature branch first (recommended)
-- **continue** — Commit directly to `[branch]` (requires explicit confirmation)
-```
-
-**STOP HERE if on main/master. Wait for user response.**
-
-Determine scope:
-- `--files=<paths>` → filter to specified paths
-- `--staged` → only staged files
-- `--uncommitted` or default → all uncommitted changes
-
-### Step 1: Review Changes (Within Scope)
+### Step 1: Review Changes
 
 ```bash
-git status [scope-filter]
 git diff $MAIN...HEAD -- [scope-paths]
 git diff -- [scope-paths]
 git diff --staged -- [scope-paths]
 ```
 
-Show summary:
 ```markdown
 ## Changes to Commit
 
-**Scope:** `[scope description]`
 **Branch:** `[current branch]`
 
-**Modified:**
-- `path/to/file.ts` - [brief description]
-
-**Added:**
-- `path/to/new.ts` - [purpose]
-
-**Deleted:**
-- `path/to/old.ts` - [reason]
+**Modified:** `path/to/file.ts` — [brief description]
+**Added:** `path/to/new.ts` — [purpose]
+**Deleted:** `path/to/old.ts` — [reason]
 
 **Stats:** X files changed, +Y insertions, -Z deletions
 ```
 
-### Step 2: Validate (Optional but Recommended)
+### Step 2: Mixed-Concern Check
+
+If changes include different concern types (feature + refactor, or feature + config), flag it:
+
+```markdown
+These changes appear to mix concerns:
+- **Feature:** [files related to new behavior]
+- **Refactor:** [files with structural changes only]
+
+Split into separate commits? (yes / no)
+```
+
+### Step 3: Security Scan (Always Runs)
+
+Scan changed files for security issues before committing:
+
+```bash
+# Secrets detection in changed files
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
+  -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" [scope-paths]
+
+# Insecure patterns
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
+  -E "(eval\(|new Function\(|innerHTML\s*=|dangerouslySetInnerHTML|\.exec\(|rejectUnauthorized:\s*false)" [scope-paths]
+```
+
+**If secrets detected:** **STOP.** Warn the user. Do NOT proceed to commit.
+**If insecure patterns detected:** Flag for review — ask user to confirm these are intentional before proceeding.
+
+Exclude test files and example/documentation files from blocking — flag them as informational only.
+
+### Step 4: Validate (Optional)
 
 ```bash
 npm run typecheck
@@ -101,54 +101,34 @@ npm run lint
 npm run test -- [affected]
 ```
 
-### Step 3: Confirm with User
+### Step 5: Confirm
 
 ```markdown
-**Ready to commit these changes?**
-
-Suggested commit message:
-\`\`\`
+**Suggested commit message:**
+```
 [type](scope): [description]
 
 [optional body]
-\`\`\`
-
-Options:
-- **yes** - Commit with this message
-- **edit** - Modify the message
-- **review** - Show full diff again
-- **cancel** - Abort commit
 ```
 
-**STOP HERE. Do NOT run `git commit` until user responds with explicit approval.**
+Options: **yes** / **edit** / **review** / **cancel**
+```
 
-### Step 4: Commit (Within Scope)
+**GATE: Do NOT run `git commit` until user responds with explicit approval.**
 
-Only after user confirms:
+### Step 6: Commit
 
 ```bash
-# Stage files within scope
 git add [scope-paths]  # NOT -A unless scope is "all"
-
-# Create commit
 git commit -m "[message]"
 ```
 
-Scope handling:
-- `--files=<paths>` → `git add <paths>`
-- `--staged` → skip add, commit staged only
-- `--uncommitted` → `git add -A`
-
-### Step 5: Report
+### Step 7: Report
 
 ```markdown
-## Committed
+**Committed:** `abc1234` — [type](scope): [description]
+**Files:** X changed
 
-**SHA:** `abc1234`
-**Message:** [type](scope): [description]
-**Files:** X files changed
-
----
 **Next:** Push? Create PR? Continue working?
 ```
 
@@ -157,60 +137,38 @@ Scope handling:
 ```
 [type](scope): [short description]
 
-[optional longer description]
+[optional body]
 
 [optional footer: references, breaking changes]
 ```
 
-Scope is optional, in kebab-case. Omit for project-wide changes.
-
 ### Types
 
-| Type | When to Use |
-|------|-------------|
+| Type | Use |
+|------|-----|
 | `feat` | New feature |
 | `fix` | Bug fix |
-| `refactor` | Code restructuring (no behavior change) |
-| `test` | Adding or updating tests |
-| `docs` | Documentation only |
-| `style` | Formatting (no code change) |
+| `refactor` | Structure change (no behavior change) |
+| `test` | Adding/updating tests |
+| `docs` | Documentation |
 | `chore` | Maintenance, dependencies |
-| `perf` | Performance improvement |
-| `ci` | CI/CD pipeline changes |
-| `build` | Build system or external dependency changes |
+| `perf` | Performance |
 
-### Subject Line Rules
+### Rules
 
-- Use imperative mood ("add" not "added" or "adds")
-- No period at the end
-- Max 50 characters (72 for body lines)
-- Capitalize first letter
-- Reference issues when applicable
+- Imperative mood ("add" not "added")
+- Max 50 characters subject, 72 body
+- No period at end
+- Every message answers: **what** changed and **why**
 
-### Anti-Generic Messages
+### Banned Messages
 
-NEVER use vague commit messages. These are all **banned**:
-- "update code", "fix bug", "changes", "misc", "wip", "stuff", "updates"
-
-Every message must answer: **what** changed and **why**.
+"update code", "fix bug", "changes", "misc", "wip", "stuff", "updates"
 
 ### Issue References
 
-| Syntax | Effect |
-|--------|--------|
-| `Fixes #123` | Closes the issue on merge |
-| `Closes #123` | Closes the issue on merge |
-| `Refs #123` | Links to the issue without closing |
-
-Place in the commit footer (after blank line).
+`Fixes #123` / `Closes #123` (closes on merge) — `Refs #123` (links without closing)
 
 ### AI Attribution
 
-When AI generated the majority of committed code, add a trailer:
-
-```
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
-**Include when:** AI wrote most of the code or made the key decisions.
-**Omit when:** User dictated the implementation and AI only transcribed, or changes are trivial (typos, formatting).
+When AI wrote most of the code: `Co-Authored-By: Claude <noreply@anthropic.com>`

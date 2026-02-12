@@ -14,6 +14,7 @@ description: Create a well-documented GitHub pull request with quality checks, p
 - Never force push without explicit request
 - Always verify changes are committed before pushing
 - Requires `gh` (GitHub CLI) for PR creation
+- Flag mixed-concern PRs (feature + refactor) as candidates for splitting
 
 ## Workflow
 
@@ -41,15 +42,21 @@ Checklist:
 - [ ] All tests pass
 - [ ] No type errors
 - [ ] Linting passes
+- [ ] No hardcoded secrets or credentials in changed files
+- [ ] No insecure patterns (eval, innerHTML, raw SQL interpolation)
 - [ ] Changes are committed
 
-### Step 3: Push Branch
+### Step 3: Check for Mixed Concerns
+
+Review the diff for mixed-concern changes. If commits include both feature work and refactoring, or both bug fixes and cleanup, suggest splitting into separate PRs for faster review.
+
+### Step 4: Push Branch
 
 ```bash
 git push -u origin HEAD
 ```
 
-### Step 4: Create PR
+### Step 5: Create PR
 
 ```bash
 gh pr create --title "[Type]: Brief description" --body "$(cat <<'EOF'
@@ -66,6 +73,13 @@ gh pr create --title "[Type]: Brief description" --body "$(cat <<'EOF'
 
 - [ ] [How to test change 1]
 - [ ] [How to test change 2]
+
+## Security
+
+- [ ] No secrets or credentials in code
+- [ ] Input validation on new endpoints/handlers
+- [ ] Auth checks on protected operations
+- [ ] N/A — no security-sensitive changes
 
 ## Screenshots (if applicable)
 

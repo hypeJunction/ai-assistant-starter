@@ -91,11 +91,36 @@ npm run typecheck
 npm run lint -- [changed-files]
 ```
 
-**Secrets Scan (always runs):**
+**Security Scan (always runs):**
+
 ```bash
+# Secrets detection
 grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
   -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" [changed-files]
+
+# Insecure pattern detection
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
+  -E "(eval\(|new Function\(|innerHTML\s*=|dangerouslySetInnerHTML|document\.write\()" [changed-files]
+
+# Raw SQL interpolation (injection risk)
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
+  -E "(\\\$queryRaw\`|\\\$executeRaw\`|\.query\(.*\\\$\{|SELECT.*\\\$\{|INSERT.*\\\$\{|UPDATE.*\\\$\{|DELETE.*\\\$\{)" [changed-files]
+
+# Command injection patterns
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
+  -E "(child_process|exec\(|execSync\(|spawn\(|execFile\()" [changed-files]
+
+# Disabled security controls
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
+  -E "(rejectUnauthorized:\s*false|NODE_TLS_REJECT_UNAUTHORIZED|--no-verify)" [changed-files]
 ```
+
+**Interpreting results:**
+- Secrets: Any match in non-test, non-example files is a **blocker** — do not proceed
+- `eval`/`innerHTML`/`dangerouslySetInnerHTML`: Requires justification — flag for review
+- Raw SQL with interpolation: **Blocker** unless using tagged template literals (`Prisma.sql\`...\``)
+- `child_process`/`exec`: Flag for review — verify no user input reaches the command
+- Disabled TLS/verification: **Blocker** unless in test configuration only
 
 Report:
 ```markdown
@@ -107,6 +132,7 @@ Report:
 | Types | ✓ Pass / ✗ Fail | [N errors] |
 | Lint | ✓ Pass / ✗ Fail | [N errors, M warnings] |
 | Secrets | ✓ Pass / ⚠️ Review | [N potential secrets found] |
+| Security patterns | ✓ Pass / ⚠️ Review | [N insecure patterns found] |
 ```
 
 **If failures, stop and report before Level 2.**
@@ -138,13 +164,14 @@ Complete CI pipeline verification before push/merge.
 | 1 | Format | `npm run format:check` |
 | 2 | Types | `npm run typecheck` |
 | 3 | Lint | `npm run lint` |
-| 4 | Security | `npm audit --audit-level=high` |
-| 5 | Accessibility | `npm run a11y 2>/dev/null \|\| true` |
-| 6 | Performance | `npm run perf 2>/dev/null \|\| true` |
-| 7 | Tests | `npm run test` |
-| 8 | Coverage | `npm run test -- --coverage` (if --coverage) |
-| 9 | Build | `npm run build` |
-| 10 | Bundle Size | `npm run size 2>/dev/null \|\| true` |
+| 4 | Security scan | Secrets + insecure pattern detection (see Quick Validation) |
+| 5 | Dependency audit | `npm audit --audit-level=high` |
+| 6 | Accessibility | `npm run a11y 2>/dev/null \|\| true` |
+| 7 | Performance | `npm run perf 2>/dev/null \|\| true` |
+| 8 | Tests | `npm run test` |
+| 9 | Coverage | `npm run test -- --coverage` (if --coverage) |
+| 10 | Build | `npm run build` |
+| 11 | Bundle Size | `npm run size 2>/dev/null \|\| true` |
 
 Report:
 ```markdown

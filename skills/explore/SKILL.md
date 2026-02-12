@@ -13,6 +13,7 @@ description: Understand code without making changes. Read-only exploration of co
 
 1. **READ-ONLY, NO EXCEPTIONS** — Never edit, create, or delete any file. This skill is purely investigative.
 2. **ANSWER THE QUESTION ASKED** — Do not propose fixes, refactors, or improvements unless explicitly asked. Exploration is not a license to redesign.
+3. **SCOPE BEFORE SEARCHING** — Define what you're looking for before reading files. Unbounded exploration fills context and degrades performance.
 
 ## When to Use
 
@@ -29,12 +30,6 @@ description: Understand code without making changes. Read-only exploration of co
 - You need to make changes → `/implement`
 - You need to review code quality → `/review`
 
-## Constraints
-
-- **Read-only** — Use only read, glob, grep operations
-- **Never edit files** — Changes must be delegated to implementation skills
-- **Never run state-changing commands**
-
 ## Scope Flags
 
 | Flag | Description |
@@ -43,16 +38,7 @@ description: Understand code without making changes. Read-only exploration of co
 | `--project=<path>` | Project root for monorepos |
 | `--depth=<level>` | Exploration depth: `surface`, `standard`, `deep` |
 
-**Examples:**
-```bash
-/explore --files=src/auth/ how does login work
-/explore --depth=deep how does the state management work
-/explore what patterns are used for API calls
-```
-
 ## Exploration Strategies
-
-Choose your strategy based on the question type:
 
 | Question Type | Strategy | Approach |
 |---------------|----------|----------|
@@ -64,13 +50,17 @@ Choose your strategy based on the question type:
 
 ## Depth Levels
 
-| Level | Scope | Output |
-|-------|-------|--------|
-| **Surface** | File list + purpose | Quick inventory — names, locations, one-line descriptions |
-| **Standard** | Code flow + patterns + dependencies | Full explanation of how things connect and why |
-| **Deep** | Architecture + history + alternatives + edge cases | Comprehensive analysis including git history, design decisions, trade-offs |
+| Level | Scope |
+|-------|-------|
+| **Surface** | File list + purpose — quick inventory |
+| **Standard** | Code flow + patterns + dependencies — full explanation (default) |
+| **Deep** | Architecture + history + alternatives + edge cases — comprehensive |
 
-Default to **Standard** unless the user specifies otherwise or the question is simple enough for Surface.
+## Context Management
+
+- **Use subagents for deep explorations.** When exploring a large area (6+ files), delegate to a subagent to prevent context exhaustion. The subagent reports a summary; the main session stays clean.
+- **Set a scope budget.** Before exploring, estimate how many files you'll need. If >10 files, narrow the question or use subagents.
+- **Stop when answered.** Don't keep reading files after finding the answer. Report what you found.
 
 ## Workflow
 
@@ -80,70 +70,28 @@ Default to **Standard** unless the user specifies otherwise or the question is s
 git branch --show-current
 ```
 
-Identify:
-1. What question type is this? (from the strategy table above)
-2. What depth level? (from flags or question complexity)
-3. What scope? (from `--files` or inferred from the question)
+Identify: (1) question type from strategy table, (2) depth level, (3) scope from flags or question.
 
 ### Step 2: Search for Relevant Files
 
-Based on the question, search for relevant files:
-
-```bash
-# Search for keywords
-grep -rn "keyword" src/
-
-# Find files by pattern
-find . -name "*.ts" -path "*/auth/*"
-```
+Start narrow, widen only if needed. Use glob/grep to find entry points before reading full files.
 
 ### Step 3: Read and Analyze
 
-**For Trace strategy:**
-1. Find the entry point (route handler, event listener, exported function)
-2. Follow the code path step by step
-3. Document each transformation and decision point
-4. Note where data enters and leaves the system
+**Trace:** Find entry point → follow code path → document transformations and decision points.
 
-**For Investigate strategy:**
-1. Read the implementation
-2. Check test files for intended behavior
-3. Review git blame for recent changes
-4. Check for related issues or TODOs
+**Investigate:** Read implementation → check tests → review git blame → check for TODOs.
 
-**For Impact strategy:**
-1. Find all imports/references to the target
-2. Trace each dependent to understand coupling
-3. Check test coverage for affected areas
-4. Map the blast radius (direct dependents → transitive dependents)
+**Impact:** Find all imports/references → trace dependents → map blast radius (direct → transitive).
 
-**For Search strategy:**
-1. Glob for common patterns and naming conventions
-2. Grep for keywords and related terms
-3. Check test files (they often demonstrate usage patterns)
-4. Review package.json for relevant dependencies
+**Search:** Glob patterns → grep keywords → check test files → review package.json.
 
-**For Map strategy:**
-1. Identify module boundaries (directories, index files, barrel exports)
-2. Trace data flow between modules
-3. Document public interfaces and contracts
-4. Note coupling patterns (tight vs loose)
+**Map:** Identify module boundaries → trace data flow → document public interfaces → note coupling.
 
 ### Step 4: Summarize Findings
 
-Present findings in a structured format appropriate to the depth level.
+Every exploration must include:
 
-**Surface output:**
-```markdown
-## Exploration: [Question]
-
-### Key Files
-| File | Purpose |
-|------|---------|
-| `path/to/file.ts` | [what it does] |
-```
-
-**Standard output:**
 ```markdown
 ## Exploration: [Question]
 
@@ -153,48 +101,20 @@ Present findings in a structured format appropriate to the depth level.
 | `path/to/file.ts` | [what it does] |
 
 ### How It Works
-[Explanation with code flow diagram or numbered steps]
-
-1. Request enters at `path/to/handler.ts:15`
-2. Validated by `path/to/validator.ts:8`
-3. Processed in `path/to/service.ts:42`
-4. Response returned from `path/to/handler.ts:28`
+[Explanation with numbered steps referencing file:line]
 
 ### Patterns Found
-- [Pattern 1 — with example location]
-- [Pattern 2 — with example location]
-
-### Dependencies
-- **Depends on:** [what this code needs]
-- **Depended on by:** [what needs this code]
+- [Pattern — with example location]
 
 ### Considerations
 - [Things to be aware of for future changes]
 ```
 
-**Deep output:** Includes all of Standard plus:
-```markdown
-### Git History
-- [Recent significant changes with commit refs]
-- [Who last modified key files and why]
+**Deep explorations** additionally include: Git History, Design Decisions, Edge Cases, and Suggested Next Steps.
 
-### Design Decisions
-- [Why it's built this way, inferred from code and comments]
-- [Alternatives that were considered or could work]
+### Step 5: Indicate Confidence
 
-### Edge Cases
-- [Known edge cases from tests or comments]
-- [Potential issues not covered by tests]
-
-### Suggested Next Steps
-- [If planning changes, where to start]
-- [What to be careful about]
-```
-
-## Output Requirements
-
-Every exploration must include at minimum:
-- **Key files involved** — List with purpose and line references
-- **How the code works** — Clear explanation with flow, not just a file list
-- **Patterns to follow** — Conventions found that should be maintained
-- **Considerations** — Things to be aware of for future work
+For each finding, note what was verified vs. inferred:
+- **Verified** — Read the code and confirmed
+- **Inferred** — Based on naming/patterns but not traced end-to-end
+- **Unknown** — Couldn't determine; needs manual verification

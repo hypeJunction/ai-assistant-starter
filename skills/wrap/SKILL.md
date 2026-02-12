@@ -87,10 +87,17 @@ Self-review before committing:
    - [ ] No `any` types
    - [ ] Proper TypeScript patterns
    - [ ] Tests have test plans
-   - [ ] No security issues
    - [ ] No `console.log` statements
 
-3. **Note issues by severity:**
+3. **Security checklist:**
+   - [ ] No hardcoded secrets, API keys, or credentials
+   - [ ] No `eval()`, `innerHTML`, or `dangerouslySetInnerHTML` with unsanitized input
+   - [ ] No raw SQL with string interpolation
+   - [ ] No `child_process.exec()` with user-controlled input
+   - [ ] Input validation present at system boundaries
+   - [ ] No disabled security controls (`rejectUnauthorized: false`)
+
+4. **Note issues by severity:**
    - Critical — must fix before commit
    - Warning — should fix, document if deferred
    - Suggestion — nice to have

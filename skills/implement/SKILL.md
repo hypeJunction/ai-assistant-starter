@@ -6,13 +6,13 @@ description: Full feature implementation workflow with explore, plan, code, test
 # Implement
 
 > **Purpose:** Full feature implementation workflow
-> **Phases:** Explore → Plan → Code → Self-Review → Cover → Validate → Document → Sync → Commit
+> **Phases:** Explore → Plan → Code → Self-Review → Test → Validate → Commit
 > **Usage:** `/implement [scope flags] <task description>`
 
 ## Iron Laws
 
 1. **NO CODE WITHOUT APPROVED PLAN** — Never write implementation code until the user has explicitly approved the plan. Wasted code is worse than no code.
-2. **VERIFY BEFORE CLAIMING** — Never claim a phase is complete without running commands and reading output. Evidence before assertions.
+2. **VERIFY AFTER EVERY FILE** — Run typecheck after each file change. Don't batch edits across files without verification. Evidence before assertions.
 3. **STAY IN SCOPE** — Never fix, improve, or refactor code outside the approved plan. Create a todo for out-of-scope issues.
 
 ## When to Use
@@ -28,15 +28,12 @@ description: Full feature implementation workflow with explore, plan, code, test
 - Design/planning only → `/plan`
 - Quick single-file edit → edit directly
 - Emergency fix → `/hotfix`
+- Test-first approach → `/tdd`
 
 ## Gate Enforcement
 
-**CRITICAL:** This workflow has mandatory approval gates. Do NOT proceed past a gate without explicit approval.
-
 **Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `looks good`, `go ahead`
 **Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
-
-**When in doubt:** Ask explicitly: "I need your approval to continue. Please respond with 'yes' to proceed."
 
 ## Scope Flags
 
@@ -47,85 +44,36 @@ description: Full feature implementation workflow with explore, plan, code, test
 | `--branch=<name>` | Branch context (default: current) |
 | `--project=<path>` | Project root for monorepos |
 
-**Examples:**
-```bash
-/implement --files=src/auth/ add password validation
-/implement --uncommitted finish the login feature
-/implement --project=packages/api add rate limiting
-```
-
----
-
-## Related Skills
-
-This skill orchestrates an end-to-end workflow that incorporates patterns from several standalone skills:
-- `/explore` — Phase 1 uses read-only exploration patterns
-- `/plan` — Phase 2 uses planning patterns
-- `/cover` — Phase 5 uses test coverage patterns
-- `/validate` — Phase 6 uses validation patterns
-- `/docs` — Phase 7 uses documentation patterns
-- `/sync` — Phase 8 uses sync patterns
-- `/commit` — Phase 9 uses commit patterns
-- For changes affecting 6+ files, consider `/refactor` instead
-
 ---
 
 ## Phase 1: Explore
 
 **Mode:** Read-only — understand the codebase before planning.
 
-### Step 1.0: Parse Scope
+### Step 1.1: Parse Scope
 
 ```bash
 git branch --show-current
 git status --porcelain
 ```
 
-Display scope context:
-```markdown
-## Scope Context
+If scope is ambiguous, ask for clarification. Use subagents for large explorations (6+ files) to preserve context.
 
-| Scope | Value |
-|-------|-------|
-| Files | [from --files or inferred] |
-| Branch | [current branch name] |
+### Step 1.2: Understand Request
 
-**Task:** [from user input]
-```
-
-If scope is ambiguous, ask for clarification. **Wait if needed.**
-
-### Step 1.1: Understand Request
-
-Before exploring code:
-1. What's the goal?
+1. What's the goal? (success criteria, not task description)
 2. Who is affected?
 3. Constraints?
-4. Success criteria?
 
-**Wait for user response.**
+**Wait for user response if requirements are unclear.**
 
-### Step 1.2: Explore Code
+### Step 1.3: Explore Code
 
 Read relevant files, trace imports and dependencies, note patterns and conventions.
 
-```markdown
-## Codebase Analysis
+### Step 1.4: Verify Understanding
 
-**Relevant Files:**
-- `path/to/file.ts` - [purpose]
-
-**Current Behavior:** [how it works now]
-**Patterns Found:** [conventions to follow]
-```
-
-### Step 1.3: Verify Understanding
-
-Restate the task, list assumptions, flag unclear areas. **Wait for confirmation.**
-
-### Step 1.4: Surface Edge Cases
-
-Present edge cases and ask which matter and how to handle them. **Wait for guidance.**
+Restate the task, list assumptions, flag edge cases. **Wait for confirmation.**
 
 ---
 
@@ -149,30 +97,15 @@ Every step must include exact file paths, specific changes, and code snippets sh
 | `path/to/file.ts` | [specific change] | ~N |
 
 ### Steps
-1. **[Action] [target]** (~2-5 min)
-   - File: `path/to/file.ts`
-   - Change: [specific]
-   - Deliverable: [what's true after]
-
-2. **[Action] [target]** (~2-5 min)
-   - ...
+1. **[Action] [target]** — File: `path`, Change: [specific], Deliverable: [what's true after]
 
 ### Edge Cases
-- [Case] - [handling]
+- [Case] → [handling]
 
 ### Checklist
-
-**Code Phase:**
 - [ ] Implement [component/feature]
-
-**Cover Phase:**
-- [ ] Write unit tests
-- [ ] Write component tests
-
-**Validate Phase:**
-- [ ] Type check passes
-- [ ] Lint passes
-- [ ] Build succeeds
+- [ ] Write tests
+- [ ] Type check + lint passes
 
 ---
 **Approve this plan?** (yes / no / modify)
@@ -186,33 +119,36 @@ Every step must include exact file paths, specific changes, and code snippets sh
 
 **Mode:** Full access — implement the approved plan.
 
-**Constraints:**
-- Stay within approved scope (1-5 files direct, 6+ files → suggest `/refactor`)
-- No documentation files without approval
-- No destructive operations without confirmation
+### Step 3.1: Create Git Savepoint
 
-### Step 3.1: Implement
+For complex implementations, create a savepoint before starting:
+
+```bash
+git stash push -m "savepoint: before [feature]" --include-untracked
+git stash pop
+```
+
+Or commit any existing work so you can revert cleanly if needed.
+
+### Step 3.2: Implement (Verify Per File)
 
 For each file in plan:
 1. Edit the file
-2. Run type check after changes
+2. **Run typecheck immediately** — don't batch multiple file edits
 3. Report progress
 
-### Step 3.2: Handle Surprises
+If typecheck fails after a change, fix it before moving to the next file.
 
-If unexpected issues arise during implementation:
+### Step 3.3: Handle Surprises
 
 | Surprise Type | Response |
 |---------------|----------|
-| **Scope expansion** | Stop. Present the additional scope and ask for approval. |
+| **Scope expansion** | Stop. Present additional scope and ask for approval. |
 | **Missing dependency** | Note it, ask if it should be added. |
-| **Design conflict** | The existing code contradicts the plan. Present options. |
-| **Performance concern** | Flag it, suggest mitigation, let user decide. |
-| **Existing bug found** | Create a todo. Do NOT fix it — out of scope. |
+| **Design conflict** | Present options. Don't force the original plan. |
+| **Existing bug found** | Create a todo. Do NOT fix — out of scope. |
 
-**Wait for decision on any surprise.**
-
-### Step 3.3: Validate Code (Pre-Tests)
+### Step 3.4: Validate Code
 
 ```bash
 npm run typecheck
@@ -225,68 +161,39 @@ npm run lint
 
 **Mode:** Read-only — review your own work before testing.
 
-### Step 4.1: Spec Compliance Review
-
 Compare implementation against the approved plan:
 
 ```markdown
 ## Spec Compliance
-
-| Plan Item | Implemented | Notes |
-|-----------|-------------|-------|
-| [Step 1 from plan] | ✓ / ✗ | [any deviations] |
-| [Step 2 from plan] | ✓ / ✗ | [any deviations] |
+| Plan Item | Status | Notes |
+|-----------|--------|-------|
+| [Step 1] | ✓ / ✗ | [deviations] |
 ```
 
-If any plan item is not implemented, explain why and ask for approval to proceed without it.
+Check for: `any` types, missing error handling, hardcoded values, inconsistent patterns, unused imports.
 
-### Step 4.2: Code Quality Review
+**Security checklist (mandatory for code that handles user input, auth, or external data):**
 
-Check your implementation against project patterns:
+- [ ] No `eval()`, `new Function()`, or dynamic code execution with external input
+- [ ] No `innerHTML`, `dangerouslySetInnerHTML`, or `v-html` with unsanitized data
+- [ ] No raw SQL with string interpolation — use parameterized queries or ORM
+- [ ] No hardcoded secrets, API keys, or credentials — use environment variables
+- [ ] No `child_process.exec()` with user-controlled input — use `execFile()` with explicit args
+- [ ] No disabled security controls (`rejectUnauthorized: false`, `--no-verify`)
+- [ ] Input validation present at system boundaries (API routes, form handlers)
+- [ ] Auth/authz checks present on protected routes and operations
 
-- Does it follow existing code style and conventions?
-- Are there any `any` types, missing error handling, or hardcoded values?
-- Is there duplication that should be extracted?
-- Are imports organized consistently with the rest of the project?
-
-Fix any issues found before proceeding.
+Fix issues before proceeding.
 
 ---
 
-## Phase 5: Cover
+## Phase 5: Test
 
 **Mode:** Testing — ensure new code has appropriate test coverage.
 
-### Step 5.1: Analyze Coverage Needs
-
-Categorize changed files by verification type:
-- Utility → Unit tests (`.spec.ts`)
-- Component → Component tests + Storybook story
-- Service → Unit tests with mocks
-- Types → No tests needed
-
-### Step 5.2: Write Tests
-
-Write appropriate tests for each file requiring coverage. Include test plans in Gherkin format as comments.
-
-### Step 5.3: Run All Tests in Scope
-
-```bash
-npm run test -- [changed-files-pattern]
-```
-
-### Step 5.4: Verification Report
-
-```markdown
-## Test Coverage Report
-
-**Tests Written:**
-| File | Tests | Status |
-|------|-------|--------|
-| `helper.spec.ts` | 5 tests | ✓ All passing |
-
-**All tests must pass before proceeding.**
-```
+1. Categorize changed files by verification type (utility → unit tests, component → component tests, types → skip)
+2. Write tests with Gherkin test plans as comments
+3. Run tests: `npm run test -- [changed-files-pattern]`
 
 **GATE: All tests must pass.**
 
@@ -294,90 +201,42 @@ npm run test -- [changed-files-pattern]
 
 ## Phase 6: Validate
 
-Run full validation to ensure production readiness.
+Run full validation:
 
 ```bash
 npm run typecheck
 npm run lint
-grep -rn -E "(api[_-]?key|secret|password|token|credential)\s*[:=]" src/  # secrets scan
 npm run build
 ```
 
-**GATE: All validations must pass.**
+**GATE: All validations must pass. If any fail, fix before proceeding.**
 
 ---
 
-## Phase 7: Document (Optional)
-
-Prompt whether documentation is needed for complex implementations:
-- `code` — JSDoc/inline comments
-- `user` — User documentation
-- `readme` — README updates
-- `skip` — No documentation needed
-
-**Wait for user response.**
-
----
-
-## Phase 8: Sync (Optional)
-
-Prompt whether AI documentation needs syncing:
-- `memory` — Update project memory
-- `context` — Update quick reference
-- `skip` — No sync needed
-
-**Wait for user response.**
-
----
-
-## Phase 9: Commit
+## Phase 7: Commit
 
 **Mode:** Git operations with user confirmation required.
 
-**Constraints:**
-- Never commit without explicit user approval
-- Never force push
-- Never commit secrets
-- Always show changes before committing
-
-### Step 9.1: Completion Evidence
-
-Before proposing a commit, list all verification evidence:
+### Step 7.1: Completion Evidence
 
 ```markdown
 ## Completion Evidence
-
-| Verification | Command | Result |
-|--------------|---------|--------|
-| Type check | `npm run typecheck` | ✓ Pass (0 errors) |
-| Lint | `npm run lint` | ✓ Pass (0 warnings) |
-| Tests | `npm run test -- [scope]` | ✓ Pass (N tests) |
-| Build | `npm run build` | ✓ Pass |
-| Spec compliance | Self-review | ✓ All plan items implemented |
+| Verification | Result |
+|--------------|--------|
+| Type check | ✓ Pass |
+| Lint | ✓ Pass |
+| Tests | ✓ Pass (N tests) |
+| Build | ✓ Pass |
+| Spec compliance | ✓ All plan items |
 ```
 
-### Step 9.2: Review Changes
-
-```markdown
-## Changes Summary
-
-**Files changed:** N
-
-| File | Change |
-|------|--------|
-| `file1.ts` | Added feature |
-| `file1.spec.ts` | Added tests |
-```
-
-### Step 9.3: Confirm Commit
+### Step 7.2: Confirm Commit
 
 ```markdown
 **Message:**
-\`\`\`
+```
 feat: add user authentication
-
-Implements login/logout with session management.
-\`\`\`
+```
 
 **Commit?** (yes / no / edit)
 ```
@@ -392,10 +251,8 @@ Implements login/logout with session management.
 |-------|------|------|
 | 1. Explore | Read-only | User confirms understanding |
 | 2. Plan | Read-only | **User approves plan** |
-| 3. Code | Full access | Typecheck + lint pass |
+| 3. Code | Full access | Typecheck passes per file |
 | 4. Self-Review | Read-only | Spec compliance verified |
-| 5. Cover | Testing | **All tests pass** |
+| 5. Test | Testing | **All tests pass** |
 | 6. Validate | Validation | **All checks pass** |
-| 7. Document | Optional | User chooses |
-| 8. Sync | Optional | User chooses |
-| 9. Commit | Git only | **User confirms** |
+| 7. Commit | Git only | **User confirms** |

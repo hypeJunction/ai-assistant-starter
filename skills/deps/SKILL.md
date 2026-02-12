@@ -80,7 +80,25 @@ npm audit 2>/dev/null || true
 # Or: pnpm audit / yarn audit
 ```
 
-#### Step 1.3: Present Audit Results
+#### Step 1.3: Supply Chain Checks
+
+For any new dependencies being added, verify:
+
+1. **Package legitimacy** — Check for typosquatting (e.g., `lodahs` instead of `lodash`)
+2. **Maintenance status** — Is the package actively maintained? Check last publish date
+3. **Download count** — Very low downloads on a common-sounding name is a red flag
+4. **Install scripts** — Check for `preinstall`/`postinstall` scripts that execute arbitrary code
+
+```bash
+# Check for install scripts in new packages
+npm show [package-name] scripts 2>/dev/null
+# Check publish date and maintainers
+npm view [package-name] time dist-tags maintainers 2>/dev/null
+```
+
+**If suspicious patterns found:** Warn user and recommend verification before installing.
+
+#### Step 1.4: Present Audit Results
 
 Present vulnerability and outdated package tables, then confirm scope. See [references/audit-mode.md](references/audit-mode.md) for full audit results presentation template and scope confirmation prompt.
 
