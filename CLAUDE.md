@@ -93,7 +93,7 @@ npx skills add hypefi/ai-assistant-starter -s commit
 | `/file-list` | Track files for batch operations |
 | `/init` | Bootstrap project configuration |
 
-### Background Skills (19 total)
+### Background Skills (20 total)
 
 Auto-loaded when relevant — no slash command needed:
 
@@ -118,6 +118,7 @@ Auto-loaded when relevant — no slash command needed:
 | `github-actions-guidelines` | CI/CD pipelines, caching, secrets, deployment |
 | `storybook-react-guidelines` | Story structure, interaction tests, play functions |
 | `env-config-guidelines` | Environment variables, type-safe config, feature flags |
+| `interaction-boundaries` | Human-AI interaction boundaries, non-anthropomorphic communication |
 
 ## Contributing a Skill
 

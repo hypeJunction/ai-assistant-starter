@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `interaction-boundaries` skill — human-AI interaction boundaries implementing 9 dehumanization rules (no first-person identity, purely functional language, structured output, no uncertainty performance, no empathy simulation, deterministic behavior, focused clarification, no metacognition, fixed interaction patterns)
 - `/security-review` skill — systematic security audit with confidence-based reporting
 - `/iterate-pr` skill — iterate on PR until CI passes and feedback addressed
 - `LICENSE` file (MIT)

@@ -82,6 +82,7 @@ These are loaded automatically when relevant — no slash command needed:
 - **documentation-guidelines** — When and how to comment code
 - **communication-guidelines** — Response formatting and status indicators
 - **code-review-guidelines** — Review checklist and feedback patterns
+- **interaction-boundaries** — Human-AI interaction boundaries, non-anthropomorphic communication
 - And more: REST API, Zod, Prisma, Docker, GitHub Actions, logging, naming, performance, error handling, Storybook, environment config
 
 ## How It Works

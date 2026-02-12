@@ -84,4 +84,4 @@ Build failed
 
 ## General Style
 
-For general communication principles (conciseness, action-focus, no-summary policy), see `ai-assistant-protocol`.
+For general communication principles (conciseness, action-focus, no-summary policy), see `ai-assistant-protocol`. For voice, tone, and human-AI interaction boundary rules, see `interaction-boundaries`.

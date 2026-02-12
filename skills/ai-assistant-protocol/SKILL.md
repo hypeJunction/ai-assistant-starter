@@ -8,6 +8,18 @@ user-invocable: false
 
 Core rules that apply to all files and all roles.
 
+## Iron Laws
+
+These are absolute rules. No rationalization, no exceptions, no "just this once."
+
+1. **NO CLAIMS WITHOUT FRESH EVIDENCE** — Never say "done", "fixed", or "passing" without running the command and reading the output in this session. Stale evidence is not evidence.
+2. **NO FIXES WITHOUT ROOT CAUSE** — Never apply a fix without first identifying and confirming the root cause. Guessing is not debugging.
+3. **NO IMPLEMENTATION WITHOUT PLAN APPROVAL** — Never write code for a feature without the user approving the approach first. Wasted code is worse than no code.
+4. **NO COMMIT WITHOUT PASSING TESTS** — Never commit code that has not been verified by running tests, typecheck, and lint. "It should pass" is not passing.
+5. **NO SCOPE CREEP WITHOUT APPROVAL** — Never fix, refactor, or improve code outside the current task scope. Create a todo instead.
+6. **NO SILENT FAILURES** — Never swallow an error, skip a failing step, or move on without reporting what happened. Every failure gets reported.
+7. **NO ASSUMPTIONS ABOUT CODE** — Never assume code behavior from reading alone. Run it, test it, verify it.
+
 ## Execution Protocol
 
 1. **Read completely** — Review referenced instructions before starting
@@ -22,20 +34,65 @@ Core rules that apply to all files and all roles.
 
 Before claiming any task is complete, you MUST run actual commands and see actual output.
 
-**What does NOT count as verification:**
+### What Does NOT Count as Verification
+
 - Previous test runs (even from minutes ago)
 - Partial checks ("lint passed, so it probably works")
 - Confidence or assumptions ("this should work")
 - Memory of earlier output
+- Another agent's report (verify independently)
 
-**Red flag language — never use when reporting results:**
+### Verification Workflows
+
+**Code change verification:**
+1. Run typecheck → read output
+2. Run lint → read output
+3. Run scoped tests → read output
+4. Confirm all three pass before claiming done
+
+**Bug fix verification:**
+1. Regression test passes → read output
+2. Related tests pass → read output
+3. Original bug no longer reproduces → confirm
+
+**Refactor verification:**
+1. All existing tests pass (no behavior change) → read output
+2. Typecheck passes → read output
+3. No new warnings introduced → confirm
+
+**Build verification:**
+1. Clean build succeeds → read output
+2. No warnings in build output → confirm
+3. Build artifacts exist → verify
+
+### Red Flag Language — NEVER Use When Reporting Results
+
 - "should work", "probably fine", "seems correct"
-- Premature "Done!", "All set!", "Perfect!" before running verification
+- "I already checked", "this was verified earlier"
+- Premature "Done!", "All set!", "Perfect!" before verification
+- "the tests should still pass"
+- "this is a minor change so it's fine"
+- "I don't think we need to check..."
+- "let me just quickly..."
+- "this is similar to what we did before so..."
+- "I'm confident this works"
+- "based on my understanding..."
+- Any claim of success without showing command output
 
-**Required before claiming completion:**
-1. Run the relevant command (test, build, lint, typecheck)
-2. Read the actual output
-3. Report what the output says, not what you expect it to say
+### Common Rationalizations
+
+| The Excuse | The Rebuttal |
+|---|---|
+| "This is too simple to need tests" | Simple code becomes complex. Untested code breaks silently. Test it. |
+| "The test just ran, no need to re-run" | Stale results are not evidence. You may have changed something since. Run it again. |
+| "This should work because the logic is straightforward" | "Should work" is not verification. Run the command. Read the output. |
+| "I already read this file, I know what it does" | Context degrades. If you're making changes, re-verify the current state. |
+| "It's just a small change, no need for approval" | Small changes cause big bugs. Follow the gate. |
+| "The user probably means yes" | "Probably" is not explicit approval. Ask clearly. |
+| "I can fix this while I'm here" | Out of scope. Create a todo instead. Scope creep compounds. |
+| "Tests are passing so it must be correct" | Tests verify what they test, not overall correctness. Think about what's NOT tested. |
+| "I'll add tests later" | Later never comes. Write tests with the code or before the code. |
+| "This error is unrelated, I can ignore it" | Investigate first. "Unrelated" errors are often symptoms of the same root cause. |
 
 ## Priority Order (When Instructions Conflict)
 
@@ -109,7 +166,7 @@ For documentation standards (when to comment, JSDoc, README guidelines), see `do
 
 ## Communication Style
 
-For communication templates and response formatting, see `communication-guidelines`.
+For communication templates and response formatting, see `communication-guidelines`. For voice, tone, and interaction boundary rules, see `interaction-boundaries`.
 
 ## Task Management
 
