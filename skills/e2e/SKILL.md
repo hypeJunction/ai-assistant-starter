@@ -1,13 +1,13 @@
 ---
-name: e2e-test
+name: e2e
 description: End-to-end testing workflow for web applications using Playwright or Cypress. Covers user flow discovery, test design, implementation, execution, and flaky test management.
 ---
 
-# E2E Test
+# E2E
 
 > **Purpose:** End-to-end testing for web applications
 > **Phases:** Setup → Discover → Design → Implement → Run → Report
-> **Usage:** `/e2e-test [scope flags] <description of what to test>`
+> **Usage:** `/e2e [scope flags] <description of what to test>`
 
 ## Iron Laws
 
@@ -26,7 +26,7 @@ description: End-to-end testing workflow for web applications using Playwright o
 
 ## When NOT to Use
 
-- Unit testing individual functions → `/cover` or `/tdd`
+- Unit testing individual functions → `/test-coverage` or `/tdd`
 - API testing without a browser → `/api-test`
 - Visual design review → `/review`
 - Performance benchmarking → use dedicated profiling tools
@@ -62,9 +62,9 @@ description: End-to-end testing workflow for web applications using Playwright o
 
 **Examples:**
 ```bash
-/e2e-test --framework=playwright login and signup flows
-/e2e-test --flow=checkout verify the full purchase flow
-/e2e-test --files=e2e/auth/ fix flaky authentication tests
+/e2e --framework=playwright login and signup flows
+/e2e --flow=checkout verify the full purchase flow
+/e2e --files=e2e/auth/ fix flaky authentication tests
 ```
 
 ---

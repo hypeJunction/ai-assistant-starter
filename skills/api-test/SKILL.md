@@ -25,8 +25,8 @@ description: Discover, design, implement, run, and report on API endpoint tests.
 
 ## When NOT to Use
 
-- Unit testing pure functions or utilities -> `/cover`
-- Testing UI components -> `/cover` or `/add-story`
+- Unit testing pure functions or utilities -> `/test-coverage`
+- Testing UI components -> `/test-coverage` or `/add-story`
 - Debugging a specific API bug -> `/debug`
 - Full CI validation -> `/validate`
 - Load/performance testing -> dedicated performance tools

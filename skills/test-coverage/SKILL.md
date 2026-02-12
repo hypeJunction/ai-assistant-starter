@@ -1,13 +1,13 @@
 ---
-name: cover
+name: test-coverage
 description: Analyze branch changes and ensure adequate test coverage. Creates missing tests with test plans, runs them, and reports results. Use after implementing changes to add tests.
 ---
 
-# Cover
+# Test Coverage
 
 > **Purpose:** Ensure test coverage for changed code
 > **Phases:** Analyze → Design → Write → Run → Report
-> **Usage:** `/cover [scope flags]`
+> **Usage:** `/test-coverage [scope flags]`
 
 ## Iron Laws
 
@@ -39,7 +39,7 @@ description: Analyze branch changes and ensure adequate test coverage. Creates m
 
 | Flag | Description |
 |------|-------------|
-| `--files=<paths>` | Specific files/directories to cover |
+| `--files=<paths>` | Specific files/directories to check coverage for |
 | `--branch=<name>` | Compare against specific branch (default: main) |
 | `--uncommitted` | Cover only uncommitted changes |
 

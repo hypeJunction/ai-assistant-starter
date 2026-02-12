@@ -1,12 +1,12 @@
 ---
-name: file-list
+name: track-files
 description: Track batches of files that need similar changes for large-scale work. Use when refactoring affects many files, migrating patterns, or coordinating batch operations across sessions.
 ---
 
-# File List
+# Track Files
 
 > **Purpose:** Track batches of files that need similar changes for large-scale work
-> **Usage:** `/file-list <description of what to track>`
+> **Usage:** `/track-files <description of what to track>`
 
 ## Constraints
 

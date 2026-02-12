@@ -66,10 +66,10 @@ npx skills add hypefi/ai-assistant-starter -s commit
 | Skill | Purpose |
 |-------|---------|
 | `/validate` | Run type check, lint, tests |
-| `/cover` | Ensure test coverage for changes |
+| `/test-coverage` | Ensure test coverage for changes |
 | `/tdd` | Test-driven development (RED → GREEN → REFACTOR) |
 | `/api-test` | Discover, test, and report on API endpoints |
-| `/e2e-test` | End-to-end testing with Playwright/Cypress |
+| `/e2e` | End-to-end testing with Playwright/Cypress |
 | `/review` | Review current branch against base |
 | `/security-review` | Systematic security audit with confidence-based reporting |
 | `/accessibility-review` | WCAG 2.1 AA audit with automated + manual checks |
@@ -81,7 +81,7 @@ npx skills add hypefi/ai-assistant-starter -s commit
 | `/commit` | Review and commit with confirmation |
 | `/iterate-pr` | Iterate on PR until CI passes and feedback addressed |
 | `/pr` | Create pull request |
-| `/wrap` | End-of-session: test → validate → review → commit |
+| `/finish` | End-of-session: test → validate → review → commit |
 | `/hotfix` | Emergency bug fix with abbreviated validation |
 | `/release` | Version bump, changelog, and tagging |
 
@@ -94,8 +94,8 @@ npx skills add hypefi/ai-assistant-starter -s commit
 | `/revert` | Safely rollback changes |
 | `/sync` | Align documentation with codebase |
 | `/add-story` | Create Storybook stories |
-| `/create-todo` | Document deferred work |
-| `/file-list` | Track files for batch operations |
+| `/add-todo` | Document deferred work |
+| `/track-files` | Track files for batch operations |
 | `/init` | Bootstrap project configuration |
 
 ### Background Skills (20 total)

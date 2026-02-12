@@ -1,12 +1,12 @@
 ---
-name: wrap
-description: End-of-session wrap-up routine. Ensures test coverage, runs validation, performs self-review, and commits cleanly. Use when finishing a unit of work.
+name: finish
+description: End-of-session routine. Ensures test coverage, runs validation, performs self-review, and commits cleanly. Use when finishing a unit of work.
 ---
 
-# Wrap
+# Finish
 
 > **Purpose:** Systematically conclude a unit of work — test, validate, review, commit
-> **Usage:** `/wrap`
+> **Usage:** `/finish`
 
 ## Constraints
 
@@ -19,7 +19,7 @@ description: End-of-session wrap-up routine. Ensures test coverage, runs validat
 ## Related Skills
 
 This skill performs lightweight end-of-session versions of these workflows:
-- `/cover` — Phase 2 (test coverage check)
+- `/test-coverage` — Phase 2 (test coverage check)
 - `/validate` — Phase 3 (quality validation)
 - `/review` — Phase 4 (self-review)
 - `/commit` — Phase 6 (commit changes)

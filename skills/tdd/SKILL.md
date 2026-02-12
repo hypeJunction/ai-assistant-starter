@@ -30,7 +30,7 @@ Everything that makes TDD tedious for humans makes it ideal for AI: clear measur
 ## When NOT to Use
 
 - Exploratory prototyping (explore first, then delete and TDD) -> `/explore`
-- Code already written that needs tests after the fact -> `/cover`
+- Code already written that needs tests after the fact -> `/test-coverage`
 - Refactoring working code with passing tests -> `/refactor`
 - Investigating a bug you don't understand yet -> `/debug`
 - Configuration or infrastructure files with no testable logic
@@ -291,7 +291,7 @@ If any of these occur, stop the current cycle and reassess:
 8. **Multiple tests are failing at once** -- You jumped ahead. Revert to last green. One failing test at a time.
 9. **You refactored during GREEN** -- Revert. Make it pass first, then clean up.
 10. **The test requires complex setup (>15 lines of arrange)** -- The code under test needs a simpler interface. Refactor first.
-11. **You're writing tests to match existing code** -- That's `/cover`, not `/tdd`. TDD means the test comes first.
+11. **You're writing tests to match existing code** -- That's `/test-coverage`, not `/tdd`. TDD means the test comes first.
 12. **You feel confident enough to skip verification** -- That's exactly when bugs slip through. Run the test.
 
 ---
@@ -371,7 +371,7 @@ Before committing, confirm every item:
 | Test is too complex | Break the behavior into smaller pieces. Test each piece separately. |
 | Can't make the test pass simply | The design is wrong. Step back. What interface would make this test trivial? Build that interface. |
 | Too many mocks needed | The code has too many dependencies. Extract an interface, inject dependencies, or split the unit. |
-| Existing code has no tests | Don't retrofit TDD. Use `/cover` to add tests to existing code. Use `/tdd` for new behavior. |
+| Existing code has no tests | Don't retrofit TDD. Use `/test-coverage` to add tests to existing code. Use `/tdd` for new behavior. |
 | Feature is unclear | Use `/explore` or `/plan` first. Come back to `/tdd` when you know what to build. |
 | Tests pass but behavior is wrong | Your tests don't cover the actual requirements. Write a new test for the failing scenario. |
 | Refactoring breaks tests | Undo the refactoring. Refactoring should not change behavior. If it does, you're changing functionality -- write a test first. |

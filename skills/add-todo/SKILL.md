@@ -1,12 +1,12 @@
 ---
-name: create-todo
+name: add-todo
 description: Document deferred work, shortcuts, and technical debt for future resolution. Use when taking a shortcut, finding tech debt, or deferring out-of-scope work.
 ---
 
-# Create Todo
+# Add Todo
 
 > **Purpose:** Document deferred work, shortcuts, and technical debt for future resolution
-> **Usage:** `/create-todo <description>`
+> **Usage:** `/add-todo <description>`
 
 ## Constraints
 

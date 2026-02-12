@@ -19,12 +19,12 @@ description: Run validation checks to ensure code quality, security, and correct
 
 - After making code changes to check nothing is broken
 - Before committing to ensure quality
-- As part of `/implement` or `/wrap` workflows
+- As part of `/implement` or `/finish` workflows
 - To check if CI will pass locally
 
 ## When NOT to Use
 
-- Writing or running specific tests → `/cover` or `/tdd`
+- Writing or running specific tests → `/test-coverage` or `/tdd`
 - Reviewing code quality and patterns → `/review`
 - Fixing bugs → `/debug`
 - Security-specific audit → `/security-review`

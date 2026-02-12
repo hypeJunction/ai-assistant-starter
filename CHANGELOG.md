@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `/tdd` skill — strict RED-GREEN-REFACTOR cycle with Iron Laws, rationalization rebuttals, red flags, and testing anti-patterns reference
 - `/api-test` skill — API endpoint testing with framework auto-detection, test categories by status code, and patterns reference
-- `/e2e-test` skill — end-to-end testing with Playwright/Cypress, Page Object Model, selector strategies, and CI integration patterns
+- `/e2e` skill — end-to-end testing with Playwright/Cypress, Page Object Model, selector strategies, and CI integration patterns
 - `/migrate` skill — database/schema migrations with ORM-agnostic support (Prisma, Drizzle, TypeORM, Knex, raw SQL), risk classification, and rollback planning
 - `/accessibility-review` skill — WCAG 2.1 AA audit with automated scanning, manual review checklists, P0-P3 severity, and comprehensive WCAG checklist reference
 - `interaction-boundaries` skill — human-AI interaction boundaries implementing 9 dehumanization rules (no first-person identity, purely functional language, structured output, no uncertainty performance, no empathy simulation, deterministic behavior, focused clarification, no metacognition, fixed interaction patterns)
@@ -23,11 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgraded `/debug` — added Iron Laws, When to Use/NOT, Pattern Analysis phase, Debugging Decision Tree, Escalation Rule, Never Do list
 - Upgraded `/plan` — added Iron Laws, Complexity Tiers (Trivial/Standard/Complex/Risky), Plan Quality Checklist, Execution Handoff options
 - Upgraded `/implement` — added Iron Laws, Two-Stage Self-Review, Surprise Handling table, Completion Evidence requirement
-- Upgraded `/cover` — added Iron Laws, Test Quality Criteria, Coverage Targets by file type, Don't Test list, Test Smell Detection
+- Upgraded `/test-coverage` (was `/cover`) — added Iron Laws, Test Quality Criteria, Coverage Targets by file type, Don't Test list, Test Smell Detection
 - Upgraded `/explore` — added Iron Laws, Exploration Strategies by question type, Depth Levels (Surface/Standard/Deep)
 - Added Iron Laws to `/validate`, `/refactor`, `/review`, `/security-review`, `/hotfix`
 - Added When to Use / When NOT to Use sections to `/validate`, `/refactor`, `/review`, `/security-review`
-- Added `--files` scope flag to `/review` and `/cover`
+- Added `--files` scope flag to `/review` and `/test-coverage`
+- Renamed 5 skills for clarity and ecosystem alignment: `/cover` → `/test-coverage`, `/wrap` → `/finish`, `/e2e-test` → `/e2e`, `/create-todo` → `/add-todo`, `/file-list` → `/track-files`
 
 ## [2.0.0] - 2025-12-15
 
@@ -36,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Distribution via [skills.sh](https://skills.sh) (`npx skills add hypefi/ai-assistant-starter`)
 - Selective skill installation (`npx skills add hypefi/ai-assistant-starter -s commit`)
 - 40 self-contained skills in `skills/<name>/SKILL.md` format
-- New workflow skills: `/cover`, `/deps`, `/docs`, `/hotfix`, `/release`, `/revert`, `/sync`, `/wrap`, `/add-story`, `/create-todo`, `/file-list`
+- New workflow skills: `/test-coverage`, `/deps`, `/docs`, `/hotfix`, `/release`, `/revert`, `/sync`, `/finish`, `/add-story`, `/add-todo`, `/track-files`
 - 19 background skills: core execution protocol + 18 domain guideline skills (auto-loaded when relevant)
 - Progressive disclosure: metadata at startup, full instructions on activation
 - `/init` scaffolds `.ai-project/` with domain-aware context layering
