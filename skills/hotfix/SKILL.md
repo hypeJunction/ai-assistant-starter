@@ -9,6 +9,12 @@ description: Emergency bug fix with abbreviated validation for production issues
 > **Phases:** Triage -> Fix -> Verify -> Deploy
 > **Usage:** `/hotfix [scope flags] <issue description>`
 
+## Iron Laws
+
+1. **ONE FIX, ONE ISSUE** — A hotfix touches exactly one bug. No cleanup, no refactoring, no "while I'm here" improvements. Scope creep in a hotfix is how you turn one production issue into two.
+2. **REGRESSION TEST IS MANDATORY** — Every hotfix must include a test that reproduces the bug and verifies the fix. A hotfix without a test will break again.
+3. **VERIFY ON THE HOTFIX BRANCH** — Run tests on the hotfix branch, not main. The fix must work in isolation.
+
 ## Constraints
 
 - **Minimal fix only** -- one issue, one fix

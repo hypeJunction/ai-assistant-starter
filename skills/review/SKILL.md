@@ -9,6 +9,40 @@ description: Comprehensive code review of the current branch against base. Read-
 > **Mode:** Read-only — do NOT modify files, run tests, or make commits
 > **Usage:** `/review`
 
+## Iron Laws
+
+1. **READ EVERYTHING BEFORE JUDGING** — Read all changed files before forming any opinion. Early conclusions from partial reading lead to wrong findings.
+2. **EVIDENCE, NOT THEORY** — Every P0/P1 finding must include the specific code and a concrete explanation of why it's a real problem, not a hypothetical one.
+3. **CLEAN REVIEWS ARE VALID** — If the code is good, say so. Not finding issues is a legitimate review outcome, not a failure to review thoroughly.
+
+## When to Use
+
+- Before merging a PR
+- After completing implementation work
+- Reviewing someone else's branch
+- Quality check before release
+
+## When NOT to Use
+
+- Security-specific concerns → `/security-review`
+- Running validation commands → `/validate`
+- Making code changes → `/implement` or `/refactor`
+- Investigating a bug → `/debug`
+
+## Scope Flags
+
+| Flag | Description |
+|------|-------------|
+| `--files=<paths>` | Review specific files instead of full branch diff |
+| `--pr=<number>` | Review a specific PR by number |
+
+**Examples:**
+```bash
+/review                           # Review current branch vs base
+/review --files=src/auth/         # Review only auth-related changes
+/review --pr=42                   # Review PR #42
+```
+
 ## Constraints
 
 - **Read-only** — Suggestions only, no modifications

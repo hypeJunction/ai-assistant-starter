@@ -6,8 +6,28 @@ description: Full feature implementation workflow with explore, plan, code, test
 # Implement
 
 > **Purpose:** Full feature implementation workflow
-> **Phases:** Explore → Plan → Code → Cover → Validate → Document → Sync → Commit
+> **Phases:** Explore → Plan → Code → Self-Review → Cover → Validate → Document → Sync → Commit
 > **Usage:** `/implement [scope flags] <task description>`
+
+## Iron Laws
+
+1. **NO CODE WITHOUT APPROVED PLAN** — Never write implementation code until the user has explicitly approved the plan. Wasted code is worse than no code.
+2. **VERIFY BEFORE CLAIMING** — Never claim a phase is complete without running commands and reading output. Evidence before assertions.
+3. **STAY IN SCOPE** — Never fix, improve, or refactor code outside the approved plan. Create a todo for out-of-scope issues.
+
+## When to Use
+
+- New feature implementation
+- Enhancements to existing features
+- Significant code changes (3-5 files)
+
+## When NOT to Use
+
+- Bug fixes → `/debug`
+- 6+ file changes → `/refactor`
+- Design/planning only → `/plan`
+- Quick single-file edit → edit directly
+- Emergency fix → `/hotfix`
 
 ## Gate Enforcement
 
@@ -41,11 +61,11 @@ description: Full feature implementation workflow with explore, plan, code, test
 This skill orchestrates an end-to-end workflow that incorporates patterns from several standalone skills:
 - `/explore` — Phase 1 uses read-only exploration patterns
 - `/plan` — Phase 2 uses planning patterns
-- `/cover` — Phase 4 uses test coverage patterns
-- `/validate` — Phase 5 uses validation patterns
-- `/docs` — Phase 6 uses documentation patterns
-- `/sync` — Phase 7 uses sync patterns
-- `/commit` — Phase 8 uses commit patterns
+- `/cover` — Phase 5 uses test coverage patterns
+- `/validate` — Phase 6 uses validation patterns
+- `/docs` — Phase 7 uses documentation patterns
+- `/sync` — Phase 8 uses sync patterns
+- `/commit` — Phase 9 uses commit patterns
 - For changes affecting 6+ files, consider `/refactor` instead
 
 ---
@@ -115,6 +135,8 @@ Present edge cases and ask which matter and how to handle them. **Wait for guida
 
 ### Step 2.1: Create Plan
 
+Every step must include exact file paths, specific changes, and code snippets showing the shape of the change. See `/plan` skill for the full plan quality checklist.
+
 ```markdown
 ## Implementation Plan
 
@@ -122,11 +144,18 @@ Present edge cases and ask which matter and how to handle them. **Wait for guida
 [1-2 sentences]
 
 ### Files to Modify
-- `path/to/file.ts` - [change]
+| File | Change | Lines |
+|------|--------|-------|
+| `path/to/file.ts` | [specific change] | ~N |
 
 ### Steps
-1. [Specific action]
-2. [Specific action]
+1. **[Action] [target]** (~2-5 min)
+   - File: `path/to/file.ts`
+   - Change: [specific]
+   - Deliverable: [what's true after]
+
+2. **[Action] [target]** (~2-5 min)
+   - ...
 
 ### Edge Cases
 - [Case] - [handling]
@@ -149,7 +178,7 @@ Present edge cases and ask which matter and how to handle them. **Wait for guida
 **Approve this plan?** (yes / no / modify)
 ```
 
-**STOP HERE. Do NOT proceed to Code Phase until user responds with explicit approval.**
+**GATE: Do NOT proceed to Code Phase until user responds with explicit approval.**
 
 ---
 
@@ -171,7 +200,17 @@ For each file in plan:
 
 ### Step 3.2: Handle Surprises
 
-If unexpected issues arise, present options and **wait for decision**.
+If unexpected issues arise during implementation:
+
+| Surprise Type | Response |
+|---------------|----------|
+| **Scope expansion** | Stop. Present the additional scope and ask for approval. |
+| **Missing dependency** | Note it, ask if it should be added. |
+| **Design conflict** | The existing code contradicts the plan. Present options. |
+| **Performance concern** | Flag it, suggest mitigation, let user decide. |
+| **Existing bug found** | Create a todo. Do NOT fix it — out of scope. |
+
+**Wait for decision on any surprise.**
 
 ### Step 3.3: Validate Code (Pre-Tests)
 
@@ -182,11 +221,43 @@ npm run lint
 
 ---
 
-## Phase 4: Cover
+## Phase 4: Self-Review
+
+**Mode:** Read-only — review your own work before testing.
+
+### Step 4.1: Spec Compliance Review
+
+Compare implementation against the approved plan:
+
+```markdown
+## Spec Compliance
+
+| Plan Item | Implemented | Notes |
+|-----------|-------------|-------|
+| [Step 1 from plan] | ✓ / ✗ | [any deviations] |
+| [Step 2 from plan] | ✓ / ✗ | [any deviations] |
+```
+
+If any plan item is not implemented, explain why and ask for approval to proceed without it.
+
+### Step 4.2: Code Quality Review
+
+Check your implementation against project patterns:
+
+- Does it follow existing code style and conventions?
+- Are there any `any` types, missing error handling, or hardcoded values?
+- Is there duplication that should be extracted?
+- Are imports organized consistently with the rest of the project?
+
+Fix any issues found before proceeding.
+
+---
+
+## Phase 5: Cover
 
 **Mode:** Testing — ensure new code has appropriate test coverage.
 
-### Step 4.1: Analyze Coverage Needs
+### Step 5.1: Analyze Coverage Needs
 
 Categorize changed files by verification type:
 - Utility → Unit tests (`.spec.ts`)
@@ -194,17 +265,17 @@ Categorize changed files by verification type:
 - Service → Unit tests with mocks
 - Types → No tests needed
 
-### Step 4.2: Write Tests
+### Step 5.2: Write Tests
 
 Write appropriate tests for each file requiring coverage. Include test plans in Gherkin format as comments.
 
-### Step 4.3: Run All Tests in Scope
+### Step 5.3: Run All Tests in Scope
 
 ```bash
 npm run test -- [changed-files-pattern]
 ```
 
-### Step 4.4: Verification Report
+### Step 5.4: Verification Report
 
 ```markdown
 ## Test Coverage Report
@@ -221,7 +292,7 @@ npm run test -- [changed-files-pattern]
 
 ---
 
-## Phase 5: Validate
+## Phase 6: Validate
 
 Run full validation to ensure production readiness.
 
@@ -236,7 +307,7 @@ npm run build
 
 ---
 
-## Phase 6: Document (Optional)
+## Phase 7: Document (Optional)
 
 Prompt whether documentation is needed for complex implementations:
 - `code` — JSDoc/inline comments
@@ -248,7 +319,7 @@ Prompt whether documentation is needed for complex implementations:
 
 ---
 
-## Phase 7: Sync (Optional)
+## Phase 8: Sync (Optional)
 
 Prompt whether AI documentation needs syncing:
 - `memory` — Update project memory
@@ -259,7 +330,7 @@ Prompt whether AI documentation needs syncing:
 
 ---
 
-## Phase 8: Commit
+## Phase 9: Commit
 
 **Mode:** Git operations with user confirmation required.
 
@@ -269,7 +340,23 @@ Prompt whether AI documentation needs syncing:
 - Never commit secrets
 - Always show changes before committing
 
-### Step 8.1: Review Changes
+### Step 9.1: Completion Evidence
+
+Before proposing a commit, list all verification evidence:
+
+```markdown
+## Completion Evidence
+
+| Verification | Command | Result |
+|--------------|---------|--------|
+| Type check | `npm run typecheck` | ✓ Pass (0 errors) |
+| Lint | `npm run lint` | ✓ Pass (0 warnings) |
+| Tests | `npm run test -- [scope]` | ✓ Pass (N tests) |
+| Build | `npm run build` | ✓ Pass |
+| Spec compliance | Self-review | ✓ All plan items implemented |
+```
+
+### Step 9.2: Review Changes
 
 ```markdown
 ## Changes Summary
@@ -282,7 +369,7 @@ Prompt whether AI documentation needs syncing:
 | `file1.spec.ts` | Added tests |
 ```
 
-### Step 8.2: Confirm Commit
+### Step 9.3: Confirm Commit
 
 ```markdown
 **Message:**
@@ -295,7 +382,7 @@ Implements login/logout with session management.
 **Commit?** (yes / no / edit)
 ```
 
-**STOP HERE. Do NOT run `git commit` until user responds with explicit approval.**
+**GATE: Do NOT run `git commit` until user responds with explicit approval.**
 
 ---
 
@@ -305,9 +392,10 @@ Implements login/logout with session management.
 |-------|------|------|
 | 1. Explore | Read-only | User confirms understanding |
 | 2. Plan | Read-only | **User approves plan** |
-| 3. Code | Full access | User confirms implementation |
-| 4. Cover | Testing | **All tests pass** |
-| 5. Validate | Validation | **All checks pass** |
-| 6. Document | Optional | User chooses |
-| 7. Sync | Optional | User chooses |
-| 8. Commit | Git only | **User confirms** |
+| 3. Code | Full access | Typecheck + lint pass |
+| 4. Self-Review | Read-only | Spec compliance verified |
+| 5. Cover | Testing | **All tests pass** |
+| 6. Validate | Validation | **All checks pass** |
+| 7. Document | Optional | User chooses |
+| 8. Sync | Optional | User chooses |
+| 9. Commit | Git only | **User confirms** |

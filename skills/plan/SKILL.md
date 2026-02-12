@@ -9,6 +9,26 @@ description: Create a detailed implementation plan without writing code. Read-on
 > **Mode:** Read-only — no code changes
 > **Usage:** `/plan [scope flags] <task description>`
 
+## Iron Laws
+
+1. **NO CODE IN PLANNING** — This is a read-only skill. Do not write, edit, or modify any source files. Planning only.
+2. **EVERY STEP MUST BE ACTIONABLE** — Vague steps like "update the auth module" are not plans. Specify the file path, what changes, and what the result looks like.
+3. **NO PLAN WITHOUT APPROVAL** — Do not proceed to implementation without explicit user approval of the plan.
+
+## When to Use
+
+- Before implementing a new feature
+- Before making significant changes to existing code
+- When the approach is unclear and needs design
+- When multiple files or components are affected
+
+## When NOT to Use
+
+- Simple single-file changes with clear approach → just `/implement`
+- Bug investigation → `/debug`
+- Post-implementation review → `/review`
+- Refactoring with known pattern → `/refactor`
+
 ## Constraints
 
 - **Read-only** — Do NOT write any code
@@ -59,7 +79,18 @@ Display scope context:
 3. Understand existing patterns
 4. Identify dependencies
 
-### Step 3: Identify Approach
+### Step 3: Assess Complexity
+
+| Complexity | Characteristics | Plan Depth |
+|------------|-----------------|------------|
+| **Trivial** | 1-2 files, known pattern | Bullet list of changes |
+| **Standard** | 3-5 files, clear approach | Detailed steps with code snippets |
+| **Complex** | 6+ files, architectural impact | Full plan with alternatives analysis |
+| **Risky** | Breaking changes, migrations, data loss potential | Plan + rollback plan + test strategy |
+
+Flag the assessed complexity to the user. For Complex and Risky, consider whether `/refactor` is more appropriate.
+
+### Step 4: Identify Approach
 
 Consider:
 - What changes are needed?
@@ -68,17 +99,16 @@ Consider:
 - What edge cases exist?
 - What could go wrong?
 
-#### Complexity Check
+For Complex/Risky tasks, present 2-3 alternative approaches with trade-offs before recommending one.
 
-Assess the scale of changes:
-- More than 5 files modified?
-- Core architectural components affected?
-- New external dependencies?
-- Significant database schema changes?
+### Step 5: Create Plan
 
-If YES to any, flag that the task may require architectural review.
-
-### Step 4: Create Plan
+**Every step must meet these requirements:**
+- Exact file path (verified to exist or explicitly marked as new)
+- What specifically changes (not "update the component" but "add validation to the onSubmit handler")
+- Representative code snippet showing the change shape
+- Clear deliverable (what's true after this step that wasn't before)
+- Estimated scope (how many lines, how many functions)
 
 ```markdown
 ## Implementation Plan
@@ -86,6 +116,7 @@ If YES to any, flag that the task may require architectural review.
 ### Scope
 | Scope | Value |
 |-------|-------|
+| Complexity | [Trivial / Standard / Complex / Risky] |
 | Files | [paths] |
 | Branch | [branch name] |
 | Task | [task description] |
@@ -94,14 +125,33 @@ If YES to any, flag that the task may require architectural review.
 [1-2 sentence overview]
 
 ### Files to Modify
-| File | Change |
-|------|--------|
-| `path/to/file.ts` | [what changes] |
+| File | Change | Lines |
+|------|--------|-------|
+| `src/auth/login.ts` | Add input validation to handleSubmit | ~15 |
+| `src/auth/login.spec.ts` | Add validation test cases | ~30 |
 
 ### Implementation Steps
-1. [Specific action]
-2. [Specific action]
-3. [Specific action]
+
+**Step 1: [Action verb] [specific target]** (~2-5 min)
+- File: `src/auth/login.ts`
+- Change: [specific description]
+- Code shape:
+  ```typescript
+  // Before:
+  function handleSubmit(data: FormData) { ... }
+
+  // After:
+  function handleSubmit(data: FormData) {
+    const validated = validateInput(data);
+    if (!validated.success) return validated.errors;
+    ...
+  }
+  ```
+- Deliverable: [what's true after this step]
+
+**Step 2: [Action verb] [specific target]** (~2-5 min)
+- File: `src/auth/login.spec.ts`
+- ...
 
 ### Edge Cases
 | Case | Handling |
@@ -109,22 +159,50 @@ If YES to any, flag that the task may require architectural review.
 | [Edge case] | [How to handle] |
 
 ### Test Strategy
-- [How to verify the changes]
+- [Specific tests to write, not just "write tests"]
+- [What assertions, what scenarios]
 
 ### Potential Risks
-- [What could go wrong]
+| Risk | Mitigation |
+|------|------------|
+| [What could go wrong] | [How to prevent or recover] |
 
 ---
 **Approve this plan?** (yes / no / modify)
 ```
 
-### Step 5: Wait for Approval
+### Step 6: Wait for Approval
 
-**STOP HERE. Do NOT proceed to implementation without explicit approval.**
+**GATE: Do NOT proceed to implementation without explicit approval.**
 
 Valid approval: "yes", "approved", "proceed", "lgtm", "go ahead"
 
-After approval, user can run `/implement` to execute the plan.
+### Step 7: Execution Handoff
+
+After approval, suggest how to execute:
+
+```markdown
+## Next Steps
+
+Choose execution mode:
+- **`/implement`** — Execute the plan step by step (default)
+- **Parallel dispatch** — Break independent tasks into subagent work (for Complex plans)
+- **Manual** — You execute, I advise
+
+Which approach?
+```
+
+## Plan Quality Checklist
+
+Before presenting the plan, verify:
+- [ ] Every step has an exact file path
+- [ ] Every step has a clear deliverable
+- [ ] Code snippets show the shape of changes (not just prose)
+- [ ] Edge cases have explicit handling (not "handle edge cases")
+- [ ] Test strategy names specific scenarios (not "write tests")
+- [ ] Risks have mitigation strategies (not "be careful")
+- [ ] Steps are ordered by dependency (what must come first)
+- [ ] No step takes longer than 5 minutes of focused work
 
 ## Extended Thinking
 
@@ -133,14 +211,3 @@ For complex decisions, use extended thinking to consider:
 - Existing patterns in the codebase
 - Performance implications
 - Maintainability
-
-## Output Requirements
-
-The plan must include:
-- **Scope context** — Files, branch, task
-- **Overview** — What this accomplishes
-- **Files to modify** — With specific changes
-- **Steps** — Ordered implementation steps
-- **Edge cases** — And how to handle them
-- **Test strategy** — How to verify
-- **Risks** — What could go wrong

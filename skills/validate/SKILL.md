@@ -9,6 +9,26 @@ description: Run validation checks to ensure code quality, security, and correct
 > **Modes:** Quick (default) | Full (--full) | Fix (--fix) | CI Mirror (--ci)
 > **Usage:** `/validate [scope flags]`
 
+## Iron Laws
+
+1. **NEVER SKIP TYPE CHECK** — Type check is the first gate. If it fails, nothing else matters. Fix types before running lint or tests.
+2. **REPORT WHAT THE OUTPUT SAYS** — Never summarize or interpret validation output. Show the actual errors with file paths and line numbers.
+3. **FAILURES ARE NOT SUGGESTIONS** — A failing validation means the code is not ready. Do not proceed past a failing check.
+
+## When to Use
+
+- After making code changes to check nothing is broken
+- Before committing to ensure quality
+- As part of `/implement` or `/wrap` workflows
+- To check if CI will pass locally
+
+## When NOT to Use
+
+- Writing or running specific tests → `/cover` or `/tdd`
+- Reviewing code quality and patterns → `/review`
+- Fixing bugs → `/debug`
+- Security-specific audit → `/security-review`
+
 ## Constraints
 
 - Type check must pass before running tests

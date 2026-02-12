@@ -9,6 +9,26 @@ description: Systematic multi-file refactoring with pattern analysis, scope dete
 > **Phases:** Gather Context -> Pattern Analysis -> Plan -> Execute -> Validate -> Docs -> Commit
 > **Usage:** `/refactor [scope flags] <refactor description>`
 
+## Iron Laws
+
+1. **NO BEHAVIOR CHANGE WITHOUT APPROVAL** — Refactoring changes structure, not behavior. If the refactor would change what the code does (not just how), stop and confirm with the user.
+2. **ALL EXISTING TESTS MUST PASS** — After every batch of changes, run the existing test suite. If tests fail, the refactor introduced a bug. Fix it before continuing.
+3. **BATCH AND VERIFY** — Never change more than 5 files without stopping to verify. Large refactors are done in small, verified increments.
+
+## When to Use
+
+- Renaming functions, variables, or types across the codebase
+- Migrating from one API/pattern to another
+- Restructuring directories or modules
+- Any change affecting 6+ files
+
+## When NOT to Use
+
+- Changing behavior (adding features) → `/implement`
+- Fixing a bug → `/debug`
+- 1-5 file changes → `/implement` (simpler workflow)
+- Emergency fix → `/hotfix`
+
 ## Gate Enforcement
 
 **CRITICAL:** Refactoring affects multiple files. Mandatory approval gates at every phase.

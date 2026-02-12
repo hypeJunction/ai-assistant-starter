@@ -6,8 +6,36 @@ description: Systematic bug investigation and fixing with hypotheses, root cause
 # Debug
 
 > **Purpose:** Systematic bug investigation and fixing
-> **Phases:** Understand → Investigate → Fix → Verify
+> **Phases:** Understand → Investigate → Analyze Patterns → Fix → Verify
 > **Usage:** `/debug [scope flags] <bug description>`
+
+## Iron Laws
+
+1. **NO FIXES WITHOUT ROOT CAUSE** — Never apply a fix without first identifying and confirming the root cause. Guessing is not debugging.
+2. **EVERY BUG FIX NEEDS A REGRESSION TEST** — A fix without a test is a fix that will break again.
+3. **THREE FAILURES MEANS RETHINK** — If 3 fix attempts fail, the bug is a design problem, not a code problem. Stop patching and escalate to architectural review.
+
+## When to Use
+
+- Bug reports or error messages
+- Test failures with unclear cause
+- Unexpected runtime behavior
+- Performance regressions
+
+## When NOT to Use
+
+- Known fix, just needs implementation → `/implement`
+- Code works but needs restructuring → `/refactor`
+- Adding new functionality → `/implement`
+- Investigating code without a bug → `/explore`
+
+## Never Do
+
+- **Never suppress an error to "fix" it** — Catching and ignoring is hiding, not fixing
+- **Never fix symptoms instead of root cause** — If the symptom is a null pointer, the root cause is why it's null
+- **Never apply a fix you don't understand** — "It works but I don't know why" means it will break again
+- **Never skip the regression test** — The bug will recur. Write the test.
+- **Never make multiple changes at once** — Change one thing, verify, then change the next
 
 ## Gate Enforcement
 
@@ -117,7 +145,54 @@ git log --oneline -10 path/to/file.ts
 git blame path/to/file.ts | head -50
 ```
 
-### Step 2.3: Confirm Root Cause
+### Debugging Decision Tree
+
+Use this to select your investigation strategy:
+
+| Symptom | Strategy |
+|---------|----------|
+| Error message present | Read carefully, trace to source via stack trace |
+| Intermittent failure | Suspect race condition, timing, shared mutable state |
+| Works locally, fails in CI | Environment difference (env vars, Node version, OS) |
+| Worked before a specific date | Use `git bisect` to find the breaking commit |
+| Works for some inputs | Boundary analysis — test edge cases around the failing input |
+| Silent wrong output | Add logging at each transformation step, compare expected vs actual |
+| Performance regression | Profile first — don't guess where time is spent |
+
+---
+
+## Phase 3: Analyze Patterns
+
+**Mode:** Read-only — compare working vs broken code.
+
+### Step 3.1: Find Working Examples
+
+Search the codebase for similar functionality that works correctly:
+
+```bash
+grep -rn "similar_pattern" src/
+```
+
+### Step 3.2: Compare Working vs Broken
+
+```markdown
+## Pattern Analysis
+
+**Working example:** `path/to/working.ts:42`
+**Broken code:** `path/to/broken.ts:17`
+
+**Differences:**
+1. [Difference 1]
+2. [Difference 2]
+
+**Relevant recent changes:**
+```
+
+```bash
+git log --oneline -20 -- path/to/broken.ts
+```
+
+### Step 3.3: Confirm Root Cause
 
 ```markdown
 ## Root Cause Found
@@ -136,7 +211,7 @@ Does this make sense?
 
 ---
 
-## Phase 3: Fix
+## Phase 4: Fix
 
 **Mode:** Full access — implement the approved fix.
 
@@ -144,7 +219,7 @@ Does this make sense?
 - Actual fixes require user approval first
 - Every bug fix must include a regression test
 
-### Step 3.1: Propose Fix
+### Step 4.1: Propose Fix
 
 ```markdown
 ## Fix Plan
@@ -170,12 +245,12 @@ Does this make sense?
 
 **STOP HERE. Do NOT implement the fix until user responds with explicit approval.**
 
-### Step 3.2: Implement Fix
+### Step 4.2: Implement Fix
 
-1. Apply fix
+1. Apply fix — one change at a time
 2. Run type check to verify
 
-### Step 3.3: Add Regression Test
+### Step 4.3: Add Regression Test
 
 **REQUIRED:** Every bug fix must include a regression test.
 
@@ -190,13 +265,23 @@ it('should [correct behavior] when [bug trigger condition]', () => {
 });
 ```
 
+### Escalation Rule
+
+If your fix attempt fails:
+
+| Attempt | Action |
+|---------|--------|
+| 1st failure | Re-examine root cause, form new hypothesis |
+| 2nd failure | Expand investigation scope, check assumptions |
+| 3rd failure | **STOP.** The bug is likely a design problem. Present architectural concerns to user before attempting another fix. |
+
 ---
 
-## Phase 4: Verify
+## Phase 5: Verify
 
 **Mode:** Testing + git operations with user confirmation.
 
-### Step 4.1: Run All Tests
+### Step 5.1: Run All Tests
 
 ```bash
 npm run test -- path/to/file.spec.ts   # Regression test first
@@ -205,7 +290,7 @@ npm run typecheck
 npm run lint
 ```
 
-### Step 4.2: Verification Report
+### Step 5.2: Verification Report
 
 ```markdown
 ## Verification
@@ -224,7 +309,7 @@ Can you verify the fix works?
 
 **Wait for user verification.**
 
-### Step 4.3: Commit
+### Step 5.3: Commit
 
 ```markdown
 ## Ready to Commit
@@ -254,16 +339,19 @@ Fixes #123
 
 | Pattern | Check For |
 |---------|-----------|
-| Null/undefined | Missing null checks |
-| Race condition | Async timing issues |
-| State mutation | Unintended side effects |
-| Type mismatch | Incorrect type assertions |
+| Null/undefined | Missing null checks, optional chaining |
+| Race condition | Async timing, missing await, shared state |
+| State mutation | Unintended side effects, reference vs value |
+| Type mismatch | Incorrect type assertions, any casts |
+| Import errors | Circular dependencies, wrong paths |
+| Environment | Missing env vars, wrong config |
 
 ## Quick Reference
 
 | Phase | Mode | Gate |
 |-------|------|------|
 | 1. Understand | Read-only | User confirms symptoms |
-| 2. Investigate | Read-only | **User confirms root cause** |
-| 3. Fix | Full access | **User approves fix plan** |
-| 4. Verify | Testing + git | **All tests pass + user confirms** |
+| 2. Investigate | Read-only | Hypotheses formed |
+| 3. Analyze Patterns | Read-only | **User confirms root cause** |
+| 4. Fix | Full access | **User approves fix plan** |
+| 5. Verify | Testing + git | **All tests pass + user confirms** |

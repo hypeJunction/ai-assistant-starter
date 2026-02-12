@@ -48,7 +48,7 @@ npx skills add hypefi/ai-assistant-starter -s commit
 
 ## Available Skills
 
-### Workflow Skills (23 total)
+### Workflow Skills (28 total)
 
 **Development Workflows**
 
@@ -59,6 +59,7 @@ npx skills add hypefi/ai-assistant-starter -s commit
 | `/implement` | Full workflow: explore → plan → code → test → commit |
 | `/debug` | Find and fix bugs |
 | `/refactor` | Multi-file changes with tracking |
+| `/migrate` | Database/schema migrations with rollback planning |
 
 **Quality & Testing**
 
@@ -66,8 +67,12 @@ npx skills add hypefi/ai-assistant-starter -s commit
 |-------|---------|
 | `/validate` | Run type check, lint, tests |
 | `/cover` | Ensure test coverage for changes |
+| `/tdd` | Test-driven development (RED → GREEN → REFACTOR) |
+| `/api-test` | Discover, test, and report on API endpoints |
+| `/e2e-test` | End-to-end testing with Playwright/Cypress |
 | `/review` | Review current branch against base |
 | `/security-review` | Systematic security audit with confidence-based reporting |
+| `/accessibility-review` | WCAG 2.1 AA audit with automated + manual checks |
 
 **Git & Release**
 

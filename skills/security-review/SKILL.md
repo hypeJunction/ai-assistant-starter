@@ -9,6 +9,26 @@ description: Systematic security audit with confidence-based reporting. Analyzes
 > **Mode:** Read-only — do NOT modify files
 > **Usage:** `/security-review [scope flags]`
 
+## Iron Laws
+
+1. **NO FINDING WITHOUT AN ATTACK VECTOR** — Every reported vulnerability must include how an attacker exploits it. "This could be insecure" is not a finding. "An attacker can inject SQL via the `name` parameter because it's concatenated into the query at line 42" is.
+2. **CHECK FOR MITIGATIONS BEFORE REPORTING** — Search the entire codebase for existing protections (middleware, validators, sanitizers) before flagging a vulnerability. False positives erode trust.
+3. **CONFIDENCE DETERMINES ACTION** — HIGH confidence: report as finding. MEDIUM: flag for manual verification. LOW: do not report. Never inflate confidence to make a report seem more important.
+
+## When to Use
+
+- Pre-merge security audit
+- Periodic security review of critical modules
+- After adding authentication, authorization, or payment code
+- When handling user input, file uploads, or external data
+
+## When NOT to Use
+
+- General code quality review → `/review`
+- Running validation commands → `/validate`
+- Fixing a known vulnerability → `/debug` or `/hotfix`
+- Performance review → `/validate --full`
+
 ## Constraints
 
 - **Read-only** — Report findings only, do not fix
