@@ -1,6 +1,6 @@
 ---
 name: ai-assistant-protocol
-description: Core execution protocol for AI coding assistants. Defines code quality standards, testing requirements, documentation policy, communication style, task management, and scope management rules. Auto-loaded for all interactions.
+description: Core execution protocol governing code quality, testing, scope management, and approval gates for AI coding assistants.
 user-invocable: false
 ---
 
@@ -78,26 +78,17 @@ All test files MUST include a test plan comment in Gherkin format:
 
 ## Documentation Policy
 
-### Create Freely
+For documentation standards (when to comment, JSDoc, README guidelines), see `documentation-guidelines`.
 
-- Config files, stories, specs, tests, source code
-- Entries in project todos and file lists
+### File Creation Rules
 
-### Require User Approval
+**Create freely:** Config files, stories, specs, tests, source code, entries in project todos and file lists.
 
-- README.md files
-- Documentation files
-- API documentation
-- Architecture diagrams
-- CHANGELOG.md
+**Require user approval:** README.md, documentation files, API documentation, architecture diagrams, CHANGELOG.md.
 
 ## Communication Style
 
-- **Concise** — Keep responses short
-- **No summaries** — Don't summarize after completion unless asked
-- **No explanations** — Let code speak unless user requests explanation
-- **Action-focused** — Show through tool use, not narration
-- **Friendly but professional**
+For communication templates and response formatting, see `communication-guidelines`.
 
 ## Task Management
 

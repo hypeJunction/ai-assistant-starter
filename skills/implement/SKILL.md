@@ -36,6 +36,20 @@ description: Full feature implementation workflow with explore, plan, code, test
 
 ---
 
+## Related Skills
+
+This skill orchestrates an end-to-end workflow that incorporates patterns from several standalone skills:
+- `/explore` — Phase 1 uses read-only exploration patterns
+- `/plan` — Phase 2 uses planning patterns
+- `/cover` — Phase 4 uses test coverage patterns
+- `/validate` — Phase 5 uses validation patterns
+- `/docs` — Phase 6 uses documentation patterns
+- `/sync` — Phase 7 uses sync patterns
+- `/commit` — Phase 8 uses commit patterns
+- For changes affecting 6+ files, consider `/refactor` instead
+
+---
+
 ## Phase 1: Explore
 
 **Mode:** Read-only — understand the codebase before planning.

@@ -16,6 +16,18 @@ description: Audit and align AI documentation with the actual state of the codeb
 - **Don't over-document** -- only document patterns that are actually used
 - **Flag uncertainty** -- if unsure about a pattern, ask the user
 
+## Prerequisites
+
+Requires project configuration scaffolded by `/init`. The following `.ai-project/` structure must exist:
+- `.ai-project/.memory.md` — Architecture overview
+- `.ai-project/.context.md` — Quick reference
+- `.ai-project/project/` — Project configuration files
+- `.ai-project/domains/` — Domain-specific instructions
+- `.ai-project/decisions/` — Architecture decision records
+- `.ai-project/todos/` — Technical debt tracking
+
+If these files do not exist, suggest running `/init` first.
+
 ## When to Use
 
 - Documentation feels out of sync with the code

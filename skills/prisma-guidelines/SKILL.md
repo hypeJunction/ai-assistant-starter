@@ -1,10 +1,10 @@
 ---
 name: prisma-guidelines
-description: Database guidelines including schema design, queries, transactions, indexes, migrations, and performance optimization with Prisma. Auto-loaded when working with database code.
+description: "Prisma ORM guidelines including schema design, Client queries, transactions, migrations, and performance optimization. Auto-loaded when working with Prisma schema or Client code."
 user-invocable: false
 ---
 
-# Database Guidelines
+# Prisma Guidelines
 
 ## Core Principles
 
@@ -14,212 +14,231 @@ user-invocable: false
 4. **Security** - Parameterized queries, least privilege
 5. **Consistency** - Naming conventions, patterns
 
-## Schema Design
+## Prisma Schema Design
 
-### Naming Conventions
+### Model Conventions
 
-```sql
--- Tables: plural, snake_case
-CREATE TABLE users (...);
-CREATE TABLE order_items (...);
+```prisma
+// Models: PascalCase, singular
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  firstName String   @map("first_name")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
--- Columns: snake_case
-CREATE TABLE users (
-  id UUID PRIMARY KEY,
-  first_name VARCHAR(100),
-  created_at TIMESTAMP WITH TIME ZONE,
-  updated_at TIMESTAMP WITH TIME ZONE
-);
+  orders Order[]
 
--- Primary keys: id or table_name_id
-id UUID PRIMARY KEY  -- Preferred
-user_id UUID PRIMARY KEY  -- Also acceptable
+  @@map("users")
+}
 
--- Foreign keys: referenced_table_id
-CREATE TABLE orders (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES users(id),
-  shipping_address_id UUID REFERENCES addresses(id)
-);
+model Order {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
--- Indexes: idx_table_column(s)
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_orders_user_id_created_at ON orders(user_id, created_at);
+  user User @relation(fields: [userId], references: [id])
 
--- Unique constraints: uq_table_column(s)
-CREATE UNIQUE INDEX uq_users_email ON users(email);
+  @@index([userId])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
 ```
 
-### Standard Columns
+### Standard Fields
 
-```sql
--- Every table should have these
-CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  -- ... other columns ...
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+```prisma
+// Every model should have these
+model Example {
+  id        String   @id @default(uuid())
+  // ... other fields ...
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
--- Soft delete pattern (when needed)
-CREATE TABLE orders (
-  -- ...
-  deleted_at TIMESTAMP WITH TIME ZONE,  -- NULL = not deleted
-  -- ...
-);
+  @@map("examples")
+}
+
+// Soft delete pattern (when needed)
+model Example {
+  // ...
+  deletedAt DateTime? @map("deleted_at")  // null = not deleted
+  // ...
+}
 ```
 
-### Use Appropriate Types
+### Relations
 
-```sql
--- IDs
-id UUID PRIMARY KEY  -- Preferred for distributed systems
-id SERIAL PRIMARY KEY  -- OK for simple apps
+```prisma
+// One-to-many
+model User {
+  id     String  @id @default(uuid())
+  orders Order[]
+  @@map("users")
+}
 
--- Strings
-name VARCHAR(100)  -- When length matters
-description TEXT  -- No length limit
+model Order {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+  @@map("orders")
+}
 
--- Numbers
-price DECIMAL(10, 2)  -- Money (precise)
-quantity INTEGER  -- Whole numbers
-rating NUMERIC(3, 2)  -- Decimals with precision
+// Many-to-many (explicit join table)
+model Post {
+  id   String     @id @default(uuid())
+  tags PostTag[]
+  @@map("posts")
+}
 
--- Dates/Times
-created_at TIMESTAMP WITH TIME ZONE  -- Always use timezone
-birth_date DATE  -- Date only
-duration INTERVAL  -- Time spans
+model Tag {
+  id    String    @id @default(uuid())
+  posts PostTag[]
+  @@map("tags")
+}
 
--- Booleans
-is_active BOOLEAN DEFAULT true
-
--- JSON (use sparingly)
-metadata JSONB  -- Structured data (JSONB for indexing)
+model PostTag {
+  postId String @map("post_id")
+  tagId  String @map("tag_id")
+  post   Post   @relation(fields: [postId], references: [id])
+  tag    Tag    @relation(fields: [tagId], references: [id])
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
 ```
 
-## Queries
+## Prisma Client Queries
 
-### Parameterized Queries
+### Basic CRUD
 
 ```typescript
-// Always use parameterized queries
-// Bad - SQL injection vulnerability
-const query = `SELECT * FROM users WHERE email = '${email}'`;
+// Create
+const user = await prisma.user.create({
+  data: { email, firstName },
+});
 
-// Good - parameterized
-const query = 'SELECT * FROM users WHERE email = $1';
-const result = await db.query(query, [email]);
-
-// Good - with ORM
+// Read
 const user = await prisma.user.findUnique({
   where: { email },
 });
 
-// Good - with query builder
-const user = await knex('users').where('email', email).first();
+const users = await prisma.user.findMany({
+  where: { firstName: { contains: 'John' } },
+  orderBy: { createdAt: 'desc' },
+});
+
+// Update
+const user = await prisma.user.update({
+  where: { id },
+  data: { firstName: 'Jane' },
+});
+
+// Delete
+await prisma.user.delete({
+  where: { id },
+});
 ```
 
-### Efficient Queries
+### Selecting Fields and Relations
 
 ```typescript
-// Select only needed columns
-// Bad
-SELECT * FROM users;
+// Select only needed fields
+const user = await prisma.user.findUnique({
+  where: { id },
+  select: { id: true, email: true, firstName: true },
+});
 
-// Good
-SELECT id, name, email FROM users;
+// Include relations (avoids N+1)
+const usersWithOrders = await prisma.user.findMany({
+  include: {
+    orders: {
+      where: { status: 'CONFIRMED' },
+      orderBy: { createdAt: 'desc' },
+    },
+  },
+});
 
-// Avoid N+1 queries
-// Bad - N+1
-const users = await db.query('SELECT * FROM users');
-for (const user of users) {
-  const orders = await db.query('SELECT * FROM orders WHERE user_id = $1', [user.id]);
-}
-
-// Good - JOIN or subquery
-const usersWithOrders = await db.query(`
-  SELECT u.*, json_agg(o.*) as orders
-  FROM users u
-  LEFT JOIN orders o ON o.user_id = u.id
-  GROUP BY u.id
-`);
-
-// Good - separate queries with IN
-const users = await db.query('SELECT * FROM users');
-const userIds = users.map(u => u.id);
-const orders = await db.query(
-  'SELECT * FROM orders WHERE user_id = ANY($1)',
-  [userIds]
-);
+// Nested select
+const user = await prisma.user.findUnique({
+  where: { id },
+  select: {
+    id: true,
+    email: true,
+    orders: {
+      select: { id: true, status: true },
+    },
+  },
+});
 ```
 
-### Pagination
+### Filtering and Pagination
 
 ```typescript
-// Offset pagination (simple but slow for large offsets)
-SELECT * FROM users
-ORDER BY created_at DESC
-LIMIT 20 OFFSET 40;
+// Complex filters
+const users = await prisma.user.findMany({
+  where: {
+    AND: [
+      { email: { endsWith: '@example.com' } },
+      { createdAt: { gte: new Date('2024-01-01') } },
+      { orders: { some: { status: 'CONFIRMED' } } },
+    ],
+  },
+});
+
+// Offset pagination
+const users = await prisma.user.findMany({
+  skip: 40,
+  take: 20,
+  orderBy: { createdAt: 'desc' },
+});
 
 // Cursor pagination (efficient for large datasets)
-SELECT * FROM users
-WHERE created_at < $1
-ORDER BY created_at DESC
-LIMIT 20;
-
-// Implementation
-async function getUsers(cursor?: string, limit = 20) {
-  const query = cursor
-    ? `SELECT * FROM users WHERE created_at < $1 ORDER BY created_at DESC LIMIT $2`
-    : `SELECT * FROM users ORDER BY created_at DESC LIMIT $1`;
-
-  const params = cursor ? [cursor, limit + 1] : [limit + 1];
-  const rows = await db.query(query, params);
-
-  const hasMore = rows.length > limit;
-  const data = hasMore ? rows.slice(0, -1) : rows;
-
-  return {
-    data,
-    nextCursor: hasMore ? data[data.length - 1].created_at : null,
-  };
-}
+const users = await prisma.user.findMany({
+  take: 20,
+  cursor: { id: lastUserId },
+  skip: 1, // skip the cursor itself
+  orderBy: { createdAt: 'desc' },
+});
 ```
 
-## Transactions
-
-### Basic Transactions
+### Aggregation and Grouping
 
 ```typescript
-// Use transactions for multi-statement operations
-const client = await pool.connect();
+// Count
+const count = await prisma.user.count({
+  where: { deletedAt: null },
+});
 
-try {
-  await client.query('BEGIN');
+// Aggregate
+const stats = await prisma.order.aggregate({
+  _avg: { amount: true },
+  _sum: { amount: true },
+  _count: true,
+  where: { status: 'CONFIRMED' },
+});
 
-  await client.query(
-    'UPDATE accounts SET balance = balance - $1 WHERE id = $2',
-    [amount, fromAccountId]
-  );
-
-  await client.query(
-    'UPDATE accounts SET balance = balance + $1 WHERE id = $2',
-    [amount, toAccountId]
-  );
-
-  await client.query('COMMIT');
-} catch (error) {
-  await client.query('ROLLBACK');
-  throw error;
-} finally {
-  client.release();
-}
+// Group by
+const ordersByStatus = await prisma.order.groupBy({
+  by: ['status'],
+  _count: true,
+  _sum: { amount: true },
+});
 ```
 
-### With Prisma
+## Prisma Transactions
+
+### Interactive Transactions
 
 ```typescript
-// Prisma transactions
+// Multi-operation transaction
 await prisma.$transaction(async (tx) => {
   await tx.account.update({
     where: { id: fromAccountId },
@@ -233,106 +252,125 @@ await prisma.$transaction(async (tx) => {
 });
 ```
 
-### Isolation Levels
+### Batch Transactions
 
-```sql
--- Read Committed (default) - each statement sees committed data
-BEGIN;
-SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
-
--- Repeatable Read - transaction sees snapshot from start
-BEGIN;
-SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
-
--- Serializable - strictest, prevents phantom reads
-BEGIN;
-SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+```typescript
+// Sequential batch (all-or-nothing)
+const [user, profile] = await prisma.$transaction([
+  prisma.user.create({ data: { email } }),
+  prisma.profile.create({ data: { userId: '...' } }),
+]);
 ```
 
-## Indexes
+### Transaction Options
 
-### When to Add Indexes
-
-```sql
--- Foreign keys (almost always)
-CREATE INDEX idx_orders_user_id ON orders(user_id);
-
--- Frequently filtered columns
-CREATE INDEX idx_users_status ON users(status);
-
--- Frequently sorted columns
-CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
-
--- Composite for multi-column queries
-CREATE INDEX idx_orders_user_status ON orders(user_id, status);
+```typescript
+// Configuring timeout and isolation level
+await prisma.$transaction(
+  async (tx) => {
+    // ... operations
+  },
+  {
+    maxWait: 5000,  // Max wait for transaction slot (ms)
+    timeout: 10000, // Max transaction duration (ms)
+    isolationLevel: 'Serializable', // ReadCommitted | RepeatableRead | Serializable
+  }
+);
 ```
 
-### Index Types
+## Prisma Performance
 
-```sql
--- B-tree (default, general purpose)
-CREATE INDEX idx_users_email ON users(email);
+### Avoiding N+1 Queries
 
--- Partial index (filter specific rows)
-CREATE INDEX idx_active_users ON users(email) WHERE deleted_at IS NULL;
+```typescript
+// Bad - N+1
+const users = await prisma.user.findMany();
+for (const user of users) {
+  const orders = await prisma.order.findMany({
+    where: { userId: user.id },
+  });
+}
 
--- GIN for JSONB
-CREATE INDEX idx_users_metadata ON users USING GIN(metadata);
+// Good - include
+const users = await prisma.user.findMany({
+  include: { orders: true },
+});
 
--- Full-text search
-CREATE INDEX idx_posts_search ON posts USING GIN(to_tsvector('english', title || ' ' || content));
+// Good - separate query with in filter
+const users = await prisma.user.findMany();
+const userIds = users.map(u => u.id);
+const orders = await prisma.order.findMany({
+  where: { userId: { in: userIds } },
+});
 ```
 
-### Index Anti-Patterns
+### Raw Queries for Complex Operations
 
-```sql
--- Don't over-index (slows writes)
--- Don't index low-cardinality columns alone
-CREATE INDEX idx_users_is_active ON users(is_active);  -- Bad if only 2 values
+```typescript
+// Use $queryRaw for complex queries Prisma Client can't express
+const result = await prisma.$queryRaw`
+  SELECT u.id, u.email, COUNT(o.id) as order_count
+  FROM users u
+  LEFT JOIN orders o ON o.user_id = u.id
+  GROUP BY u.id
+  HAVING COUNT(o.id) > ${minOrders}
+`;
 
--- Don't forget composite index order matters
--- For queries on (a, b), index (a, b) works but (b, a) doesn't
+// Use $executeRaw for mutations
+const affected = await prisma.$executeRaw`
+  UPDATE orders
+  SET status = 'CANCELLED'
+  WHERE created_at < ${cutoffDate}
+  AND status = 'PENDING'
+`;
 ```
 
-## Known Gotchas
+### Schema-Level Indexes
 
-### NULL Handling
+```prisma
+model Order {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  status    OrderStatus
+  createdAt DateTime @default(now()) @map("created_at")
 
-```sql
--- NULL is not equal to anything, including NULL
-WHERE status = NULL  -- Never matches
-WHERE status IS NULL  -- Correct
+  user User @relation(fields: [userId], references: [id])
 
--- NULL in NOT IN
-SELECT * FROM users WHERE id NOT IN (SELECT user_id FROM banned WHERE user_id IS NULL);
--- Returns no rows if subquery has NULL!
-
--- Use NOT EXISTS instead
-SELECT * FROM users u
-WHERE NOT EXISTS (SELECT 1 FROM banned b WHERE b.user_id = u.id);
+  // Foreign key index
+  @@index([userId])
+  // Composite index for common queries
+  @@index([userId, status])
+  // Sort index
+  @@index([createdAt(sort: Desc)])
+  @@map("orders")
+}
 ```
 
-### UUID Performance
+### Connection Management
 
-```sql
--- Random UUIDs cause index fragmentation
--- Use UUIDv7 (time-ordered) for better performance
--- Or use integer PKs with UUID as secondary unique column
-```
+```typescript
+// Singleton pattern for Prisma Client
+import { PrismaClient } from '@prisma/client';
 
-### Timestamp Precision
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
-```sql
--- Always use TIMESTAMP WITH TIME ZONE
-created_at TIMESTAMP WITH TIME ZONE  -- Stores in UTC
-created_at TIMESTAMP  -- Bad - ambiguous
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: process.env.NODE_ENV === 'development'
+      ? ['query', 'error', 'warn']
+      : ['error'],
+  });
 
--- Compare timestamps carefully
-WHERE created_at = '2024-01-15'  -- Matches only exact midnight
-WHERE created_at >= '2024-01-15' AND created_at < '2024-01-16'  -- All day
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
 ```
 
 ## Additional References
 
-- [Migrations](references/migrations.md) — Migration structure, safe practices, and data migrations
-- [Connection, Performance & Security](references/connection-performance-security.md) — Connection pooling, query optimization, and database security
+- [Database Patterns](references/database-patterns.md) -- Generic SQL patterns: raw schema design, queries, transactions, indexes, and gotchas
+- [Migrations](references/migrations.md) -- Migration structure, safe practices, and data migrations
+- [Connection, Performance & Security](references/connection-performance-security.md) -- Connection pooling, query optimization, and database security

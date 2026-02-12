@@ -1,6 +1,6 @@
 ---
 name: security-guidelines
-description: Application security guidelines covering input validation, XSS prevention, SQL injection, authentication, secrets management, and OWASP top 10. Auto-loaded when writing application code.
+description: Application security guidelines covering input validation, XSS prevention, SQL injection, authentication, and secrets management. Auto-loaded when implementing authentication, handling user input, or managing secrets.
 user-invocable: false
 ---
 

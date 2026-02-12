@@ -16,6 +16,15 @@ description: Safely rollback changes using git revert with impact assessment and
 - **Never leave unresolved conflicts**
 - **Never use `git reset --hard`** -- use `git revert` instead
 - **Never revert shared history** without team coordination
+- Show what will be reverted before applying
+- User confirmation of target required
+- User approval of plan required
+- Validation after revert required
+- User confirmation before commit required
+- Document reason for revert when provided
+- Create follow-up todo if revert is temporary
+- Notify team of significant reverts
+- Consider PR for reverts on shared branches
 
 ## Target Options
 
@@ -362,29 +371,7 @@ This reverts commit [sha].
 To undo this revert: `git revert [new-sha]`
 ```
 
-## Rules
-
-### Prohibited
-- Force pushing after revert without approval
-- Reverting without user confirmation
-- Leaving unresolved conflicts
-- Using `git reset --hard` (use `git revert` instead)
-- Reverting shared history without team coordination
-
-### Required
-- Show what will be reverted before applying
-- User confirmation of target
-- User approval of plan
-- Validation after revert
-- User confirmation before commit
-
-### Recommended
-- Document reason for revert
-- Create follow-up todo if revert is temporary
-- Notify team of significant reverts
-- Consider PR for reverts on shared branches
-
 ## Additional References
 
-- [Special Cases & Recovery Options](references/revert-special-cases.md) — Merge commit reverts, PR reverts, partial reverts, and recovery procedures
-- [Display Templates](references/revert-display-templates.md) — Full markdown display templates for user-facing output in each phase
+- [Special Cases & Recovery Options](references/revert-special-cases.md) -- Merge commit reverts, PR reverts, partial reverts, and recovery procedures
+- [Display Templates](references/revert-display-templates.md) -- Full markdown display templates for user-facing output in each phase

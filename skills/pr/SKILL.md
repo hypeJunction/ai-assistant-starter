@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Create a well-documented pull request with quality checks, proper description, and test plan. Use when ready to create a PR for the current branch.
+description: Create a well-documented GitHub pull request with quality checks, proper description, and test plan. Use when pushing a branch, creating a merge request, or preparing code for review.
 ---
 
 # Create Pull Request
@@ -13,6 +13,7 @@ description: Create a well-documented pull request with quality checks, proper d
 - All tests must pass before creating PR
 - Never force push without explicit request
 - Always verify changes are committed before pushing
+- Requires `gh` (GitHub CLI) for PR creation
 
 ## Workflow
 

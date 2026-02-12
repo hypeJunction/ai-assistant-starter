@@ -84,7 +84,4 @@ Build failed
 
 ## General Style
 
-- **Concise** — Keep responses short
-- **No summaries** — Don't summarize after completion unless asked
-- **Action-focused** — Show through tool use, not narration
-- **Friendly but professional** — Informal tone, technical accuracy
+For general communication principles (conciseness, action-focus, no-summary policy), see `ai-assistant-protocol`.

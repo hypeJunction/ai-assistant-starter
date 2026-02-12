@@ -16,6 +16,16 @@ description: End-of-session wrap-up routine. Ensures test coverage, runs validat
 - Never force push without explicit request
 - Never commit secrets
 
+## Related Skills
+
+This skill performs lightweight end-of-session versions of these workflows:
+- `/cover` — Phase 2 (test coverage check)
+- `/validate` — Phase 3 (quality validation)
+- `/review` — Phase 4 (self-review)
+- `/commit` — Phase 6 (commit changes)
+
+For more thorough execution of any phase, use the individual skill.
+
 ## Workflow
 
 ### Phase 1: Assess Current State

@@ -8,10 +8,10 @@ user-invocable: false
 
 ## Test Framework
 
-This project uses **{{TEST_FRAMEWORK}}** (e.g., Vitest, Jest).
+This project uses **Vitest** as the test runner.
 
 ```typescript
-import { describe, it, expect, vi, beforeEach, afterEach } from '{{TEST_FRAMEWORK}}';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 ```
 
 ## Test Plan Format
@@ -101,6 +101,8 @@ it('disables submit button when form is invalid', () => {
 ## Testing Library Queries
 
 ### Query Priority (Most to Least Preferred)
+
+> **Note:** This is the canonical query priority reference. Other skills (e.g., `storybook-react-guidelines`) cross-reference this section.
 
 1. **getByRole** - Queries based on accessibility roles
 2. **getByLabelText** - Queries form elements by label
