@@ -10,11 +10,9 @@ skills/                          # All skills live here
 │   ├── SKILL.md                 # Skill definition (frontmatter + instructions)
 │   ├── references/              # Optional support docs (templates, detection rules)
 │   └── assets/                  # Optional scaffolding templates (rare; mainly init)
-assets/                          # Presentation materials
 CLAUDE.md                        # This file (project instructions)
 CHANGELOG.md                     # Version history
 README.md                        # User-facing documentation
-presentation.md                  # Marp slide deck source
 ```
 
 ## Skill Format

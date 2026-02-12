@@ -42,6 +42,3 @@ temp/
 # AI provider local settings (keep project settings)
 .claude/settings.local.json
 .cursor/settings.local.json
-
-# Temporary presentation assets
-assets/video-parts/
