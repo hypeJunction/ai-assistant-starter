@@ -34,6 +34,7 @@ triggers:
 | `.ai-project/project/` | `patterns.md` | Code patterns and conventions |
 | `.ai-project/project/` | `stack.md` | Technology stack |
 | `.ai-project/domains/` | `*.instructions.md` | Stack-specific domain rules |
+| Root | `CLAUDE.md` | Project entry point for AI assistants |
 
 ## Workflow
 
@@ -198,10 +199,12 @@ Detect stack components and generate project-specific domain instruction files. 
 
 #### Step 2.6: Update Project Entry Point
 
-Generate/update `CLAUDE.md` at the project root:
-- Should be minimal -- project name, stack summary, key commands
-- Reference `.ai-project/` for detailed configuration
-- Skills are provider-agnostic
+Generate/update `CLAUDE.md` at the project root using `assets/CLAUDE.md` as the template:
+- Replace all `{{PLACEHOLDER}}` variables with detected values
+- If a `CLAUDE.md` already exists, merge new content below any existing user content
+- The template is minimal by design -- project name, stack summary, key commands, and a pointer to `.ai-project/`
+- Remove table rows for commands that don't exist (e.g., no typecheck script)
+- Replace `{{CONVENTION_*}}` placeholders with 2-4 actual project conventions detected from the codebase (e.g., "Use PascalCase for components", "Co-located test files with `.spec.ts` extension")
 
 ### Phase 3: Verify
 

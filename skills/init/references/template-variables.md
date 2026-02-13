@@ -16,6 +16,14 @@ When generating files, replace ALL `{{PLACEHOLDER}}` variables with actual value
 | `{{NODE_VERSION}}` | From .nvmrc or package.json engines |
 | `{{MAIN_BRANCH}}` | From user input (default: main) |
 | `{{FEATURE_BRANCH_PATTERN}}` | From user input |
+| `{{PROJECT_DESCRIPTION}}` | From package.json `description` or detected |
+| `{{LANGUAGE}}` | Detected language (e.g., TypeScript, JavaScript) |
+| `{{DEV_COMMAND}}` | From package.json scripts (e.g., `npm run dev`) |
+| `{{BUILD_COMMAND}}` | From package.json scripts (e.g., `npm run build`) |
+| `{{TEST_COMMAND}}` | From package.json scripts (e.g., `npm run test`) |
+| `{{LINT_COMMAND}}` | From package.json scripts (e.g., `npm run lint`) |
+| `{{TYPECHECK_COMMAND}}` | From package.json scripts (e.g., `npm run typecheck`) |
+| `{{CONVENTION_*}}` | Detected project conventions (replace with 2-4 items) |
 
 ## Rules
 
