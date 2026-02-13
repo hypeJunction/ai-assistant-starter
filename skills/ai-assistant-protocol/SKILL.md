@@ -20,6 +20,15 @@ These are absolute rules. No rationalization, no exceptions, no "just this once.
 6. **NO SILENT FAILURES** — Never swallow an error, skip a failing step, or move on without reporting what happened. Every failure gets reported.
 7. **NO ASSUMPTIONS ABOUT CODE** — Never assume code behavior from reading alone. Run it, test it, verify it.
 
+## Law Composition
+
+When multiple skills are active, their iron laws compose as follows:
+
+1. **Protocol iron laws always apply** — The 7 laws above are unconditional
+2. **Workflow-specific laws add to protocol laws** — They introduce additional constraints for their domain (e.g., `/tdd` adds "no production code without a failing test")
+3. **Workflow laws never override protocol laws** — If a workflow law conflicts with a protocol law, the protocol law wins
+4. **Priority order resolves all remaining conflicts** — See Priority Order below
+
 ## Execution Protocol
 
 1. **Read completely** — Review referenced instructions before starting
@@ -111,7 +120,7 @@ Before claiming any task is complete, you MUST run actual commands and see actua
 3. **No premature optimization** — Clear code first, optimize when needed
 4. **Test as you go** — Run tests for changed components only
 5. **Security by default** — See Security Standards below
-6. **Scope awareness** — Redirect 6+ file changes to refactor workflow
+6. **Scope awareness** — Confirm with user at 6+ file changes; require refactor workflow at 16+
 
 ### Comments Policy
 
@@ -170,6 +179,7 @@ If any of these appear in changed code, flag them for the user even if they look
 **Always scope tests to changed components only.** Avoid full test suite unless explicitly requested.
 
 ```bash
+# Commands below use npm as default — adapt to project package manager (see Project Commands)
 npm run test -- ComponentName
 npm run test -- "src/components/"
 ```
@@ -188,6 +198,30 @@ All test files MUST include a test plan comment in Gherkin format:
  *   Then [expected outcome]
  */
 ```
+
+## Project Commands
+
+Skills reference commands generically (e.g., "run the project's test command"). Resolve the actual command as follows:
+
+1. **If `.ai-project/project/commands.md` exists**, use the commands defined there
+2. **Otherwise, detect from lock files:**
+   - `pnpm-lock.yaml` → use `pnpm`
+   - `yarn.lock` → use `yarn`
+   - `bun.lockb` → use `bun`
+   - Default → `npm`
+3. **Standard command mapping:**
+
+| Task | Generic Reference | npm Example |
+|------|-------------------|-------------|
+| Type check | project typecheck command | `npm run typecheck` |
+| Lint | project lint command | `npm run lint` |
+| Test (scoped) | project test command | `npm run test -- [pattern]` |
+| Test (full) | project test command | `npm run test` |
+| Build | project build command | `npm run build` |
+| Dev server | project dev command | `npm run dev` |
+| Format | project format command | `npm run format` |
+
+Command examples throughout skills use `npm run` as the default. Adapt to the detected package manager.
 
 ## Documentation Policy
 
@@ -216,15 +250,62 @@ Use task tracking for complex tasks (3+ steps). Skip for trivial tasks.
 | Scope | Files | Action |
 |-------|-------|--------|
 | Small | 1-5 | Proceed directly |
-| Medium | 6-20 | Confirm with user, consider refactor |
-| Large | 21+ | **Must use refactor workflow** |
+| Medium | 6-15 | Confirm with user, suggest `/refactor` if structural |
+| Large | 16+ | **Must use refactor workflow** |
 
 ## Gate Enforcement
 
 Workflows with approval gates require explicit approval before proceeding.
 
-**Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `go ahead`
+**Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `looks good`, `go ahead`
 **Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
+
+Individual skills may accept domain-specific terms (e.g., `commit` in the commit workflow). These supplement — never replace — the list above.
+
+## Skill Coordination
+
+### Self-Contained Workflows
+
+These skills include their own validation and commit phases. Do not chain additional validation or commit skills after them:
+
+| Skill | Includes |
+|-------|----------|
+| `/implement` | explore + plan + code + self-review + test + validate + commit |
+| `/finish` | test + validate + review + commit |
+| `/debug` | reproduce + analyze + fix + verify + commit |
+| `/refactor` | context + analysis + plan + execute + validate + commit |
+| `/hotfix` | triage + fix + verify + commit |
+| `/migrate` | assess + plan + generate + review + apply + validate + commit |
+| `/release` | prepare + version + validate + tag |
+| `/deps` | audit + plan + update + validate + commit |
+
+**Do NOT chain:** `/finish` after `/implement`, `/validate` after `/finish`, `/commit` after `/debug`. The enclosing workflow already performs these steps.
+
+### Composable Building Blocks
+
+These skills perform a single concern and are designed to be called independently or referenced within larger workflows:
+
+| Skill | Purpose |
+|-------|---------|
+| `/validate` | Run quality checks only |
+| `/test-coverage` | Add missing tests only |
+| `/commit` | Stage and commit only |
+| `/review` | Read-only code analysis |
+| `/explore` | Read-only investigation |
+| `/plan` | Design approach only |
+| `/track-files` | Track file batches for large-scale work |
+
+### Decision Tree
+
+- **Know what to do, 1-2 files?** → Edit directly
+- **Know what to do, 3-5 files?** → `/implement`
+- **Structural change, 6+ files?** → `/refactor`
+- **Approach unclear?** → `/plan`, then `/implement` or `/tdd`
+- **Bug with unknown cause?** → `/debug`
+- **Production emergency?** → `/hotfix`
+- **Code written, need tests?** → `/test-coverage`
+- **Want tests first?** → `/tdd`
+- **End of work session?** → `/finish` (only if work was not done via a self-contained workflow)
 
 ## Token Optimization
 

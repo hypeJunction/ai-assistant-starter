@@ -102,7 +102,7 @@ Detect: framework, test framework, build tool, linter (ESLint), formatter (Prett
 ```markdown
 ## Project Analysis Complete
 
-I've analyzed your project. Here's what I detected:
+## Project Analysis Results
 
 ### Basic Info
 | Field | Detected Value | Correct? |
@@ -131,10 +131,7 @@ I've analyzed your project. Here's what I detected:
 ---
 **Is this detection accurate?**
 
-Reply with:
-- `yes` or `correct` - All looks good, continue
-- `fix: [field] = [value]` - Correct a specific field
-- `show more` - See additional detected information
+**Confirm detection accuracy:** (yes / fix: [field]=[value] / show more)
 ```
 
 **GATE: Wait for confirmation before proceeding.**
@@ -171,7 +168,7 @@ A few questions to complete setup:
    Default: (A) Co-located
 
 ---
-Reply with your preferences (or press Enter for defaults):
+**Select preferences:** (provide answers or accept defaults)
 ```
 
 **GATE: Wait for preferences before generating files.**

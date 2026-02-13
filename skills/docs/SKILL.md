@@ -15,6 +15,8 @@ description: Add or improve documentation for code. Use when code needs JSDoc co
 - **Do not add noise** -- Skip self-explanatory code
 - **Do not guess intent** -- Ask if unclear about purpose
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Scope Flags
 
 | Flag | Description |

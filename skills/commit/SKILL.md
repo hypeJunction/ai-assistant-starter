@@ -11,7 +11,7 @@ description: Review changes and create a git commit with user confirmation. Use 
 
 ## Iron Laws
 
-1. **NEVER COMMIT WITHOUT EXPLICIT APPROVAL** — "yes", "commit", "lgtm", "go ahead" are valid. Silence, questions, "okay" are NOT.
+1. **NEVER COMMIT WITHOUT EXPLICIT APPROVAL** — Valid approval per `ai-assistant-protocol`, plus `commit` as a domain-specific term. Silence, questions, "okay" are NOT approval.
 2. **NEVER COMMIT SECRETS** — .env, credentials, API keys. Scan before staging.
 3. **ONE CONCERN PER COMMIT** — If changes include both a feature and a refactor, suggest splitting into separate commits.
 
@@ -29,6 +29,8 @@ description: Review changes and create a git commit with user confirmation. Use 
 | `--files=<paths>` | Commit only specified files |
 | `--uncommitted` | Commit all uncommitted changes (default) |
 | `--staged` | Commit only already-staged files |
+
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
 
 ## Workflow
 

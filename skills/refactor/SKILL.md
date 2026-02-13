@@ -30,10 +30,11 @@ description: Systematic multi-file refactoring with pattern analysis, scope dete
 - 1-5 file changes → `/implement`
 - Emergency fix → `/hotfix`
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Gate Enforcement
 
-**Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `go ahead`
-**Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
+See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
 ## Scope Flags
 

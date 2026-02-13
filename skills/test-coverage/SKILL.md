@@ -35,6 +35,8 @@ description: Analyze branch changes and ensure adequate test coverage. Creates m
 - Scope tests to changes — don't run full suites unless necessary
 - Every test file MUST include a test plan as a comment
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Scope Flags
 
 | Flag | Description |

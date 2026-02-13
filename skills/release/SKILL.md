@@ -25,6 +25,8 @@ description: Prepare and publish a release with version bump, changelog, and tag
 - Use conventional commit format for release commit
 - Include breaking change migration notes for major releases
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Scope Flags
 
 | Flag | Description |

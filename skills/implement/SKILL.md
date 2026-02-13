@@ -24,16 +24,15 @@ description: Full feature implementation workflow with explore, plan, code, test
 ## When NOT to Use
 
 - Bug fixes → `/debug`
-- 6+ file changes → `/refactor`
+- 16+ file changes → `/refactor` (6-15 files: confirm with user, consider `/refactor` if structural)
 - Design/planning only → `/plan`
 - Quick single-file edit → edit directly
 - Emergency fix → `/hotfix`
-- Test-first approach → `/tdd`
+- Strict test-first approach → `/tdd` (note: `/implement` supports TDD-lite in Phase 5)
 
 ## Gate Enforcement
 
-**Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `looks good`, `go ahead`
-**Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
+See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
 ## Scope Flags
 
@@ -43,6 +42,8 @@ description: Full feature implementation workflow with explore, plan, code, test
 | `--uncommitted` | Build on current uncommitted changes |
 | `--branch=<name>` | Branch context (default: current) |
 | `--project=<path>` | Project root for monorepos |
+
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
 
 ---
 
@@ -191,6 +192,12 @@ Fix issues before proceeding.
 
 **Mode:** Testing — ensure new code has appropriate test coverage.
 
+**Test ordering:**
+- **New functions/modules** — prefer writing the test first (TDD-style: write failing test, then implement, then verify). This produces tighter, more targeted code.
+- **Enhancements to existing code** — write tests after implementation, verifying both new and existing behavior.
+- **For strict TDD workflows**, use `/tdd` instead of `/implement`.
+
+**Steps:**
 1. Categorize changed files by verification type (utility → unit tests, component → component tests, types → skip)
 2. Write tests with Gherkin test plans as comments
 3. Run tests: `npm run test -- [changed-files-pattern]`

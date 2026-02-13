@@ -38,6 +38,8 @@ description: Run validation checks to ensure code quality, security, and correct
 - Never commit with lint errors
 - Run scoped tests by default (not full suite unless `--full`)
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Scope Flags
 
 | Flag | Description |

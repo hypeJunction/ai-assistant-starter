@@ -14,6 +14,10 @@ description: Track batches of files that need similar changes for large-scale wo
 - **Always document skip reasons** -- Explain why any file was excluded
 - **Keep progress updated** -- Move files between sections as work progresses
 
+## Prerequisites
+
+Requires `.ai-project/file-lists/` directory (created by `/init`). If the directory does not exist, create it or suggest running `/init`.
+
 ## When to Create a File List
 
 Create a file list when:

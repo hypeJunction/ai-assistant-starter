@@ -27,6 +27,8 @@ description: Audit, update, and manage project dependencies safely. Use when che
 - Create todos for deferred major updates
 - Lock file always committed with package.json
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Actions
 
 | Action | Description |

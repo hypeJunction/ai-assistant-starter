@@ -25,6 +25,8 @@ description: Emergency bug fix with abbreviated validation for production issues
 - **Regression test required** for every hotfix
 - **Requires `gh` CLI** for PR creation in the Deploy phase
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## When to Use
 
 - Production is broken, critical security vulnerability, data corruption, or user-blocking bug with no workaround

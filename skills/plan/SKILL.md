@@ -133,7 +133,7 @@ For Complex/Risky plans, optionally include a Mermaid diagram showing component 
 
 **GATE: Do NOT proceed to implementation without explicit approval.**
 
-Valid approval: "yes", "approved", "proceed", "lgtm", "go ahead"
+See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
 ### Step 7: Persist Plan (Optional)
 

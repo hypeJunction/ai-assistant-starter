@@ -45,7 +45,7 @@ ATTENTION (read carefully):    PROGRESS (during work):
   (A) Option one
   (B) Option two
 
-👉 Your choice: _
+**Select:** (A) or (B)
 ```
 
 ## Section Order

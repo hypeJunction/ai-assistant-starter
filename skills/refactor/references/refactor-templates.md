@@ -77,7 +77,7 @@ newPattern()
 
 **Next:** Batch 2 (files 6-10)
 
-Any concerns before I continue?
+**Continue with next batch?** (yes / pause / review changes)
 ```
 
 ## Discrepancy Report (Step 4.3)
@@ -94,7 +94,7 @@ Any concerns before I continue?
 2. **Transform** - Apply similar transformation
 3. **Manual** - Flag for manual review
 
-Which approach?
+**Select approach:** (1 / 2 / 3)
 ```
 
 ---
@@ -113,7 +113,7 @@ Which approach?
 | Lint | ✓ Pass |
 | Tests | ✓ Pass ({N} tests) |
 
-**Can you verify the refactor works as expected?**
+**Verify refactor externally:** (confirmed working / issues found / need more testing)
 ```
 
 ---

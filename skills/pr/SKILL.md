@@ -16,6 +16,8 @@ description: Create a well-documented GitHub pull request with quality checks, p
 - Requires `gh` (GitHub CLI) for PR creation
 - Flag mixed-concern PRs (feature + refactor) as candidates for splitting
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Workflow
 
 ### Step 1: Verify Changes

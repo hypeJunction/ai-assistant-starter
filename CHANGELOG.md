@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LICENSE` file (MIT)
 
 ### Changed
+- Standardized scope thresholds across all skills: Small (1-5 files), Medium (6-15, confirm with user), Large (16+, must use `/refactor`)
+- Standardized approval gates — centralized valid/invalid terms in `ai-assistant-protocol`; workflow skills now reference the protocol instead of defining their own
+- Added package-manager awareness note to 16 workflow skills — all command examples reference `ai-assistant-protocol` Project Commands for lock-file detection
+- Added Law Composition section to `ai-assistant-protocol` — clarifies how protocol and workflow iron laws compose
+- Added Skill Coordination section to `ai-assistant-protocol` — self-contained vs composable workflows, decision tree, "Do NOT chain" guidance
+- Added Project Commands section to `ai-assistant-protocol` — resolution order (commands.md → lock file detection → npm fallback), standard command mapping
+- Added TDD-lite preference to `/implement` Phase 5 — new functions/modules prefer test-first; strict TDD via `/tdd`
+- Fixed `interaction-boundaries` violations in `/init`, `/debug`, `/finish`, `communication-guidelines`, `/refactor` templates, `/migrate` — replaced first-person language, conversational questions, and sign-offs with structured functional prompts
+- Added `.ai-project/` fallback guidance to `/track-files` (Prerequisites section) and `/sync` (create directory structure or suggest `/init`)
 - Upgraded `ai-assistant-protocol` — added Iron Laws (7 absolute rules), Rationalization Table (10 entries with rebuttals), expanded Red Flag Language (11+ patterns), Verification Workflows (4 types)
 - Upgraded `/debug` — added Iron Laws, When to Use/NOT, Pattern Analysis phase, Debugging Decision Tree, Escalation Rule, Never Do list
 - Upgraded `/plan` — added Iron Laws, Complexity Tiers (Trivial/Standard/Complex/Risky), Plan Quality Checklist, Execution Handoff options

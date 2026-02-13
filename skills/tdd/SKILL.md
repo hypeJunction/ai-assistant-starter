@@ -15,6 +15,8 @@ description: Strict Test-Driven Development workflow enforcing the RED-GREEN-REF
 2. **WRITE THE MINIMUM CODE TO PASS** -- The GREEN phase produces only what the test demands. No extra features, no future-proofing, no refactoring. Just make the red test green.
 3. **DELETE AND RESTART IF VIOLATED** -- If production code was written before its test, delete it completely. Then write the test first. There is no shortcut that preserves TDD's guarantees.
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Why TDD for AI Agents
 
 Everything that makes TDD tedious for humans makes it ideal for AI: clear measurable goals per cycle, mechanical verification at each step, and tight feedback loops. Tests serve as natural-language specs that guide the agent toward exactly the behavior you expect.

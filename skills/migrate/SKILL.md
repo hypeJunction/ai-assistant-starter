@@ -41,15 +41,9 @@ description: Safe database/schema migration workflow with risk assessment, rollb
 
 ## Gate Enforcement
 
-**CRITICAL:** This workflow requires confirmation at multiple gates before modifying the database.
+See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
-**Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `go ahead`
-**Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
-
-**Key gates:**
-1. Approve migration plan before generating files
-2. Approve generated SQL before applying
-3. Confirm before committing
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
 
 ## Scope Flags
 
@@ -281,7 +275,7 @@ Read the generated migration file and display its contents.
 > ```
 > WARNING: You are about to apply a migration to PRODUCTION.
 > This should be tested on staging first.
-> Type "I understand the risks" to proceed.
+> **Confirm:** Type `APPLY PRODUCTION` to proceed.
 > ```
 
 ### Step 5.2: Run Migration

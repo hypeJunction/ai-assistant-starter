@@ -16,6 +16,8 @@ description: End-of-session routine. Ensures test coverage, runs validation, per
 - Never force push without explicit request
 - Never commit secrets
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Related Skills
 
 This skill performs lightweight end-of-session versions of these workflows:
@@ -166,6 +168,4 @@ git status
 - Committed: `feat: add data export feature`
 - SHA: abc1234
 
----
-Wrap complete!
 ```

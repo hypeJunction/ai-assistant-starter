@@ -42,15 +42,7 @@ description: End-to-end testing workflow for web applications using Playwright o
 
 ## Gate Enforcement
 
-**CRITICAL:** This workflow requires confirmation before implementing tests.
-
-**Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `go ahead`
-**Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
-
-**Key gates:**
-1. Confirm flow inventory before designing tests
-2. Approve test design before implementation
-3. Confirm before committing test files
+See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
 ## Scope Flags
 

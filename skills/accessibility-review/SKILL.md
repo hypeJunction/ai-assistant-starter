@@ -23,6 +23,8 @@ description: Systematic WCAG 2.1 AA accessibility audit with confidence-based re
 - **No framework FUD** — Don't flag things the framework already handles (e.g., Next.js `<Image>` requires alt, React Native accessibility props)
 - **Evidence required** — Every finding must include the specific code AND explain which users are affected
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## When to Use
 
 - UI component review (new or modified)

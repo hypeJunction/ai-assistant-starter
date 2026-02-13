@@ -26,6 +26,8 @@ description: Safely rollback changes using git revert with impact assessment and
 - Notify team of significant reverts
 - Consider PR for reverts on shared branches
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ## Target Options
 
 | Target | Description |

@@ -43,6 +43,8 @@ description: Systematic bug investigation and fixing with hypotheses, root cause
 | `--files=<paths>` | Limit investigation to specific files |
 | `--branch=<name>` | Compare against specific branch |
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 ---
 
 ## Phase 1: Reproduce
@@ -76,7 +78,7 @@ Before investigating, identify the smallest possible reproduction case:
 **Conditions:** [when it happens]
 **Impact:** [who/what affected]
 
-Is this correct?
+**Confirm understanding:** (yes / correct / clarify)
 ```
 
 **GATE: Wait for confirmation.**
@@ -139,12 +141,12 @@ git log --oneline -20 -- path/to/broken.ts
 Ask the user to help eliminate hypotheses:
 
 ```markdown
-Based on the analysis, I've narrowed to these possibilities:
+## Remaining Hypotheses
 
 1. [Hypothesis X] — Evidence: [what supports it]
 2. [Hypothesis Y] — Evidence: [what supports it]
 
-Can you help narrow further? (e.g., "it's not X because..." or "check Z")
+**Narrow further:** (eliminate a hypothesis or suggest additional checks)
 ```
 
 ### Step 3.3: Confirm Root Cause
@@ -157,7 +159,7 @@ Can you help narrow further? (e.g., "it's not X because..." or "check Z")
 **Why:** [explanation]
 **Evidence:** [findings that confirm this]
 
-Does this make sense?
+**Confirm root cause:** (yes / no / need more evidence)
 ```
 
 **GATE: Wait for confirmation before proposing fix.**
@@ -238,7 +240,7 @@ npm run lint
 | Type check | ✓ Pass |
 | Lint | ✓ Pass |
 
-Can you verify the fix works?
+**Verify fix externally:** (confirmed working / still broken / partially fixed)
 ```
 
 **GATE: All tests must pass. Wait for user verification.**

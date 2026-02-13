@@ -26,7 +26,7 @@ Requires project configuration scaffolded by `/init`. The following `.ai-project
 - `.ai-project/decisions/` — Architecture decision records
 - `.ai-project/todos/` — Technical debt tracking
 
-If these files do not exist, suggest running `/init` first.
+If these files do not exist, create the directory structure or suggest running `/init`.
 
 ## When to Use
 
