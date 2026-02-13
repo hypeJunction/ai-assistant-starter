@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LICENSE` file (MIT)
 
 ### Changed
+- Updated `/finish` — added Phase 8 (Close Todos) that scans for todos completed by the session's work, creates ADRs for design decisions, and deletes closed todos
 - Updated `/implement` — added `--todo` flag to drive implementation from an existing todo; added Phase 8 (Close) that verifies acceptance criteria, creates ADR if design decisions were made, and deletes the completed todo
 - Updated `/plan` — after plan approval, persists each step as a todo via `/add-todo` for trackable work items (Step 7); removed optional `.plans/` file persistence in favor of todo-based tracking
 - Updated `/add-todo` — completing a todo now creates an ADR via `/adr --from-todo` and deletes the todo file; ADRs capture current state, git history tracks evolution; no completed todos kept

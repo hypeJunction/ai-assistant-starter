@@ -30,6 +30,7 @@ This skill performs lightweight end-of-session versions of these workflows:
 - `/validate` — Phase 3 (quality validation)
 - `/review` — Phase 4 (self-review)
 - `/commit` — Phase 6 (commit changes)
+- `/adr` + `/add-todo` — Phase 8 (close completed todos)
 
 For more thorough execution of any phase, use the individual skill.
 
@@ -149,6 +150,30 @@ git log -1 --stat
 git status
 ```
 
+### Phase 8: Close Todos
+
+Check for todos completed by the work in this session.
+
+1. **Scan for related todos:**
+   ```bash
+   ls .ai-project/todos/*.md 2>/dev/null
+   ```
+
+2. **For each open todo**, compare its acceptance criteria and affected files against the committed changes. If all criteria are met:
+   - Invoke `/adr --from-todo <todo-file>` if the work involved design decisions (chose between approaches, adopted a pattern, established a convention)
+   - **Skip the ADR** if the work was purely mechanical
+   - Delete the completed todo file
+   - Stage and commit the ADR creation and todo deletion together
+
+3. **Report closures:**
+   ```markdown
+   ### Todos Closed
+   - `refactor-api-client.md` — closed, ADR created: `api-client-pattern.md`
+   - `add-input-validation.md` — closed, no ADR needed
+   ```
+
+**Skip this phase** if no `.ai-project/todos/` directory exists or no todos match the session's work.
+
 ## Output Format
 
 ```markdown
@@ -172,5 +197,9 @@ git status
 ### Commit
 - Committed: `feat: add data export feature`
 - SHA: abc1234
+
+### Todos Closed
+- `refactor-api-client.md` — closed, ADR: `api-client-pattern.md`
+- (or: No todos matched this session's work)
 
 ```
