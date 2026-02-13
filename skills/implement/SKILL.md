@@ -12,8 +12,8 @@ triggers:
 # Implement
 
 > **Purpose:** Full feature implementation workflow
-> **Phases:** Explore → Plan → Code → Self-Review → Test → Validate → Commit
-> **Usage:** `/implement [scope flags] <task description>`
+> **Phases:** Explore → Plan → Code → Self-Review → Test → Validate → Commit → Close
+> **Usage:** `/implement [scope flags] <task description>` or `/implement --todo <todo-file>`
 
 ## Iron Laws
 
@@ -44,6 +44,7 @@ See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
 | Flag | Description |
 |------|-------------|
+| `--todo=<file>` | Implement a specific todo from `.ai-project/todos/` |
 | `--files=<paths>` | Specific files/directories to work on |
 | `--uncommitted` | Build on current uncommitted changes |
 | `--branch=<name>` | Branch context (default: current) |
@@ -64,6 +65,11 @@ git branch --show-current
 git status --porcelain
 ```
 
+If `--todo` is provided, read the todo file to seed the implementation:
+- Extract description, context, affected files, and acceptance criteria
+- The todo becomes the source of truth for scope and success criteria
+- Skip Step 1.2 (the todo already defines the goal and constraints)
+
 If scope is ambiguous, ask for clarification. Use subagents for large explorations (6+ files) to preserve context.
 
 ### Step 1.2: Understand Request
@@ -71,6 +77,8 @@ If scope is ambiguous, ask for clarification. Use subagents for large exploratio
 1. What's the goal? (success criteria, not task description)
 2. Who is affected?
 3. Constraints?
+
+**Skip this step when `--todo` is provided** — the todo file contains the goal and context.
 
 **Wait for user response if requirements are unclear.**
 
@@ -258,6 +266,43 @@ feat: add user authentication
 
 ---
 
+## Phase 8: Close Todo
+
+**Mode:** Housekeeping — finalize the work item.
+
+**Skip this phase** if no `--todo` was provided and no todo is associated with the work.
+
+### Step 8.1: Verify Acceptance Criteria
+
+Check the todo's acceptance criteria against what was implemented:
+
+```markdown
+## Todo Acceptance
+| Criterion | Status |
+|-----------|--------|
+| [From todo] | ✓ / ✗ |
+```
+
+All criteria must be met. If any are unmet, note what remains and keep the todo open.
+
+### Step 8.2: Create ADR (if applicable)
+
+If the implementation involved design decisions (chose between approaches, adopted a pattern, established a convention), invoke `/adr --from-todo <todo-file>` to capture the decision record.
+
+**Skip the ADR** if the work was purely mechanical (no alternatives considered, no architectural choices).
+
+### Step 8.3: Delete the Todo
+
+Remove the completed todo file. The ADR (if created) and git history preserve the full context.
+
+```markdown
+## Closed
+- **Todo:** `{todo-file}` — deleted
+- **ADR:** `{adr-file}` — created (or: no ADR needed)
+```
+
+---
+
 ## Quick Reference
 
 | Phase | Mode | Gate |
@@ -269,3 +314,4 @@ feat: add user authentication
 | 5. Test | Testing | **All tests pass** |
 | 6. Validate | Validation | **All checks pass** |
 | 7. Commit | Git only | **User confirms** |
+| 8. Close | Housekeeping | Acceptance criteria met (todo-driven only) |
