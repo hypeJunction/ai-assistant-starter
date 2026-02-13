@@ -44,8 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [Agent Skills](https://agentskills.io/specification) compatible skill format
-- Distribution via [skills.sh](https://skills.sh) (`npx skills add hypefi/ai-assistant-starter`)
-- Selective skill installation (`npx skills add hypefi/ai-assistant-starter -s commit`)
+- Installation from cloned repo (`npx skills add ./ai-assistant-starter`)
+- Selective skill installation (`npx skills add ./ai-assistant-starter -s commit`)
 - 40 self-contained skills in `skills/<name>/SKILL.md` format
 - New workflow skills: `/test-coverage`, `/deps`, `/docs`, `/hotfix`, `/release`, `/revert`, `/sync`, `/finish`, `/add-story`, `/add-todo`, `/track-files`
 - 19 background skills: core execution protocol + 18 domain guideline skills (auto-loaded when relevant)
@@ -100,9 +100,10 @@ The 2.0 release is a complete rewrite. To migrate:
    rm -f .cursorrules .windsurfrules .clinerules AGENTS.md GEMINI.md JULES.md
    rm -rf .junie .github/copilot-instructions.md
    ```
-2. Install skills:
+2. Clone and install skills:
    ```bash
-   npx skills add hypefi/ai-assistant-starter
+   git clone https://github.com/hypefi/ai-assistant-starter.git
+   npx skills add ./ai-assistant-starter
    ```
 3. Re-initialize project context:
    ```
@@ -114,7 +115,7 @@ The 2.0 release is a complete rewrite. To migrate:
 
 | Version | Format | Distribution |
 |---------|--------|--------------|
-| 2.0.x | [Agent Skills spec](https://agentskills.io/specification) | [skills.sh](https://skills.sh) |
+| 2.0.x | [Agent Skills spec](https://agentskills.io/specification) | Git clone + `npx skills add` |
 | 1.0.x | Custom `.ai-assistant/` framework | Git submodule / copy |
 
 ---

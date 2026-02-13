@@ -1,6 +1,6 @@
 # Domain Detection Rules
 
-Generate project-specific domain instruction files in `.ai-project/domains/` based on detected stack. These complement the base background skills (installed via skills.sh) with project-specific conventions.
+Generate project-specific domain instruction files in `.ai-project/domains/` based on detected stack. These complement the base background skills with project-specific conventions.
 
 ## Detection Table
 
@@ -63,6 +63,6 @@ Based on your stack, project-specific domain files were created in `.ai-project/
 - react.instructions.md (React detected)
 
 These contain project-specific conventions observed from your codebase.
-Base domain guideline skills (installed via skills.sh) provide generic best practices.
+Base domain guideline skills provide generic best practices.
 Project domain files take precedence when rules conflict.
 ```

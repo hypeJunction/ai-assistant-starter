@@ -201,7 +201,7 @@ Detect stack components and generate project-specific domain instruction files. 
 Generate/update `CLAUDE.md` at the project root:
 - Should be minimal -- project name, stack summary, key commands
 - Reference `.ai-project/` for detailed configuration
-- Skills are provider-agnostic (managed by skills.sh)
+- Skills are provider-agnostic
 
 ### Phase 3: Verify
 

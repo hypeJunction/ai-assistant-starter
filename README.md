@@ -1,6 +1,6 @@
 # AI Assistant Starter
 
-Reusable skills for AI coding assistants, following the [Agent Skills specification](https://agentskills.io/specification) and distributed via [skills.sh](https://skills.sh).
+Reusable skills for AI coding assistants, following the [Agent Skills specification](https://agentskills.io/specification).
 
 ## Why This Exists
 
@@ -14,13 +14,16 @@ AI coding assistants work better with structured guidance. This collection provi
 ## Installation
 
 ```bash
-# Install all skills
-npx skills add hypefi/ai-assistant-starter
+# Clone the repo
+git clone https://github.com/hypefi/ai-assistant-starter.git
 
-# Install specific skills
-npx skills add hypefi/ai-assistant-starter -s commit
-npx skills add hypefi/ai-assistant-starter -s implement
-npx skills add hypefi/ai-assistant-starter -s validate
+# Install all skills into your project
+npx skills add ./ai-assistant-starter
+
+# Or install specific skills
+npx skills add ./ai-assistant-starter -s commit
+npx skills add ./ai-assistant-starter -s implement
+npx skills add ./ai-assistant-starter -s validate
 ```
 
 Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as `/name` commands.
@@ -110,7 +113,7 @@ After installing skills, run `/init` to scaffold project-specific configuration:
 
 ```
 your-project/
-├── .claude/skills/          # Installed skills (managed by skills.sh)
+├── .claude/skills/          # Installed skills
 ├── CLAUDE.md                # Project context (tech stack, conventions)
 └── .ai-project/             # Project state (created by /init)
     ├── .memory.md           # Architecture overview
@@ -157,13 +160,18 @@ Skills follow the [Agent Skills specification](https://agentskills.io/specificat
 - Progressive disclosure: metadata loaded at startup, full instructions on activation
 - Optional `references/` and `assets/` directories for supplementary content
 
-Background skills use `user-invocable: false` in frontmatter — a [skills.sh](https://skills.sh) runtime extension not part of the base spec.
+Background skills use `user-invocable: false` in frontmatter — a runtime extension not part of the base spec.
 
 ## Updating
 
 ```bash
-# Update all installed skills
-npx skills update hypefi/ai-assistant-starter
+# Pull the latest changes
+cd ai-assistant-starter
+git pull
+
+# Re-install into your project
+cd /path/to/your-project
+npx skills add ./ai-assistant-starter
 
 # Then refresh project config
 /init --update

@@ -1,6 +1,6 @@
 # AI Assistant Starter
 
-Reusable AI coding assistant skills following the [Agent Skills specification](https://agentskills.io/specification), distributed via [skills.sh](https://skills.sh).
+Reusable AI coding assistant skills following the [Agent Skills specification](https://agentskills.io/specification).
 
 ## Project Structure
 
@@ -42,11 +42,14 @@ Instructions follow...
 ## Installation
 
 ```bash
-# Install all skills
-npx skills add hypefi/ai-assistant-starter
+# Clone the repo
+git clone https://github.com/hypefi/ai-assistant-starter.git
+
+# Install all skills into your project
+npx skills add ./ai-assistant-starter
 
 # Install specific skills
-npx skills add hypefi/ai-assistant-starter -s commit
+npx skills add ./ai-assistant-starter -s commit
 ```
 
 ## Available Skills
@@ -160,7 +163,7 @@ After installing skills, run `/init` to scaffold project-specific configuration:
 
 ```
 your-project/
-├── .claude/skills/          # Installed skills (managed by skills.sh)
+├── .claude/skills/          # Installed skills
 ├── CLAUDE.md                # Project context (tech stack, conventions)
 └── .ai-project/             # Project state (created by /init)
     ├── .memory.md           # Architecture overview
