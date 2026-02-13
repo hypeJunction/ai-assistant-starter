@@ -125,10 +125,36 @@ Add references to related work:
 
 ## Todo Lifecycle
 
-1. **Created** -- Todo documented with full context
-2. **In Progress** -- Actively being worked on
-3. **Completed** -- Work finished, todo can be archived
-4. **Cancelled** -- No longer relevant, document why
+1. **Created** — Todo documented with full context
+2. **In Progress** — Actively being worked on
+3. **Done** — Work finished → ADR created → todo deleted
+4. **Cancelled** — No longer relevant → todo deleted with brief note in commit message
+
+**Completed todos are not kept.** ADRs capture the decision record. Git history preserves the todo's existence.
+
+## Completing a Todo
+
+When a todo is done:
+
+1. **Verify all acceptance criteria are met**
+2. **Create an ADR** — Invoke `/adr --from-todo <todo-file>` to capture the decision context, what was implemented, alternatives considered, and consequences
+3. **Delete the todo file** — The ADR now holds the permanent record; git history preserves the todo
+4. **Commit both changes** — The ADR creation and todo deletion should be in the same commit
+
+### Why Delete?
+
+- ADRs reflect the **current state** of architectural thinking
+- Todos reflect **pending work** — once done, they are noise
+- Git history provides the **step-by-step evolution** if needed
+- Stale completed todos create confusion about what's actually pending
+
+## Cancelling a Todo
+
+When a todo is no longer relevant:
+
+1. **Delete the todo file**
+2. **Note the reason in the commit message** (e.g., "remove todo: superseded by X" or "remove todo: no longer applicable after Y")
+3. No ADR needed for cancellations unless a significant decision was involved
 
 ## Maintaining Todos
 
@@ -136,15 +162,8 @@ Add references to related work:
 
 - Review open todos periodically
 - Update priorities based on current needs
-- Close completed or obsolete todos
-
-### When Completing
-
-- Verify all acceptance criteria met
-- Update status to `completed`
-- Add completion notes if helpful
-- Consider if documentation needs updating
+- Cancel obsolete todos (delete with reason in commit)
 
 ## References
 
-- [Example Todo](references/example-todo.md) -- Worked example of a fully filled-in todo entry
+- [Example Todo](references/example-todo.md) — Worked example of a fully filled-in todo entry

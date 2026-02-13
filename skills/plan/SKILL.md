@@ -141,15 +141,31 @@ For Complex/Risky plans, optionally include a Mermaid diagram showing component 
 
 See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
-### Step 7: Persist Plan (Optional)
+### Step 7: Persist Plan as Todos
 
-For complex plans, offer to save to a file for cross-session persistence:
+After approval, invoke `/add-todo` for each plan step to create trackable, persistent work items.
+
+For each step in the approved plan, create a todo with:
+- **Title:** The step's action (e.g., "Add input validation to handleSubmit")
+- **Category:** `feature` (or `refactor`, `test`, etc. as appropriate)
+- **Description:** The step's specific changes, file paths, and deliverable from the plan
+- **Affected Files:** Exact files from the plan step
+- **Acceptance Criteria:** The step's deliverable restated as checkable criteria
 
 ```markdown
-Save this plan to a file for reference?
-- **yes** — Write to `.plans/[feature-name].md`
-- **skip** — Keep in conversation only
+## Todos Created
+
+| Todo | File | Priority |
+|------|------|----------|
+| `add-input-validation.md` | `.ai-project/todos/` | medium |
+| `update-api-handler.md` | `.ai-project/todos/` | medium |
+| `add-validation-tests.md` | `.ai-project/todos/` | medium |
+
+Each step is now a trackable todo. When completed, `/add-todo` will prompt
+for an ADR capturing the decision, then remove the todo.
 ```
+
+**Skip this step** for Trivial plans (1-2 files, single bullet list).
 
 ### Step 8: Execution Handoff
 

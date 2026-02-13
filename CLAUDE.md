@@ -54,7 +54,7 @@ npx skills add ./ai-assistant-starter -s commit
 
 ## Available Skills
 
-### Workflow Skills (28 total)
+### Workflow Skills (29 total)
 
 **Development Workflows**
 
@@ -99,6 +99,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/docs` | Add or improve documentation |
 | `/revert` | Safely rollback changes |
 | `/sync` | Align documentation with codebase |
+| `/adr` | Capture an Architecture Decision Record |
 | `/add-story` | Create Storybook stories |
 | `/add-todo` | Document deferred work |
 | `/track-files` | Track files for batch operations |

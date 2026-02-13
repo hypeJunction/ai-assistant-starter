@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `/adr` skill — capture Architecture Decision Records documenting context, reasoning, alternatives, and consequences of technical decisions; supports `--from-todo` for creating ADRs from completed todos
 - `triggers` frontmatter field on all 28 workflow skills — short keyword phrases for intent-based auto-routing, enabling the assistant to match natural language requests to the right skill without explicit slash commands
 - `/tdd` skill — strict RED-GREEN-REFACTOR cycle with Iron Laws, rationalization rebuttals, red flags, and testing anti-patterns reference
 - `/api-test` skill — API endpoint testing with framework auto-detection, test categories by status code, and patterns reference
@@ -20,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LICENSE` file (MIT)
 
 ### Changed
+- Updated `/plan` — after plan approval, persists each step as a todo via `/add-todo` for trackable work items (Step 7); removed optional `.plans/` file persistence in favor of todo-based tracking
+- Updated `/add-todo` — completing a todo now creates an ADR via `/adr --from-todo` and deletes the todo file; ADRs capture current state, git history tracks evolution; no completed todos kept
 - Standardized scope thresholds across all skills: Small (1-5 files), Medium (6-15, confirm with user), Large (16+, must use `/refactor`)
 - Standardized approval gates — centralized valid/invalid terms in `ai-assistant-protocol`; workflow skills now reference the protocol instead of defining their own
 - Added package-manager awareness note to 16 workflow skills — all command examples reference `ai-assistant-protocol` Project Commands for lock-file detection

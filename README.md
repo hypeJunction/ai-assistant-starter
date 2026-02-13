@@ -73,6 +73,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/docs` | Add or improve documentation |
 | `/revert` | Safely rollback changes |
 | `/sync` | Align documentation with codebase |
+| `/adr` | Capture an Architecture Decision Record |
 | `/add-story` | Create Storybook stories |
 | `/add-todo` | Document deferred work |
 | `/track-files` | Track files for batch operations |
