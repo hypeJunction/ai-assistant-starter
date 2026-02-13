@@ -1,6 +1,12 @@
 ---
 name: accessibility-review
 description: Systematic WCAG 2.1 AA accessibility audit with confidence-based reporting. Scans UI components for keyboard, screen reader, and visual accessibility issues. Use for pre-release audits or after major UI changes.
+triggers:
+  - accessibility audit
+  - WCAG check
+  - a11y review
+  - screen reader
+  - keyboard navigation
 ---
 
 # Accessibility Review

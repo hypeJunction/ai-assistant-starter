@@ -1,6 +1,11 @@
 ---
 name: tdd
 description: Strict Test-Driven Development workflow enforcing the RED-GREEN-REFACTOR cycle. Ensures every line of production code is justified by a failing test. Use when building new features, fixing bugs, or adding behavior.
+triggers:
+  - test first
+  - test-driven
+  - red green refactor
+  - write test before code
 ---
 
 # TDD

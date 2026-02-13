@@ -1,6 +1,13 @@
 ---
 name: migrate
 description: Safe database/schema migration workflow with risk assessment, rollback planning, and ORM-aware generation. Use for schema changes, adding/removing columns, creating tables, adding indexes, or data backfills.
+triggers:
+  - database migration
+  - schema change
+  - add column
+  - create table
+  - add index
+  - data backfill
 ---
 
 # Migrate

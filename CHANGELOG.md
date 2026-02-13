@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `triggers` frontmatter field on all 28 workflow skills — short keyword phrases for intent-based auto-routing, enabling the assistant to match natural language requests to the right skill without explicit slash commands
 - `/tdd` skill — strict RED-GREEN-REFACTOR cycle with Iron Laws, rationalization rebuttals, red flags, and testing anti-patterns reference
 - `/api-test` skill — API endpoint testing with framework auto-detection, test categories by status code, and patterns reference
 - `/e2e` skill — end-to-end testing with Playwright/Cypress, Page Object Model, selector strategies, and CI integration patterns

@@ -1,6 +1,11 @@
 ---
 name: api-test
 description: Discover, design, implement, run, and report on API endpoint tests. Ensures every route is tested for status codes, response shapes, auth boundaries, and edge cases.
+triggers:
+  - test API
+  - test endpoints
+  - API coverage
+  - test routes
 ---
 
 # API Test

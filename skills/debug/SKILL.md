@@ -1,6 +1,13 @@
 ---
 name: debug
 description: Systematic bug investigation and fixing with hypotheses, root cause analysis, regression tests, and verification. Use when encountering bugs, errors, or unexpected behavior.
+triggers:
+  - fix bug
+  - something broken
+  - error
+  - not working
+  - test failing
+  - unexpected behavior
 ---
 
 # Debug

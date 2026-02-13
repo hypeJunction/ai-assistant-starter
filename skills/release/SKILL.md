@@ -1,6 +1,12 @@
 ---
 name: release
 description: Prepare and publish a release with version bump, changelog, and tagging. Use when shipping a new version, creating a release candidate, or tagging a production build.
+triggers:
+  - ship version
+  - release
+  - version bump
+  - publish
+  - tag release
 ---
 
 # Release

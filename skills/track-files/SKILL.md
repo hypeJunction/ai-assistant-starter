@@ -1,6 +1,11 @@
 ---
 name: track-files
 description: Track batches of files that need similar changes for large-scale work. Use when refactoring affects many files, migrating patterns, or coordinating batch operations across sessions.
+triggers:
+  - batch operation
+  - track files
+  - many files to change
+  - file list
 ---
 
 # Track Files

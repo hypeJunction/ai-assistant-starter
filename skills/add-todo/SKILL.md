@@ -1,6 +1,12 @@
 ---
 name: add-todo
 description: Document deferred work, shortcuts, and technical debt for future resolution. Use when taking a shortcut, finding tech debt, or deferring out-of-scope work.
+triggers:
+  - defer this
+  - tech debt
+  - add todo
+  - note for later
+  - shortcut taken
 ---
 
 # Add Todo

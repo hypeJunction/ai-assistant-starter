@@ -23,6 +23,9 @@ Each skill is a `skills/<name>/SKILL.md` file with YAML frontmatter:
 ---
 name: skill-name              # Must match directory name
 description: One-line summary  # Used in skill discovery
+triggers:                      # Intent keywords for auto-routing (workflow skills only)
+  - keyword phrase
+  - another phrase
 user-invocable: false          # Only for background skills (omit for workflow skills)
 ---
 
@@ -31,7 +34,7 @@ user-invocable: false          # Only for background skills (omit for workflow s
 Instructions follow...
 ```
 
-- **Workflow skills** (user-invocable): Triggered via `/name` commands
+- **Workflow skills** (user-invocable): Triggered via `/name` commands or matched by intent triggers
 - **Background skills**: Add `user-invocable: false` — auto-loaded when relevant, no slash command
 - `references/` directory: Support docs that guide execution (templates, detection rules)
 - `assets/` directory: Scaffolding templates with `{{PLACEHOLDER}}` variables (only used by `/init`)
@@ -131,7 +134,8 @@ Auto-loaded when relevant — no slash command needed:
 
 1. Create `skills/<name>/SKILL.md` with frontmatter (`name`, `description`)
 2. Name must be lowercase, hyphen-separated, and match the directory name
-3. For background skills, add `user-invocable: false` to frontmatter
+3. For workflow skills, add `triggers` with 4-8 short keyword phrases (developer perspective, distinct across skills)
+4. For background skills, add `user-invocable: false` to frontmatter
 4. Add `references/` directory if the skill needs support docs (templates, rules)
 5. Update the skill tables in both `README.md` and this file
 6. Update `CHANGELOG.md` under `[Unreleased]`
@@ -148,6 +152,7 @@ Auto-loaded when relevant — no slash command needed:
 - Workflow skills should define clear phases with approval gates where user confirmation is needed
 - Background skills should state when they auto-load (e.g., "Auto-loaded when working with TypeScript files")
 - Descriptions are single-line and start with an action or noun (not "This skill...")
+- Triggers are short (1-4 words), written from the developer's perspective, and distinct across skills
 
 ## Project Setup (for consumers)
 

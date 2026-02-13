@@ -1,6 +1,11 @@
 ---
 name: commit
 description: Review changes and create a git commit with user confirmation. Use when work is ready to commit, changes need staging, or the user says "commit".
+triggers:
+  - commit changes
+  - save work
+  - stage and commit
+  - git commit
 ---
 
 # Commit

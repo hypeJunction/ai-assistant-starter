@@ -1,6 +1,13 @@
 ---
 name: refactor
 description: Systematic multi-file refactoring with pattern analysis, scope detection, batched execution, and progress tracking. Use for renames, pattern changes, API migrations, or any change affecting 6+ files.
+triggers:
+  - rename
+  - restructure
+  - reorganize
+  - pattern change
+  - large-scale change
+  - multi-file change
 ---
 
 # Refactor

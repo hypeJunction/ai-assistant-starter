@@ -1,6 +1,11 @@
 ---
 name: finish
 description: End-of-session routine. Ensures test coverage, runs validation, performs self-review, and commits cleanly. Use when finishing a unit of work.
+triggers:
+  - done for now
+  - wrap up
+  - end of session
+  - finishing up
 ---
 
 # Finish

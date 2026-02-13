@@ -1,6 +1,11 @@
 ---
 name: security-review
 description: Systematic security audit with confidence-based reporting. Analyzes attack surfaces, checks against OWASP categories, and reports only confirmed or likely vulnerabilities. Use for pre-merge security review or periodic audits.
+triggers:
+  - security audit
+  - check vulnerabilities
+  - security review
+  - OWASP check
 ---
 
 # Security Review

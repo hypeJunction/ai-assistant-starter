@@ -1,6 +1,12 @@
 ---
 name: implement
 description: Full feature implementation workflow with explore, plan, code, test, validate, and commit phases. Use for new features, enhancements, or significant code changes.
+triggers:
+  - build feature
+  - add functionality
+  - implement
+  - create new
+  - enhance existing
 ---
 
 # Implement

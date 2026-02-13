@@ -1,6 +1,12 @@
 ---
 name: init
 description: Bootstrap AI assistant with project-specific configuration by analyzing the codebase and generating populated template files. Use when setting up a new project or re-initializing after major changes.
+triggers:
+  - new project
+  - bootstrap
+  - initialize
+  - set up project
+  - first time setup
 ---
 
 # Init

@@ -1,6 +1,11 @@
 ---
 name: review
 description: Comprehensive code review of the current branch against base. Read-only analysis with P0-P3 severity-rated findings and actionable feedback. Use before merging or to check code quality.
+triggers:
+  - review code
+  - check quality
+  - before merge
+  - code review
 ---
 
 # Review
