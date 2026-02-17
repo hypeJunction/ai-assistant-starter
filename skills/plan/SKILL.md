@@ -1,6 +1,7 @@
 ---
 name: plan
 description: Create a detailed implementation plan without writing code. Read-only analysis and planning with user approval gate. Use before implementing features or making significant changes.
+category: process
 triggers:
   - plan approach
   - design before coding
@@ -65,7 +66,7 @@ Before exploring code, interview the user to clarify requirements:
 
 ### Step 3: Explore Relevant Code
 
-Use subagents for large explorations (6+ files) to preserve context.
+Delegate large explorations (6+ files) to parallel agents to preserve context.
 
 1. Search for related files
 2. Read key components
@@ -175,7 +176,7 @@ for an ADR capturing the decision, then remove the todo.
 Choose execution mode:
 - **`/implement`** — Execute the plan step by step (default)
 - **`/tdd`** — Test-driven execution (write tests first, then implement)
-- **Parallel dispatch** — Break independent tasks into subagent work (for Complex plans)
+- **Parallel dispatch** — Break independent tasks into parallel agent work (for Complex plans)
 - **Manual** — You execute, I advise
 
 Which approach?
@@ -192,3 +193,15 @@ Before presenting the plan, verify:
 - [ ] Risks have mitigation strategies
 - [ ] Steps are ordered by dependency
 - [ ] No step takes longer than 5 minutes of focused work
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| PLN-T1 | Positive | "Plan the new authentication feature" | Skill triggers |
+| PLN-T2 | Positive | "What's the best approach for caching?" | Skill triggers |
+| PLN-T3 | Positive | "Design before coding" | Skill triggers |
+| PLN-T4 | Negative | "Build the login form" | Does NOT trigger (→ /implement) |
+| PLN-T5 | Negative | "Fix the broken test" | Does NOT trigger (→ /debug) |
+| PLN-T6 | Negative | "How does the API work?" | Does NOT trigger (→ /explore) |
+| PLN-T7 | Boundary | "Plan and implement dark mode" | Triggers for plan phase only |

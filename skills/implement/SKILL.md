@@ -1,6 +1,7 @@
 ---
 name: implement
 description: Full feature implementation workflow with explore, plan, code, test, validate, and commit phases. Use for new features, enhancements, or significant code changes.
+category: process
 triggers:
   - build feature
   - add functionality
@@ -52,6 +53,24 @@ See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
 > **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
 
+## Task Tiers
+
+Classify the task early to scale the workflow appropriately:
+
+| Tier | Scope | Workflow |
+|------|-------|----------|
+| **nano** | 1-2 lines, config tweak | Skip Plan phase. Edit → validate → commit |
+| **small** | 1-2 files, clear approach | Lightweight plan (bullet list). Skip Self-Review |
+| **medium** | 3-5 files | Full workflow (default) |
+| **large** | 6+ files | Full workflow + suggest feature branch + PR |
+
+**Auto-classification:** Estimate tier from the request. If `--todo` is provided, use the todo's `estimated_effort` field. The user can override at any time ("treat this as nano").
+
+**Tier shortcuts:**
+- **nano:** Phase 1 (quick scope) → Phase 3 (edit) → Phase 6 (validate) → Phase 7 (commit)
+- **small:** Phase 1 → Phase 2 (brief plan) → Phase 3 → Phase 5 (test) → Phase 6 → Phase 7
+- **medium/large:** All phases
+
 ---
 
 ## Phase 1: Explore
@@ -70,7 +89,7 @@ If `--todo` is provided, read the todo file to seed the implementation:
 - The todo becomes the source of truth for scope and success criteria
 - Skip Step 1.2 (the todo already defines the goal and constraints)
 
-If scope is ambiguous, ask for clarification. Use subagents for large explorations (6+ files) to preserve context.
+If scope is ambiguous, ask for clarification. Delegate large explorations (6+ files) to parallel agents to preserve context.
 
 ### Step 1.2: Understand Request
 
@@ -315,3 +334,16 @@ Remove the completed todo file. The ADR (if created) and git history preserve th
 | 6. Validate | Validation | **All checks pass** |
 | 7. Commit | Git only | **User confirms** |
 | 8. Close | Housekeeping | Acceptance criteria met (todo-driven only) |
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| IMP-T1 | Positive | "Build a login form" | Skill triggers |
+| IMP-T2 | Positive | "Add dark mode support" | Skill triggers |
+| IMP-T3 | Positive | "Implement user profile page" | Skill triggers |
+| IMP-T4 | Negative | "Why is login broken?" | Does NOT trigger (→ /debug) |
+| IMP-T5 | Negative | "Review my code before merging" | Does NOT trigger (→ /review) |
+| IMP-T6 | Negative | "Rename all utils to helpers" | Does NOT trigger (→ /refactor) |
+| IMP-T7 | Boundary | "Fix the button and add a tooltip" | Triggers (enhancement + new feature) |
+| IMP-T8 | Boundary | "Quick one-line change to config" | Does NOT trigger (direct edit) |

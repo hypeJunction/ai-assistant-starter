@@ -1,6 +1,7 @@
 ---
 name: validate
 description: Run validation checks to ensure code quality, security, and correctness. Supports quick (scoped), full (CI pipeline), fix (auto-correct), and CI mirror modes.
+category: process
 triggers:
   - run checks
   - verify quality
@@ -262,3 +263,15 @@ Run exact same checks as CI pipeline.
 | **Full** | All checks + Full test suite + Build | Before push/PR |
 | **CI** | Mirror exact CI pipeline | Before important merges |
 | **Fix** | Auto-correct + Verify | When you have many small issues |
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| VAL-T1 | Positive | "Run the checks" | Skill triggers |
+| VAL-T2 | Positive | "Does it pass typecheck?" | Skill triggers |
+| VAL-T3 | Positive | "Lint my code" | Skill triggers |
+| VAL-T4 | Negative | "Write tests for this" | Does NOT trigger (→ /test-coverage) |
+| VAL-T5 | Negative | "Review the code quality" | Does NOT trigger (→ /review) |
+| VAL-T6 | Negative | "Fix the type error" | Does NOT trigger (→ /debug) |
+| VAL-T7 | Boundary | "Check if CI will pass" | Triggers with --ci flag |

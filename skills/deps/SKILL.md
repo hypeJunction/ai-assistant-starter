@@ -1,6 +1,7 @@
 ---
 name: deps
 description: Audit, update, and manage project dependencies safely. Use when checking for vulnerabilities, updating outdated packages, or performing routine dependency maintenance.
+category: process
 triggers:
   - update dependencies
   - outdated packages

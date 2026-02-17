@@ -1,6 +1,7 @@
 ---
 name: interaction-boundaries
 description: Human-AI interaction boundaries enforcing functional, non-anthropomorphic communication. Auto-loaded for all interactions.
+category: protocol
 user-invocable: false
 ---
 

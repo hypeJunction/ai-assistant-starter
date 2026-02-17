@@ -1,6 +1,7 @@
 ---
 name: sync
 description: Audit and align AI documentation with the actual state of the codebase. Use when documentation feels stale, after significant refactoring, periodically at sprint boundaries, or when AI assistance seems to follow outdated patterns.
+category: meta
 triggers:
   - docs out of date
   - stale documentation

@@ -28,7 +28,7 @@ Detailed project configuration is in [`.ai-project/`](.ai-project/README.md):
 |------|-----------------|
 | [`.memory.md`](.ai-project/.memory.md) | Architecture, decisions, recent work |
 | [`.context.md`](.ai-project/.context.md) | Common imports and patterns |
-| [`config.md`](.ai-project/config.md) | Workflow preferences and overrides |
+| [`config.yaml`](.ai-project/config.yaml) | Workflow preferences and overrides |
 | [`project/`](.ai-project/project/) | Commands, structure, stack, patterns |
 | [`domains/`](.ai-project/domains/) | Stack-specific coding guidelines |
 

@@ -23,6 +23,7 @@ Each skill is a `skills/<name>/SKILL.md` file with YAML frontmatter:
 ---
 name: skill-name              # Must match directory name
 description: One-line summary  # Used in skill discovery
+category: process             # process | meta | guideline | protocol | enforcement
 triggers:                      # Intent keywords for auto-routing (workflow skills only)
   - keyword phrase
   - another phrase
@@ -54,7 +55,7 @@ npx skills add ./ai-assistant-starter -s commit
 
 ## Available Skills
 
-### Workflow Skills (29 total)
+### Workflow Skills (29 total, categories: process + meta)
 
 **Development Workflows**
 
@@ -105,16 +106,31 @@ npx skills add ./ai-assistant-starter -s commit
 | `/track-files` | Track files for batch operations |
 | `/init` | Bootstrap project configuration |
 
-### Background Skills (20 total)
+### Background Skills (22 total)
 
 Auto-loaded when relevant — no slash command needed:
+
+**Protocol Skills** (category: protocol)
 
 | Skill | Domain |
 |-------|--------|
 | `ai-assistant-protocol` | Core execution protocol, code quality, testing requirements |
-| `git-conventions` | Branch naming, commit messages, workflow patterns |
 | `communication-guidelines` | Response formatting and status indicators |
 | `code-review-guidelines` | Review checklist and feedback patterns |
+| `interaction-boundaries` | Human-AI interaction boundaries, non-anthropomorphic communication |
+
+**Enforcement Skills** (category: enforcement)
+
+| Skill | Domain |
+|-------|--------|
+| `branch-protection` | Runtime hook: blocks force-push, hard reset on protected branches |
+| `destructive-command-protection` | Runtime hook: blocks rm -rf, DROP DATABASE, and other destructive commands |
+
+**Guideline Skills** (category: guideline)
+
+| Skill | Domain |
+|-------|--------|
+| `git-conventions` | Branch naming, commit messages, workflow patterns |
 | `typescript-guidelines` | TypeScript best practices and patterns |
 | `vitest-guidelines` | Testing with Vitest |
 | `security-guidelines` | OWASP top 10, input validation, XSS prevention |
@@ -130,19 +146,19 @@ Auto-loaded when relevant — no slash command needed:
 | `github-actions-guidelines` | CI/CD pipelines, caching, secrets, deployment |
 | `storybook-react-guidelines` | Story structure, interaction tests, play functions |
 | `env-config-guidelines` | Environment variables, type-safe config, feature flags |
-| `interaction-boundaries` | Human-AI interaction boundaries, non-anthropomorphic communication |
 
 ## Contributing a Skill
 
 ### Adding a new skill
 
-1. Create `skills/<name>/SKILL.md` with frontmatter (`name`, `description`)
+1. Create `skills/<name>/SKILL.md` with frontmatter (`name`, `description`, `category`)
 2. Name must be lowercase, hyphen-separated, and match the directory name
-3. For workflow skills, add `triggers` with 4-8 short keyword phrases (developer perspective, distinct across skills)
-4. For background skills, add `user-invocable: false` to frontmatter
-4. Add `references/` directory if the skill needs support docs (templates, rules)
-5. Update the skill tables in both `README.md` and this file
-6. Update `CHANGELOG.md` under `[Unreleased]`
+3. Add `category:` — one of: `process`, `meta`, `guideline`, `protocol`, `enforcement`
+4. For workflow skills, add `triggers` with 4-8 short keyword phrases (developer perspective, distinct across skills)
+5. For background skills, add `user-invocable: false` to frontmatter
+6. Add `references/` directory if the skill needs support docs (templates, rules)
+7. Update the skill tables in both `README.md` and this file
+8. Update `CHANGELOG.md` under `[Unreleased]`
 
 ### Modifying an existing skill
 
@@ -169,7 +185,7 @@ your-project/
 └── .ai-project/             # Project state (created by /init)
     ├── .memory.md           # Architecture overview
     ├── .context.md          # Patterns and imports
-    ├── config.md            # Framework settings
+    ├── config.yaml          # Structured settings with defaults
     ├── project/             # Detected project config (commands, structure, stack)
     ├── domains/             # Stack-specific domain rules (*.instructions.md)
     ├── todos/               # Technical debt tracking

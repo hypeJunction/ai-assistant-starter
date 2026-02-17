@@ -1,6 +1,7 @@
 ---
 name: typescript-guidelines
 description: TypeScript coding guidelines including types, imports, exports, and patterns. Auto-loaded when working with TypeScript files.
+category: guideline
 user-invocable: false
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: documentation-guidelines
 description: Documentation best practices for code comments, JSDoc, READMEs, and API docs. Explains when to comment and when not to. Auto-loaded when writing documentation.
+category: guideline
 user-invocable: false
 ---
 

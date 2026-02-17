@@ -1,6 +1,7 @@
 ---
 name: security-guidelines
 description: Application security guidelines covering input validation, XSS prevention, SQL injection, authentication, and secrets management. Auto-loaded when implementing authentication, handling user input, or managing secrets.
+category: guideline
 user-invocable: false
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: storybook-react-guidelines
 description: Storybook guidelines for React including story structure, interaction tests with play functions, and Testing Library queries. Auto-loaded when working with story files.
+category: guideline
 user-invocable: false
 ---
 

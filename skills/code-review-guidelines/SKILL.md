@@ -1,6 +1,7 @@
 ---
 name: code-review-guidelines
 description: Code review best practices including review checklist, comment types, severity levels, feedback patterns, and PR size guidelines. Auto-loaded during code review.
+category: protocol
 user-invocable: false
 ---
 

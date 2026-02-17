@@ -1,6 +1,7 @@
 ---
 name: zod-guidelines
 description: Data validation guidelines using Zod including schemas, API request validation, form validation, and error handling. Auto-loaded when working with validation code.
+category: guideline
 user-invocable: false
 ---
 

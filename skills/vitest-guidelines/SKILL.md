@@ -1,6 +1,7 @@
 ---
 name: vitest-guidelines
 description: Testing guidelines for Vitest/Jest including test structure, mocking, async patterns, and Testing Library queries. Auto-loaded when working with test files.
+category: guideline
 user-invocable: false
 ---
 

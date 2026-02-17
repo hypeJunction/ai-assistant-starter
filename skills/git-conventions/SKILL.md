@@ -1,6 +1,7 @@
 ---
 name: git-conventions
 description: Git branch naming, commit message conventions (Conventional Commits), workflow patterns, and common operations. Auto-loaded when working with git.
+category: guideline
 user-invocable: false
 ---
 

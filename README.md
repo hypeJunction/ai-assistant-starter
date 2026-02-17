@@ -79,6 +79,13 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/track-files` | Track files for batch operations |
 | `/init` | Bootstrap project configuration |
 
+### Enforcement Hooks (auto-loaded)
+
+Runtime hooks that intercept and block dangerous operations:
+
+- **branch-protection** — Blocks force-push, hard reset, branch deletion on main/master
+- **destructive-command-protection** — Blocks rm -rf /, DROP DATABASE, and other destructive commands
+
 ### Background Skills (auto-loaded)
 
 These are loaded automatically when relevant — no slash command needed:
@@ -119,7 +126,7 @@ your-project/
 └── .ai-project/             # Project state (created by /init)
     ├── .memory.md           # Architecture overview
     ├── .context.md          # Patterns and imports
-    ├── config.md            # Framework settings
+    ├── config.yaml          # Structured settings with defaults
     ├── project/             # Project configuration
     │   ├── commands.md      # Build/test/lint commands
     │   ├── structure.md     # Directory layout
@@ -157,7 +164,7 @@ To add project-specific domain rules, create files in `.ai-project/domains/`:
 Skills follow the [Agent Skills specification](https://agentskills.io/specification):
 
 - Each skill is a directory containing a `SKILL.md` file with YAML frontmatter
-- Required fields: `name` (matches directory name), `description`
+- Required fields: `name` (matches directory name), `description`, `category`
 - Progressive disclosure: metadata loaded at startup, full instructions on activation
 - Optional `references/` and `assets/` directories for supplementary content
 

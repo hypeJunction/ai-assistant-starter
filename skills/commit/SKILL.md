@@ -1,6 +1,7 @@
 ---
 name: commit
 description: Review changes and create a git commit with user confirmation. Use when work is ready to commit, changes need staging, or the user says "commit".
+category: process
 triggers:
   - commit changes
   - save work
@@ -36,6 +37,19 @@ triggers:
 | `--staged` | Commit only already-staged files |
 
 > **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
+## Change Tiers
+
+The commit workflow scales based on the size of changes:
+
+| Tier | Scope | Validation | Suggestion |
+|------|-------|------------|------------|
+| **nano** | 1-2 files, <20 lines | Security scan only | Direct commit |
+| **small** | 2-4 files, <100 lines | Security scan + typecheck | Direct commit |
+| **medium** | 5-10 files, 100-500 lines | Full validation (Step 4) | Commit, suggest push |
+| **large** | 10+ files, 500+ lines | Full validation | Suggest feature branch + PR |
+
+Auto-classify from `git diff --stat`. The user can override ("just commit it").
 
 ## Workflow
 
@@ -178,4 +192,16 @@ git commit -m "[message]"
 
 ### AI Attribution
 
-When AI wrote most of the code: `Co-Authored-By: Claude <noreply@anthropic.com>`
+If configured, add an AI co-author trailer to commits where AI wrote most of the code. Follow the project's `config.yaml` setting for `git.ai_attribution`.
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| CMT-T1 | Positive | "Commit my changes" | Skill triggers |
+| CMT-T2 | Positive | "Save my work" | Skill triggers |
+| CMT-T3 | Positive | "Stage and commit" | Skill triggers |
+| CMT-T4 | Negative | "Push to remote" | Does NOT trigger (git push, not commit) |
+| CMT-T5 | Negative | "Create a PR" | Does NOT trigger (→ /pr) |
+| CMT-T6 | Negative | "Review my changes" | Does NOT trigger (→ /review) |
+| CMT-T7 | Boundary | "Commit and push" | Triggers (commit portion) |

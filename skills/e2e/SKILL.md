@@ -1,6 +1,7 @@
 ---
 name: e2e
 description: End-to-end testing workflow for web applications using Playwright or Cypress. Covers user flow discovery, test design, implementation, execution, and flaky test management.
+category: process
 triggers:
   - end to end test
   - browser test

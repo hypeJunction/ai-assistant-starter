@@ -1,6 +1,7 @@
 ---
 name: github-actions-guidelines
 description: CI/CD guidelines for GitHub Actions including pipeline structure, caching, secrets management, deployment strategies, and quality gates. Auto-loaded when working with workflow files.
+category: guideline
 user-invocable: false
 ---
 

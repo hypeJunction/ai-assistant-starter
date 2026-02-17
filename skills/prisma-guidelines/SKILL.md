@@ -1,6 +1,7 @@
 ---
 name: prisma-guidelines
 description: "Prisma ORM guidelines including schema design, Client queries, transactions, migrations, and performance optimization. Auto-loaded when working with Prisma schema or Client code."
+category: guideline
 user-invocable: false
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: performance-guidelines
 description: Performance guidelines for TypeScript including frontend optimization, backend query optimization, caching, memory management, and profiling. Auto-loaded when working on performance-sensitive code.
+category: guideline
 user-invocable: false
 ---
 

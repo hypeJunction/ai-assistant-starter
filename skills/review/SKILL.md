@@ -1,6 +1,7 @@
 ---
 name: review
 description: Comprehensive code review of the current branch against base. Read-only analysis with P0-P3 severity-rated findings and actionable feedback. Use before merging or to check code quality.
+category: process
 triggers:
   - review code
   - check quality
@@ -38,7 +39,7 @@ triggers:
 
 - **Read-only** — Suggestions only, no modifications
 - **Acknowledge good patterns** — Not just problems
-- **Fresh context recommended** — If you wrote the code, use a subagent or fresh session to avoid self-confirmation bias
+- **Fresh context recommended** — If you wrote the code, use a separate agent or fresh session to avoid self-confirmation bias
 
 ## Scope Flags
 
@@ -173,3 +174,15 @@ _(None found — or list findings)_
 **STOP HERE. Wait for user selection.**
 
 If user picks a fix option, apply fixes in priority order (P0 → P1 → P2), run typecheck and lint after, then offer to commit.
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| REV-T1 | Positive | "Review my code before merging" | Skill triggers |
+| REV-T2 | Positive | "Check code quality of this branch" | Skill triggers |
+| REV-T3 | Positive | "Code review" | Skill triggers |
+| REV-T4 | Negative | "Run the tests" | Does NOT trigger (→ /validate) |
+| REV-T5 | Negative | "Fix the bug in auth" | Does NOT trigger (→ /debug) |
+| REV-T6 | Negative | "Check for security vulnerabilities" | Does NOT trigger (→ /security-review) |
+| REV-T7 | Boundary | "Review and then merge" | Triggers for review phase only |

@@ -1,6 +1,7 @@
 ---
 name: explore
 description: Understand code without making changes. Read-only exploration of codebase structure, patterns, data flow, and dependencies. Use when asked "how does X work" or to investigate code before planning.
+category: process
 triggers:
   - how does X work
   - what would change affect
@@ -65,8 +66,8 @@ triggers:
 
 ## Context Management
 
-- **Use subagents for deep explorations.** When exploring a large area (6+ files), delegate to a subagent to prevent context exhaustion. The subagent reports a summary; the main session stays clean.
-- **Set a scope budget.** Before exploring, estimate how many files you'll need. If >10 files, narrow the question or use subagents.
+- **Delegate deep explorations.** When exploring a large area (6+ files), delegate to a parallel agent to prevent context exhaustion. The agent reports a summary; the main session stays clean.
+- **Set a scope budget.** Before exploring, estimate how many files you'll need. If >10 files, narrow the question or delegate to parallel agents.
 - **Stop when answered.** Don't keep reading files after finding the answer. Report what you found.
 
 ## Workflow
@@ -81,7 +82,7 @@ Identify: (1) question type from strategy table, (2) depth level, (3) scope from
 
 ### Step 2: Search for Relevant Files
 
-Start narrow, widen only if needed. Use glob/grep to find entry points before reading full files.
+Start narrow, widen only if needed. Use file search and content search to find entry points before reading full files.
 
 ### Step 3: Read and Analyze
 
@@ -91,7 +92,7 @@ Start narrow, widen only if needed. Use glob/grep to find entry points before re
 
 **Impact:** Find all imports/references → trace dependents → map blast radius (direct → transitive).
 
-**Search:** Glob patterns → grep keywords → check test files → review package.json.
+**Search:** File patterns → content keywords → check test files → review package.json.
 
 **Map:** Identify module boundaries → trace data flow → document public interfaces → note coupling.
 
@@ -125,3 +126,15 @@ For each finding, note what was verified vs. inferred:
 - **Verified** — Read the code and confirmed
 - **Inferred** — Based on naming/patterns but not traced end-to-end
 - **Unknown** — Couldn't determine; needs manual verification
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| EXP-T1 | Positive | "How does the auth module work?" | Skill triggers |
+| EXP-T2 | Positive | "What would change if I modify the API?" | Skill triggers |
+| EXP-T3 | Positive | "Is there existing code for email validation?" | Skill triggers |
+| EXP-T4 | Negative | "Fix the auth module" | Does NOT trigger (→ /debug) |
+| EXP-T5 | Negative | "Add a new API endpoint" | Does NOT trigger (→ /implement) |
+| EXP-T6 | Negative | "Plan the new feature" | Does NOT trigger (→ /plan) |
+| EXP-T7 | Boundary | "Investigate and then fix the bug" | Triggers for investigation phase only |

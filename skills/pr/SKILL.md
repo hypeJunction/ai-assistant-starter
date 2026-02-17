@@ -1,6 +1,7 @@
 ---
 name: pr
 description: Create a well-documented GitHub pull request with quality checks, proper description, and test plan. Use when pushing a branch, creating a merge request, or preparing code for review.
+category: process
 triggers:
   - create PR
   - pull request

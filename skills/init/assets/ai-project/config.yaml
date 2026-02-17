@@ -1,0 +1,68 @@
+# Project Configuration
+# Override defaults by uncommenting and modifying values.
+# All settings are optional — defaults apply when omitted.
+
+# --- Workflow ---
+workflow:
+  # How to classify task complexity: auto (from request), or force a tier
+  default_tier: auto          # auto | nano | small | medium | large
+  # Require user approval before implementing a plan
+  require_plan_approval: true
+  # Require user approval before committing
+  require_commit_approval: true
+  # Run typecheck/lint automatically after changes
+  auto_validate: true
+  # Default scope for operations
+  default_scope: uncommitted  # uncommitted | all | prompt
+
+# --- Git ---
+git:
+  main_branch: main
+  feature_branch_pattern: "feature/{description}"
+  bugfix_branch_pattern: "fix/{description}"
+  # Commit message format
+  commit_style: conventional  # conventional | ticket | simple
+  # Ticket prefix for ticket-style commits (e.g., "PROJ-123: description")
+  # ticket_prefix: "PROJ"
+  # Add AI co-author trailer to commits
+  ai_attribution: false
+
+# --- Quality ---
+quality:
+  # Run typecheck after each file edit (not just at end)
+  typecheck_per_file: true
+  # Require tests for new code
+  test_required: true
+  # Run security scan before commits
+  security_scan: true
+  # Require test plan comments in Gherkin format
+  require_test_plans: true
+
+# --- Display ---
+display:
+  # Use emojis in responses
+  use_emojis: false
+  # Message verbosity
+  message_style: detailed     # detailed | compact
+
+# --- Enforcement ---
+enforcement:
+  # Block force-push, hard reset on protected branches
+  branch_protection: true
+  # Block rm -rf, DROP DATABASE, and other destructive commands
+  destructive_command_protection: true
+  # Protected branch names (comma-separated)
+  protected_branches: "main,master"
+
+# --- Approval ---
+approval:
+  # Require explicit yes/approve before gates
+  require_explicit: true
+  # Words recognized as approval
+  approval_words:
+    - "yes"
+    - "y"
+    - "approved"
+    - "proceed"
+    - "lgtm"
+    - "go ahead"

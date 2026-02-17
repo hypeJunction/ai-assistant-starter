@@ -10,7 +10,7 @@ This directory contains project-specific AI assistant configuration and tracking
 .ai-project/
 ├── .memory.md          # Project architecture and tech stack
 ├── .context.md         # Common patterns and imports
-├── config.md           # Configuration overrides
+├── config.yaml         # Configuration overrides
 ├── project/            # Project-specific configuration
 │   ├── commands.md     # Available commands
 │   ├── structure.md    # Directory layout

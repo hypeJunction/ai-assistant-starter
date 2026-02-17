@@ -1,6 +1,7 @@
 ---
 name: finish
 description: End-of-session routine. Ensures test coverage, runs validation, performs self-review, and commits cleanly. Use when finishing a unit of work.
+category: process
 triggers:
   - done for now
   - wrap up
@@ -203,3 +204,15 @@ Check for todos completed by the work in this session.
 - (or: No todos matched this session's work)
 
 ```
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| FIN-T1 | Positive | "I'm done for now" | Skill triggers |
+| FIN-T2 | Positive | "Wrap up this session" | Skill triggers |
+| FIN-T3 | Positive | "Finishing up" | Skill triggers |
+| FIN-T4 | Negative | "Commit my changes" | Does NOT trigger (→ /commit) |
+| FIN-T5 | Negative | "Run the tests" | Does NOT trigger (→ /validate) |
+| FIN-T6 | Negative | "Review the code" | Does NOT trigger (→ /review) |
+| FIN-T7 | Boundary | "Done, commit and push" | Triggers (finish encompasses commit) |

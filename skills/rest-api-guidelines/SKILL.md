@@ -1,6 +1,7 @@
 ---
 name: rest-api-guidelines
 description: REST API design guidelines including URL structure, HTTP methods, status codes, request/response formats, and client implementation. Auto-loaded when working with API code.
+category: guideline
 user-invocable: false
 ---
 

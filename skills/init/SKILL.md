@@ -1,6 +1,7 @@
 ---
 name: init
 description: Bootstrap AI assistant with project-specific configuration by analyzing the codebase and generating populated template files. Use when setting up a new project or re-initializing after major changes.
+category: meta
 triggers:
   - new project
   - bootstrap
@@ -28,7 +29,7 @@ triggers:
 |----------|------|---------|
 | `.ai-project/` | `.memory.md` | Project tech stack and architecture |
 | `.ai-project/` | `.context.md` | Common imports and patterns |
-| `.ai-project/` | `config.md` | Project configuration overrides |
+| `.ai-project/` | `config.yaml` | Project configuration overrides |
 | `.ai-project/project/` | `commands.md` | Project scripts and commands |
 | `.ai-project/project/` | `structure.md` | Directory layout |
 | `.ai-project/project/` | `patterns.md` | Code patterns and conventions |

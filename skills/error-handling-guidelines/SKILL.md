@@ -1,6 +1,7 @@
 ---
 name: error-handling-guidelines
 description: Error handling guidelines for TypeScript including custom error classes, try-catch patterns, error boundaries, API error handling, and recovery patterns. Auto-loaded when working with error handling code.
+category: guideline
 user-invocable: false
 ---
 

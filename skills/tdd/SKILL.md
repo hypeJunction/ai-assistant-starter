@@ -1,6 +1,7 @@
 ---
 name: tdd
 description: Strict Test-Driven Development workflow enforcing the RED-GREEN-REFACTOR cycle. Ensures every line of production code is justified by a failing test. Use when building new features, fixing bugs, or adding behavior.
+category: process
 triggers:
   - test first
   - test-driven
@@ -386,3 +387,15 @@ Before committing, confirm every item:
 ## References
 
 - [Testing Anti-Patterns](references/testing-anti-patterns.md) -- Common testing mistakes and how to avoid them
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| TDD-T1 | Positive | "Write the test first, then implement" | Skill triggers |
+| TDD-T2 | Positive | "Use red-green-refactor for this feature" | Skill triggers |
+| TDD-T3 | Positive | "Test-driven development for the parser" | Skill triggers |
+| TDD-T4 | Negative | "Add tests for existing code" | Does NOT trigger (→ /test-coverage) |
+| TDD-T5 | Negative | "Build the login page" | Does NOT trigger (→ /implement) |
+| TDD-T6 | Negative | "Run the test suite" | Does NOT trigger (→ /validate) |
+| TDD-T7 | Boundary | "Implement with tests" | Does NOT trigger (→ /implement, has TDD-lite) |

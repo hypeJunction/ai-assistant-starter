@@ -1,6 +1,7 @@
 ---
 name: add-todo
 description: Document deferred work, shortcuts, and technical debt for future resolution. Use when taking a shortcut, finding tech debt, or deferring out-of-scope work.
+category: meta
 triggers:
   - defer this
   - tech debt
@@ -61,17 +62,23 @@ Create a todo entry when:
 Create a new file in `.ai-project/todos/`:
 
 ```bash
-.ai-project/todos/{descriptive-name}.md
+.ai-project/todos/NNN-{descriptive-name}.md
 ```
 
 **Naming conventions:**
-- Use kebab-case
+- Prefix with a 3-digit sequence number for queue ordering: `001-`, `002-`, etc.
+- Use kebab-case for the description
 - Be descriptive but concise
-- Include category if helpful: `refactor-api-client.md`, `tech-debt-config-loading.md`
+- Examples: `001-refactor-api-client.md`, `002-tech-debt-config-loading.md`
+
+To determine the next sequence number, check existing files:
+```bash
+ls .ai-project/todos/[0-9]*.md 2>/dev/null | tail -1
+```
 
 ### Step 2: Use the Template
 
-Fill in the template:
+Fill in the template (see `_template.md` in todos directory):
 
 ```markdown
 ---
@@ -80,6 +87,9 @@ title: Brief Descriptive Title
 priority: medium
 category: tech-debt
 status: open
+estimated_effort: medium
+queue_position: 0
+blocked_by: []
 created: {YYYY-MM-DD}
 updated: {YYYY-MM-DD}
 labels: []
@@ -111,6 +121,14 @@ Clear description of what needs to be done and why.
 - [ ] Criterion 2
 - [ ] Criterion 3
 ```
+
+### Queue Fields
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `estimated_effort` | `nano`, `small`, `medium`, `large` | Matches task tier system |
+| `queue_position` | integer | Ordering within same priority (0 = unordered) |
+| `blocked_by` | list of todo IDs | Todos that must complete before this one |
 
 ### Step 3: Link Related Resources
 

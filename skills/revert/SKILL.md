@@ -1,6 +1,7 @@
 ---
 name: revert
 description: Safely rollback changes using git revert with impact assessment and validation. Use when a commit needs to be undone, a PR introduced a bug, or changes need to be rolled back without rewriting history.
+category: process
 triggers:
   - undo commit
   - rollback

@@ -1,6 +1,7 @@
 ---
 name: ai-assistant-protocol
 description: Core execution protocol governing code quality, testing, scope management, and approval gates for AI coding assistants.
+category: protocol
 user-invocable: false
 ---
 

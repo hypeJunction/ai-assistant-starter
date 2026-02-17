@@ -1,6 +1,7 @@
 ---
 name: iterate-pr
 description: Iterate on an open PR until CI passes and all review feedback is addressed. Fetches status, categorizes findings by severity, applies fixes, and loops until clean.
+category: process
 triggers:
   - PR feedback
   - CI failing

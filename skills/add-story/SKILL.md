@@ -1,6 +1,7 @@
 ---
 name: add-story
 description: Create comprehensive Storybook stories with test plans, play functions, and validated tests for a component. Use when a component needs Storybook coverage or story files.
+category: meta
 triggers:
   - create story
   - storybook

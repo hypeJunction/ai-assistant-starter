@@ -1,6 +1,7 @@
 ---
 name: docker-node-guidelines
 description: Docker guidelines for Node.js including Dockerfile best practices, multi-stage builds, Docker Compose, security, and health checks. Auto-loaded when working with Docker configurations.
+category: guideline
 user-invocable: false
 ---
 

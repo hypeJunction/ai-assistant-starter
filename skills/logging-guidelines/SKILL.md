@@ -1,6 +1,7 @@
 ---
 name: logging-guidelines
 description: Logging guidelines for TypeScript including structured logging, log levels, request logging, correlation IDs, and performance logging. Auto-loaded when working with logging code.
+category: guideline
 user-invocable: false
 ---
 

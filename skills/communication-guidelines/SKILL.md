@@ -1,6 +1,7 @@
 ---
 name: communication-guidelines
 description: Communication templates and response formatting for AI coding assistants. Defines structured message formats with semantic indicators for status, errors, actions, and progress. Auto-loaded for all interactions.
+category: protocol
 user-invocable: false
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: env-config-guidelines
 description: Environment configuration guidelines for Node.js including variable naming, type-safe loading with Zod, secrets management, and feature flags. Auto-loaded when working with environment config.
+category: guideline
 user-invocable: false
 ---
 

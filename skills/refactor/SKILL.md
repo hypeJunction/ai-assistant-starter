@@ -1,6 +1,7 @@
 ---
 name: refactor
 description: Systematic multi-file refactoring with pattern analysis, scope detection, batched execution, and progress tracking. Use for renames, pattern changes, API migrations, or any change affecting 6+ files.
+category: process
 triggers:
   - rename
   - restructure
@@ -178,3 +179,16 @@ Keep refactoring commits separate from feature commits. Never mix refactoring an
 ## References
 
 - [Refactor Templates](references/refactor-templates.md) — Display templates for plan summaries, batch progress, discrepancy reports, verification reports, and commit messages
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| REF-T1 | Positive | "Rename all utils to helpers across the codebase" | Skill triggers |
+| REF-T2 | Positive | "Restructure the components directory" | Skill triggers |
+| REF-T3 | Positive | "Migrate from callbacks to async/await" | Skill triggers |
+| REF-T4 | Negative | "Add a new helper function" | Does NOT trigger (→ /implement) |
+| REF-T5 | Negative | "Fix the broken import" | Does NOT trigger (→ /debug) |
+| REF-T6 | Negative | "Change 2 files to use new pattern" | Does NOT trigger (→ /implement, <6 files) |
+| REF-T7 | Boundary | "Rename this function in 4 files" | Does NOT trigger (→ /implement, <6 files) |
+| REF-T8 | Boundary | "Rename this function across 8 files" | Skill triggers (6+ files) |

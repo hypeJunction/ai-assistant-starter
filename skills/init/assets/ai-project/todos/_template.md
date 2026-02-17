@@ -4,6 +4,9 @@ title: Brief Descriptive Title
 priority: medium
 category: tech-debt
 status: open
+estimated_effort: medium
+queue_position: 0
+blocked_by: []
 created: 2025-01-01
 updated: 2025-01-01
 labels: []

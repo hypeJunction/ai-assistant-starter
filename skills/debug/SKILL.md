@@ -1,6 +1,7 @@
 ---
 name: debug
 description: Systematic bug investigation and fixing with hypotheses, root cause analysis, regression tests, and verification. Use when encountering bugs, errors, or unexpected behavior.
+category: process
 triggers:
   - fix bug
   - something broken
@@ -269,3 +270,15 @@ Present commit message with root cause explanation and `Fixes #issue` reference.
 | 3. Narrow | Read-only | **User confirms root cause** |
 | 4. Fix | Full access | **User approves fix plan** |
 | 5. Verify | Testing + git | **All tests pass + user confirms** |
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| DBG-T1 | Positive | "Login page throws 500 error" | Skill triggers |
+| DBG-T2 | Positive | "Tests are failing after merge" | Skill triggers |
+| DBG-T3 | Positive | "Button click does nothing" | Skill triggers |
+| DBG-T4 | Negative | "Add a new button to the form" | Does NOT trigger (→ /implement) |
+| DBG-T5 | Negative | "How does the auth module work?" | Does NOT trigger (→ /explore) |
+| DBG-T6 | Negative | "Review the error handling code" | Does NOT trigger (→ /review) |
+| DBG-T7 | Boundary | "Fix this and add a retry" | Triggers (bug fix primary) |

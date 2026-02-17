@@ -1,6 +1,7 @@
 ---
 name: naming-guidelines
 description: Naming conventions for TypeScript including variables, functions, classes, files, and directories. Auto-loaded when writing or reviewing code.
+category: guideline
 user-invocable: false
 ---
 

@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `category:` field in YAML frontmatter for all 51 skills — taxonomy: `process` (22), `meta` (7), `guideline` (16), `protocol` (4), `enforcement` (2)
+- Acceptance test tables on 10 key workflow skills (implement, debug, commit, review, plan, explore, refactor, validate, tdd, finish) — positive/negative/boundary trigger tests for skill routing validation
+- `branch-protection` enforcement skill — runtime PreToolUse hook that blocks force-push, hard reset, and branch deletion on protected branches; includes `references/hook.js`
+- `destructive-command-protection` enforcement skill — runtime PreToolUse hook that blocks rm -rf on critical paths, DROP DATABASE, disk formatting, fork bombs, and other destructive commands; includes `references/hook.js`
+- Task tier classification system in `/implement` (nano/small/medium/large) — scales workflow phases based on task complexity; nano skips planning, large suggests PR
+- Change tier classification in `/commit` (nano/small/medium/large) — scales validation requirements based on change size
+- Structured `config.yaml` replacing `config.md` — 15 settings across workflow, git, quality, display, enforcement, and approval sections with typed defaults
+- Work queue fields in todo template — `estimated_effort` (nano/small/medium/large), `queue_position`, `blocked_by`; file naming convention: `NNN-{name}.md`
+
+### Changed
+- Skill instructions now use target-agnostic language — "subagent" → "parallel agent", "glob/grep" → "file/content search", Claude-specific Co-Authored-By → configurable `git.ai_attribution`
 - `/adr` skill — capture Architecture Decision Records documenting context, reasoning, alternatives, and consequences of technical decisions; supports `--from-todo` for creating ADRs from completed todos
 - `triggers` frontmatter field on all 28 workflow skills — short keyword phrases for intent-based auto-routing, enabling the assistant to match natural language requests to the right skill without explicit slash commands
 - `/tdd` skill — strict RED-GREEN-REFACTOR cycle with Iron Laws, rationalization rebuttals, red flags, and testing anti-patterns reference
