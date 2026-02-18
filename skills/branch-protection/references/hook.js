@@ -10,6 +10,8 @@
  * outputs JSON decision to stdout.
  */
 
+const { execSync } = require('child_process');
+
 const PROTECTED_BRANCHES = (process.env.PROTECTED_BRANCHES || 'main,master')
   .split(',')
   .map(b => b.trim())
@@ -36,6 +38,17 @@ function extractCommand(input) {
   return cmd.toLowerCase().trim();
 }
 
+function getCurrentBranch() {
+  try {
+    return execSync('git rev-parse --abbrev-ref HEAD', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+  } catch {
+    return '';
+  }
+}
+
 function checkBranchProtection(cmd) {
   const branchPattern = PROTECTED_BRANCHES
     .map(b => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
@@ -57,13 +70,15 @@ function checkBranchProtection(cmd) {
     }
   }
 
-  // Block: git reset --hard (safety measure — user should confirm branch)
+  // Block: git reset --hard on protected branches
   if (/git\s+reset\s+--hard/.test(cmd)) {
-    return {
-      decision: 'block',
-      reason:
-        "Hard reset blocked as a safety measure. Verify you're on a feature branch, then retry. If intentional, ask the user to confirm.",
-    };
+    const branch = getCurrentBranch();
+    if (PROTECTED_BRANCHES.includes(branch)) {
+      return {
+        decision: 'block',
+        reason: `Hard reset blocked on protected branch (${branch}). Switch to a feature branch first, or ask the user to confirm.`,
+      };
+    }
   }
 
   // Block: git branch -D on protected branches
@@ -77,6 +92,26 @@ function checkBranchProtection(cmd) {
         reason: `Deletion of protected branch blocked. Protected branches: ${PROTECTED_BRANCHES.join(', ')}.`,
       };
     }
+  }
+
+  // Warn: git checkout . / git restore . on protected branches
+  if (/git\s+(checkout|restore)\s+(--\s+)?\./.test(cmd)) {
+    const branch = getCurrentBranch();
+    if (PROTECTED_BRANCHES.includes(branch)) {
+      return {
+        decision: 'block',
+        reason: `Discarding all changes on protected branch (${branch}) blocked as a safety measure. Ask the user to confirm before proceeding.`,
+      };
+    }
+  }
+
+  // Warn: git clean with -f (any branch — removes untracked files irreversibly)
+  if (/git\s+clean\s+/.test(cmd) && /\s-[a-z]*f|--force/.test(cmd)) {
+    return {
+      decision: 'block',
+      reason:
+        'git clean blocked as a safety measure — this removes untracked files irreversibly. Ask the user to confirm before proceeding.',
+    };
   }
 
   return null;

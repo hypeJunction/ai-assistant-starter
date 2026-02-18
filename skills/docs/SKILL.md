@@ -15,14 +15,29 @@ triggers:
 > **Purpose:** Add or improve documentation for code
 > **Usage:** `/docs [scope flags] <description>`
 
-## Constraints
+## Iron Laws
 
-- **Documentation only** -- Do not change code behavior
-- **Explain the "why"** -- Not just the "what"
-- **Do not add noise** -- Skip self-explanatory code
-- **Do not guess intent** -- Ask if unclear about purpose
+1. **DOCUMENTATION ONLY** -- Do not change code behavior. If you spot a bug while documenting, note it — don't fix it.
+2. **EXPLAIN THE WHY** -- Self-evident code needs no comment. When you do comment, explain the reasoning, not the mechanics.
+3. **DO NOT GUESS INTENT** -- If you're unsure why code exists or what it does, ask. Wrong documentation is worse than no documentation.
 
 > **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
+## When to Use
+
+- Exported functions or classes lack JSDoc
+- Complex algorithms or business logic need explanation
+- A package or module has no README
+- Public APIs need usage examples
+- After implementing a feature that changes the API surface
+
+## When NOT to Use
+
+- Adding test coverage for code -> `/test-coverage`
+- Exploring code to understand it -> `/explore`
+- Recording an architecture decision -> `/adr`
+- Documenting deferred work or tech debt -> `/add-todo`
+- Writing a full project README from scratch -> `/init`
 
 ## Scope Flags
 
@@ -222,3 +237,15 @@ Report what was documented:
 - [ ] Packages have README files
 - [ ] Edge cases are documented
 - [ ] Examples are accurate and tested
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| DOC-T1 | Positive | "Add JSDoc to this file" | Skill triggers |
+| DOC-T2 | Positive | "Document the public API" | Skill triggers |
+| DOC-T3 | Positive | "This module needs a README" | Skill triggers |
+| DOC-T4 | Negative | "Add tests for this code" | Does NOT trigger (-> /test-coverage) |
+| DOC-T5 | Negative | "How does this work?" | Does NOT trigger (-> /explore) |
+| DOC-T6 | Negative | "Record why we chose this approach" | Does NOT trigger (-> /adr) |
+| DOC-T7 | Boundary | "Explain this function" | Context-dependent — if user wants docs added, trigger; if exploring to understand, route to /explore |

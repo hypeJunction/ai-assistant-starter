@@ -15,11 +15,11 @@ triggers:
 > **Purpose:** Document deferred work, shortcuts, and technical debt for future resolution
 > **Usage:** `/add-todo <description>`
 
-## Constraints
+## Iron Laws
 
-- **Always provide full context** -- Future readers need to understand without extra research
-- **Use the template format** -- Consistent structure aids discovery and tracking
-- **Set realistic priorities** -- Not everything is high priority
+1. **FULL CONTEXT ALWAYS** -- Future readers must understand the todo without extra research. If you can't explain it standalone, you haven't captured enough.
+2. **USE THE TEMPLATE** -- Consistent structure aids discovery, tracking, and queue management. No freeform notes.
+3. **REALISTIC PRIORITIES** -- Not everything is high priority. Default to `medium` unless there's a clear reason otherwise.
 
 ## Prerequisites
 
@@ -34,6 +34,14 @@ Create a todo entry when:
 - Discovering issues that are out of scope for current work
 - Noting improvements that would require significant effort
 - Deferring non-critical work to maintain focus
+
+## When NOT to Create
+
+- Active bugs that should be fixed now -> `/debug`
+- Work that's part of the current task scope — just do it
+- Vague ideas without concrete action ("maybe someday...") — not actionable
+- Issues already tracked in an external system (Jira, GitHub Issues) — avoid duplication
+- Architecture decisions that need recording -> `/adr`
 
 ## Todo Categories
 
@@ -181,6 +189,18 @@ When a todo is no longer relevant:
 - Review open todos periodically
 - Update priorities based on current needs
 - Cancel obsolete todos (delete with reason in commit)
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| TODO-T1 | Positive | "Note this shortcut for later" | Skill triggers |
+| TODO-T2 | Positive | "Add a todo for this tech debt" | Skill triggers |
+| TODO-T3 | Positive | "Defer this, it's out of scope" | Skill triggers |
+| TODO-T4 | Negative | "Fix this bug" | Does NOT trigger (-> /debug) |
+| TODO-T5 | Negative | "Record the architecture decision" | Does NOT trigger (-> /adr) |
+| TODO-T6 | Negative | "Add documentation to this function" | Does NOT trigger (-> /docs) |
+| TODO-T7 | Boundary | "We should improve this eventually" | Context-dependent — if it's concrete deferred work, create a todo; if vague, ask for specifics before creating |
 
 ## References
 

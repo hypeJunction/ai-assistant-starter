@@ -49,6 +49,10 @@ The hook reads protected branch names from the environment or defaults to `main`
 export PROTECTED_BRANCHES="main,master,production"
 ```
 
+## Warn vs Block
+
+The hook protocol only supports `block` and passthrough. "Warn"-level operations are implemented as blocks with a softer confirmation-style message — the agent is told to ask the user before retrying.
+
 ## Acceptance Tests
 
 | ID | Type | Condition | Expected |
@@ -59,3 +63,8 @@ export PROTECTED_BRANCHES="main,master,production"
 | BP-T4 | Allow | `git push --force origin feature/my-branch` | Allowed |
 | BP-T5 | Allow | `git reset --hard HEAD~1` on feature branch | Allowed |
 | BP-T6 | Allow | `git push origin main` (no --force) | Allowed |
+| BP-T7 | Warn | `git checkout .` on main branch | Blocked with safety warning |
+| BP-T8 | Warn | `git restore .` on main branch | Blocked with safety warning |
+| BP-T9 | Warn | `git clean -fd` | Blocked with safety warning |
+| BP-T10 | Allow | `git checkout .` on feature branch | Allowed |
+| BP-T11 | Allow | `git clean -n` (dry run, no -f) | Allowed |

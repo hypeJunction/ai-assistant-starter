@@ -15,8 +15,7 @@ This directory contains project-specific AI assistant configuration and tracking
 │   ├── commands.md     # Available commands
 │   ├── structure.md    # Directory layout
 │   ├── patterns.md     # Code templates
-│   ├── stack.md        # Technology stack
-│   └── config.md       # Configuration files
+│   └── stack.md        # Technology stack
 ├── domains/            # Override/extend domain rules
 ├── workflows/          # Custom workflows
 ├── todos/              # Technical debt tracking

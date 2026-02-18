@@ -16,7 +16,7 @@ triggers:
 > **Purpose:** Capture Architecture Decision Records documenting the reasoning behind significant technical choices
 > **Usage:** `/adr [title]` or `/adr --from-todo <todo-file>`
 
-## Constraints
+## Iron Laws
 
 1. **CAPTURE THE WHY** — The decision itself is visible in code. The ADR exists to record *why* this choice was made and what alternatives were rejected.
 2. **ONE DECISION PER ADR** — Each ADR covers a single decision. Split compound decisions into separate records.
@@ -174,3 +174,15 @@ When invoked with `--from-todo`, the workflow adapts:
 3. The "Decision" section captures what was actually implemented
 4. The "Alternatives" section draws from the todo's context about shortcuts vs. proper solutions
 5. After the ADR is created, **delete the todo file** — the ADR now holds the decision record, git history preserves the todo's existence
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| ADR-T1 | Positive | "Record why we chose React over Vue" | Skill triggers |
+| ADR-T2 | Positive | "Create an ADR for the API pattern" | Skill triggers |
+| ADR-T3 | Positive | "Document the architecture decision" | Skill triggers |
+| ADR-T4 | Negative | "How does the API work?" | Does NOT trigger (-> /explore) |
+| ADR-T5 | Negative | "Add documentation to the codebase" | Does NOT trigger (-> /docs) |
+| ADR-T6 | Negative | "Note this tech debt for later" | Does NOT trigger (-> /add-todo) |
+| ADR-T7 | Boundary | "Why did we choose this approach?" | Context-dependent — if asking about an existing decision, route to /explore; if recording a new decision, trigger /adr |
