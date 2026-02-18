@@ -97,7 +97,7 @@ triggers:
 ### Step 1: Analyze Changes
 
 ```bash
-MAIN_BRANCH=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')
+MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
 git diff --name-only $MAIN_BRANCH..HEAD
 ```
 

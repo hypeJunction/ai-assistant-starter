@@ -5,16 +5,16 @@ Deployment strategies and release management patterns for GitHub Actions CI/CD p
 ### Environment Promotion
 
 ```yaml
-# Deploy to staging on {{DEFAULT_BRANCH}} push
+# Deploy to staging on main push
 name: Deploy
 
 on:
   push:
-    branches: [{{DEFAULT_BRANCH}}]
+    branches: [main]
 
 jobs:
   deploy-staging:
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +23,7 @@ jobs:
   # Manual approval for production
   deploy-production:
     needs: [deploy-staging]
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     environment: production  # Requires approval
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +90,7 @@ on:
 
 jobs:
   release:
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:

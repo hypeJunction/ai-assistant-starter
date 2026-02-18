@@ -1,4 +1,4 @@
-Worked example of a fully filled-in todo entry.
+Worked example of a fully filled-in todo entry using the `NNN-{name}.md` naming convention (e.g., `001-refactor-api-client.md`).
 
 ## Example Todo
 
@@ -9,6 +9,9 @@ title: Refactor API Client to Use Interceptors
 priority: medium
 category: refactor
 status: open
+estimated_effort: medium
+queue_position: 1
+blocked_by: []
 created: 2025-01-15
 updated: 2025-01-15
 labels: [api, architecture]

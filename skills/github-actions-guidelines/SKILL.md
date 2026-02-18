@@ -19,52 +19,54 @@ user-invocable: false
 
 ### Standard Pipeline Stages
 
+> **Customize for your project:** Examples below use `npm` commands and Node 20 LTS. Adjust `node-version`, install/script commands, and `{{BUILD_OUTPUT}}` path (`dist`, `build`, `.next`, `out`) to match your project. For yarn/pnpm, replace `npm ci` with `yarn install --frozen-lockfile` or `pnpm install --frozen-lockfile` and update the `cache:` value.
+
 ```yaml
 # .github/workflows/ci.yml
 name: CI
 
 on:
   push:
-    branches: [{{DEFAULT_BRANCH}}]
+    branches: [main]
   pull_request:
-    branches: [{{DEFAULT_BRANCH}}]
+    branches: [main]
 
 jobs:
   # Stage 1: Quick checks (fail fast)
   lint:
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '{{NODE_VERSION}}'
-          cache: '{{PACKAGE_MANAGER}}'
-      - run: {{INSTALL_COMMAND}}
-      - run: {{LINT_COMMAND}}
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
 
   typecheck:
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '{{NODE_VERSION}}'
-          cache: '{{PACKAGE_MANAGER}}'
-      - run: {{INSTALL_COMMAND}}
-      - run: {{TYPECHECK_COMMAND}}
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
 
   # Stage 2: Tests (after lint passes)
   test:
     needs: [lint, typecheck]
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '{{NODE_VERSION}}'
-          cache: '{{PACKAGE_MANAGER}}'
-      - run: {{INSTALL_COMMAND}}
-      - run: {{TEST_COVERAGE_COMMAND}}
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:coverage
       - uses: codecov/codecov-action@v3
         with:
           files: ./coverage/lcov.info
@@ -72,15 +74,15 @@ jobs:
   # Stage 3: Build
   build:
     needs: [test]
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '{{NODE_VERSION}}'
-          cache: '{{PACKAGE_MANAGER}}'
-      - run: {{INSTALL_COMMAND}}
-      - run: {{BUILD_COMMAND}}
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
           name: build
@@ -89,10 +91,10 @@ jobs:
   # Stage 4: Security scan
   security:
     needs: [build]
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: {{PACKAGE_MANAGER}} audit --audit-level=high
+      - run: npm audit --audit-level=high
       - uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -110,7 +112,7 @@ on:
 
 jobs:
   pr-validation:
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -129,7 +131,7 @@ jobs:
       # Check commit messages
       - name: Validate commits
         run: |
-          git log origin/{{DEFAULT_BRANCH}}..HEAD --format='%s' | while read msg; do
+          git log origin/main..HEAD --format='%s' | while read msg; do
             if ! echo "$msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|revert)(\(.+\))?: .+'; then
               echo "::error::Invalid commit message: $msg"
               exit 1
@@ -139,8 +141,8 @@ jobs:
       # Run tests for changed files only
       - name: Test changed files
         run: |
-          {{INSTALL_COMMAND}}
-          {{TEST_COMMAND}} -- --changedSince=origin/{{DEFAULT_BRANCH}}
+          npm ci
+          npm test -- --changedSince=origin/main
 ```
 
 ## Caching
@@ -150,8 +152,8 @@ jobs:
 ```yaml
 - uses: actions/setup-node@v4
   with:
-    node-version: '{{NODE_VERSION}}'
-    cache: '{{PACKAGE_MANAGER}}'  # Built-in caching
+    node-version: '20'
+    cache: 'npm'  # Built-in caching
 
 # Or manual cache for more control
 - uses: actions/cache@v4
@@ -167,6 +169,7 @@ jobs:
 ### Build Caching
 
 ```yaml
+# Adjust paths for your framework (e.g., .next/cache for Next.js, .nuxt for Nuxt)
 - uses: actions/cache@v4
   with:
     path: |
@@ -184,7 +187,7 @@ jobs:
 ```yaml
 jobs:
   deploy:
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - name: Deploy
         env:

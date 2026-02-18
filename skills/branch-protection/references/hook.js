@@ -134,4 +134,9 @@ async function main() {
   process.exit(0);
 }
 
-main();
+// Allow testing when required as a module
+if (require.main === module) {
+  main();
+}
+
+module.exports = { checkBranchProtection, extractCommand, getCurrentBranch, PROTECTED_BRANCHES };

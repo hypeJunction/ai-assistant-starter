@@ -14,7 +14,7 @@ Quality gates, notification patterns, and performance optimization for GitHub Ac
 jobs:
   lint:
     # This job name must match branch protection rule
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps:
       - run: npm run lint
 
@@ -22,8 +22,8 @@ jobs:
   test:
     strategy:
       matrix:
-        node: [{{NODE_VERSION}}]
-    runs-on: {{CI_RUNNER}}
+        node: [20]
+    runs-on: ubuntu-latest
     steps:
       - run: npm test
 ```
@@ -33,7 +33,7 @@ jobs:
 ```yaml
 test:
   steps:
-    - run: {{TEST_COVERAGE_COMMAND}}
+    - run: npm run test:coverage
 
     - name: Check coverage threshold
       run: |
@@ -85,17 +85,17 @@ test:
 jobs:
   # These run in parallel
   lint:
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps: [...]
 
   typecheck:
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
     steps: [...]
 
   # This waits for both
   test:
     needs: [lint, typecheck]
-    runs-on: {{CI_RUNNER}}
+    runs-on: ubuntu-latest
 ```
 
 ### Matrix Builds
@@ -105,8 +105,8 @@ test:
   strategy:
     fail-fast: false  # Don't cancel others on failure
     matrix:
-      os: [{{CI_RUNNER}}]
-      node: [{{NODE_VERSION}}]
+      os: [ubuntu-latest]
+      node: [20]
   runs-on: ${{ matrix.os }}
   steps:
     - uses: actions/setup-node@v4

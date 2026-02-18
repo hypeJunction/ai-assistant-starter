@@ -9,6 +9,21 @@ user-invocable: false
 
 Predictable, semantically-colored message formats following CLI UX best practices.
 
+> **Emoji handling:** Templates below use emoji indicators by default. When `config.yaml` sets `use_emojis: false`, use plain-text prefixes instead:
+>
+> | Default | Plain alternative |
+> |---------|-------------------|
+> | ✅ STATUS | `[STATUS]` |
+> | 🔴 ACTION | `[ACTION]` |
+> | ⚠️ WARNING | `[WARNING]` |
+> | ❌ ERROR | `[ERROR]` |
+> | 💡 INFO | `[INFO]` |
+> | 📝 INPUT | `[INPUT]` |
+> | ⚡ CONFIRM | `[CONFIRM]` |
+> | 📋 TASK | `[TASK]` |
+> | 💬 NEXT | `[NEXT]` |
+> | ✓ / ⠋ / ○ | `[done]` / `[..]` / `[ ]` |
+
 ## Quick Reference
 
 ```

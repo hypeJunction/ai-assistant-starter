@@ -68,7 +68,7 @@ triggers:
 
 ```bash
 git branch --show-current
-MAIN_BRANCH=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')
+MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
 gh pr view --json number,title,body,baseRefName,url 2>/dev/null
 ```
 
