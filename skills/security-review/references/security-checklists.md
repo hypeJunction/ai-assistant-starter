@@ -1,6 +1,6 @@
 # Security Checklists
 
-## OWASP Checklist
+## OWASP Web Top 10 Checklist
 
 ### 1. Injection
 - [ ] SQL queries use parameterized statements or ORM
@@ -69,6 +69,90 @@
 - [ ] Workflow steps can't be skipped
 - [ ] Rate limits on expensive operations
 - [ ] Referral/discount codes validated server-side
+
+### 12. SSRF (Server-Side Request Forgery)
+- [ ] User-provided URLs validated against allowlist before server-side fetch
+- [ ] Private/internal IP ranges blocked (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
+- [ ] Redirects disabled or redirect targets validated
+- [ ] DNS rebinding protections in place for critical fetches
+- [ ] Cloud metadata endpoints blocked (169.254.169.254)
+
+### 13. Deserialization
+- [ ] No `pickle.loads()`, `yaml.load()`, or `unserialize()` on untrusted data
+- [ ] `JSON.parse` revivers don't construct functions or execute code
+- [ ] Serialization libraries are safe-by-default (not `node-serialize`, `cryo`)
+- [ ] Schema validation applied after deserialization (Zod, class-validator)
+
+### 14. Supply Chain
+- [ ] Private package scopes configured with explicit registry URLs
+- [ ] Lock files use frozen installs in CI (`npm ci`, `--frozen-lockfile`)
+- [ ] New dependencies audited for install scripts and maintainer reputation
+- [ ] CI/CD actions pinned to SHA (not mutable tags)
+- [ ] `GITHUB_TOKEN` permissions set to minimum required
+
+### 15. Repudiation / Audit Logging
+- [ ] Security-sensitive actions are logged (login, logout, permission changes, data access)
+- [ ] Logs include actor identity, action, target, timestamp
+- [ ] Log integrity is protected (append-only, shipped to external system)
+- [ ] Logs don't contain secrets, tokens, or full request bodies
+- [ ] Failed authentication attempts are logged with source IP
+
+## OWASP API Security Top 10 Checklist
+
+Use when reviewing API endpoints, REST routes, or GraphQL resolvers.
+
+### API1: Broken Object Level Authorization
+- [ ] Every endpoint verifies the requesting user owns/can access the requested object
+- [ ] No reliance on client-sent IDs without server-side ownership check
+- [ ] Bulk/list endpoints filter by authorized scope
+
+### API2: Broken Authentication
+- [ ] Auth tokens validated on every request (not just at login)
+- [ ] Token expiry enforced, refresh tokens rotated
+- [ ] Rate limiting on auth endpoints (login, token refresh, password reset)
+- [ ] No credentials in URL parameters
+
+### API3: Broken Object Property Level Authorization
+- [ ] Response payloads don't include fields the user shouldn't see (e.g., `isAdmin`, `passwordHash`)
+- [ ] Mass assignment prevented — only explicitly allowed fields accepted from input
+- [ ] GraphQL introspection disabled in production (or fields filtered by role)
+
+### API4: Unrestricted Resource Consumption
+- [ ] Rate limiting per API key/user/IP
+- [ ] Pagination enforced (no unbounded `limit` parameter)
+- [ ] Request body size limits set
+- [ ] File upload size limits enforced
+- [ ] GraphQL query depth/cost limiting in place
+
+### API5: Broken Function Level Authorization
+- [ ] Admin endpoints require admin role check (not just authentication)
+- [ ] Role hierarchy enforced at API layer (not just UI)
+- [ ] No endpoint accessible by changing HTTP method (GET vs POST vs DELETE)
+
+### API6: Unrestricted Access to Sensitive Business Flows
+- [ ] Sensitive operations (purchase, transfer, account creation) have rate limits
+- [ ] CAPTCHA or step-up auth for high-value actions
+- [ ] Automated abuse detection (bot patterns, velocity checks)
+
+### API7: Server Side Request Forgery
+- [ ] See SSRF checklist above (item 12)
+
+### API8: Security Misconfiguration
+- [ ] CORS configured to specific origins (not `*` with credentials)
+- [ ] Security headers set (see Web Top 10 checklist)
+- [ ] Error responses don't expose stack traces or internal details
+- [ ] Unnecessary HTTP methods disabled
+
+### API9: Improper Inventory Management
+- [ ] No deprecated or undocumented API versions still accessible
+- [ ] API versioning strategy in place, old versions sunset
+- [ ] All endpoints have authentication (no accidental public endpoints)
+
+### API10: Unsafe Consumption of APIs
+- [ ] Third-party API responses validated before use
+- [ ] Timeouts set on external API calls
+- [ ] External API failures handled gracefully (circuit breaker pattern)
+- [ ] TLS verification enabled for all external calls
 
 ## Framework-Mitigated Patterns
 

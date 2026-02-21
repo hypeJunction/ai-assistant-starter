@@ -7,6 +7,9 @@ triggers:
   - check vulnerabilities
   - security review
   - OWASP check
+  - supply chain security
+  - threat modeling
+  - API security check
 ---
 
 # Security Review
@@ -95,6 +98,22 @@ Categorize files by risk tier:
 
 If scope is large (>50 files), present tiers and ask user which to focus on.
 
+### Context-Aware Reference Loading
+
+Based on the code in scope, load the relevant reference files for deep analysis:
+
+| Detected Code | Load References |
+|---------------|-----------------|
+| API routes, middleware, auth | `references/security-checklists.md`, `references/quick-patterns.md` |
+| Frontend, templates, JSX | `references/quick-patterns.md`, `references/modern-threats.md` (DOM clobbering, XSS) |
+| WebSocket, LLM/AI integration | `references/modern-threats.md` |
+| `package.json`, lock files, CI configs | `references/supply-chain.md` |
+| Dockerfiles, K8s manifests, Terraform, IAM | `references/infrastructure-security.md` |
+| Crypto, secrets, tokens | `references/security-checklists.md` |
+| External HTTP calls, webhooks | `references/quick-patterns.md` (SSRF), `references/modern-threats.md` |
+
+Load only what's relevant — don't review all references for every audit.
+
 ### Phase 2: Attack Surface Mapping
 
 For each file in scope, identify:
@@ -105,12 +124,24 @@ For each file in scope, identify:
 4. **External service calls** — APIs, webhooks, third-party SDKs
 5. **Cryptographic operations** — Hashing, encryption, token generation
 6. **File system operations** — Reads, writes, path construction
+7. **Deserialization** — `JSON.parse` with revivers, `yaml.load`, `pickle`, `unserialize`
+8. **Supply chain surface** — Dependency manifests, lock files, install scripts, CI/CD configs
+9. **Infrastructure configs** — Dockerfiles, K8s manifests, Terraform, cloud IAM policies
 
 Classify each data flow as:
 - **Attacker-controlled** — Data from unauthenticated users, URL params, form input
 - **Server-controlled** — Environment variables, database lookups by server, config files
+- **Gray area** — Database values from prior user input (stored XSS), third-party API responses
 
-Focus analysis on attacker-controlled flows.
+Focus analysis on attacker-controlled and gray-area flows.
+
+### Quick Triage
+
+Before deep scanning, run through the quick patterns reference (`references/quick-patterns.md`):
+
+- **Always Flag (Critical):** `eval()`, `exec()`, `pickle.loads()`, `unserialize()`, `new Function()` — dangerous in virtually all contexts
+- **Always Flag (High):** `innerHTML`, `dangerouslySetInnerHTML`, SQL string interpolation, hardcoded secrets — dangerous when user-controlled data reaches them
+- **Check Context First:** SSRF, path traversal, open redirects, weak crypto, mass assignment, race conditions — investigate data source and mitigations before flagging
 
 ### Phase 3: Security Scan
 
@@ -127,6 +158,15 @@ Check each attack surface against OWASP categories (see `references/security-che
 9. **Information Disclosure** — Stack traces, verbose errors, exposed internals
 10. **Denial of Service** — ReDoS, unbounded queries, resource exhaustion
 11. **Business Logic** — Price manipulation, workflow bypass, negative quantities
+12. **SSRF** — User-controlled URLs in server-side requests (see `references/modern-threats.md`)
+13. **Deserialization** — Unsafe deserialization of untrusted data (see `references/modern-threats.md`)
+14. **Supply Chain** — Dependency confusion, typosquatting, pipeline poisoning (see `references/supply-chain.md`)
+
+When reviewing API endpoints, also check the OWASP API Security Top 10 (see `references/security-checklists.md`):
+mass assignment, broken object-level authorization, unrestricted resource consumption, SSRF, security misconfiguration.
+
+When reviewing infrastructure configs, check against `references/infrastructure-security.md`:
+Docker (non-root, no secrets in layers), K8s (security contexts, RBAC), Terraform (no hardcoded secrets, least privilege IAM), CI/CD (pinned actions, minimal permissions).
 
 For each potential finding, record:
 - The vulnerable code (file and line)
@@ -197,7 +237,7 @@ Before concluding, verify completeness:
 | Files in scope reviewed | X / Y |
 | High-risk files covered | ✅ / ❌ |
 | Attack surfaces mapped | X identified |
-| OWASP categories checked | X / 11 |
+| OWASP categories checked | X / 14 |
 | Mitigations searched | ✅ |
 | Framework patterns verified | ✅ |
 
@@ -215,7 +255,7 @@ Before concluding, verify completeness:
 ## Security Review: [scope]
 
 **Files reviewed:** [count]
-**OWASP categories checked:** 11/11
+**OWASP categories checked:** 14/14
 **Findings:** None
 
 No security vulnerabilities found at HIGH or MEDIUM confidence.
