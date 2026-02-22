@@ -87,7 +87,7 @@ git diff $MAIN_BRANCH...HEAD
 
 ### Step 4: Review Each File
 
-For each changed file, read the full file for context. Check:
+For each changed file, read the full file for context. Use `references/review-checklist.md` for a comprehensive domain-organized checklist (correctness, security, performance, testing, maintainability, TypeScript/React/API-specific checks). Check:
 
 **Code Quality:** No `any` types, proper typing, correct imports, no lint warnings
 **Testing:** Test coverage for new code, meaningful descriptions, proper async handling
@@ -160,6 +160,8 @@ _(None found — or list findings)_
 ---
 **Recommendation:** [Approve / Request Changes / Needs Discussion]
 ```
+
+When providing feedback, use severity labels and the question approach (see `references/review-feedback-patterns.md` for label definitions, tone guidelines, and constructive feedback templates).
 
 ### Step 6: Action Menu
 

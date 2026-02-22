@@ -184,7 +184,7 @@ Which approach?
 
 ## Plan Quality Checklist
 
-Before presenting the plan, verify:
+Before presenting the plan, verify (see `references/plan-quality-checklist.md` for detailed guidance with examples for each item):
 - [ ] Every step has an exact file path
 - [ ] Every step has a clear deliverable
 - [ ] Code snippets show the shape of changes

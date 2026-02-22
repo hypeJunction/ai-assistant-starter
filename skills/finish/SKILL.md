@@ -143,7 +143,9 @@ Ready to commit with message:
 
 **Do NOT commit without explicit approval.**
 
-### Phase 7: Final Verification (Optional)
+### Phase 7: Final Verification and Next Steps
+
+Present structured exit options (see `references/finish-options.md` for the full decision tree, post-merge verification, and session summary template).
 
 If preparing to push:
 ```bash

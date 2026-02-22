@@ -267,7 +267,7 @@ Cycle complete. Ready for next behavior or commit.
 
 ## Common Rationalizations
 
-When tempted to skip TDD, consult this table:
+When tempted to skip TDD, consult this table (see `references/tdd-rationalizations.md` for deeper analysis with real-world scenarios):
 
 | Rationalization | Rebuttal |
 |----------------|----------|
@@ -372,6 +372,8 @@ Before committing, confirm every item:
 - [ ] Test names describe behavior, not implementation
 
 ## When Stuck
+
+See `references/tdd-troubleshooting.md` for detailed decision tables, the "wish" technique, and debugging integration guidance.
 
 | Problem | Solution |
 |---------|----------|
