@@ -101,7 +101,7 @@ If scope is large (>30 components), present categories and ask user which to foc
 
 ### Phase 2: Automated Scan
 
-Review code for common violations (see `references/wcag-checklist.md`):
+Review code for common violations (see `references/wcag-checklist.md` for full WCAG criterion reference, `references/a11y-remediation-patterns.md` for fix patterns by component type):
 
 **Critical checks (P0 candidates):**
 - Interactive elements not reachable by keyboard (`div` with `onClick` but no `role`/`tabIndex`)
@@ -153,7 +153,7 @@ npx eslint --rule '{"jsx-a11y/*": "error"}' src/
 - [ ] Do custom widgets support expected keyboard patterns? (Arrow keys for tabs, Space/Enter for buttons)
 - [ ] Is there no keyboard trap? (Focus can always move away from any element)
 
-#### Screen Reader Checklist
+#### Screen Reader Checklist (see `references/screen-reader-testing.md` for platform-specific commands and detailed testing methodology)
 
 - [ ] Are headings used hierarchically (h1 > h2 > h3, no skipped levels)?
 - [ ] Do informational images have descriptive `alt` text?

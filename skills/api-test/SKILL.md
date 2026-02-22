@@ -168,7 +168,7 @@ For each endpoint, determine required test categories:
 
 **Mode:** Full access -- write tests using project's test runner.
 
-### Step 3.1: Set Up Test Utilities
+### Step 3.1: Set Up Test Utilities (see `references/api-mock-patterns.md` for database strategies, MSW setup, factories, and contract testing)
 
 Create or reuse API test helpers:
 

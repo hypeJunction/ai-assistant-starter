@@ -387,6 +387,8 @@ submission. Uses Page Object Model for maintainability.
 
 ## Handling Flaky Tests
 
+See `references/e2e-flaky-tests.md` for a deep guide on diagnosis, prevention patterns, and the flaky test decision tree.
+
 ### Identify
 
 A test is flaky if:
