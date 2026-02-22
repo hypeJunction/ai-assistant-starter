@@ -108,7 +108,7 @@ git stash push -m "savepoint: before refactor" --include-untracked 2>/dev/null; 
 
 Or ensure all current work is committed so you can revert cleanly.
 
-### Step 4.2: Execute in Batches (max 5 files per batch)
+### Step 4.2: Execute in Batches (max 5 files per batch, see `references/safe-refactoring-patterns.md` for pattern-specific risk and batch safety guidance)
 
 For each batch:
 1. Apply changes

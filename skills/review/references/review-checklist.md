@@ -98,3 +98,8 @@ Use this in addition to the structured security check in the main SKILL.md.
 | **Rate limiting** | Expensive operations without throttling |
 | **Idempotency** | POST/PUT operations safe to retry (idempotency key for payments, deduplication) |
 | **Versioning** | Breaking changes to existing endpoints (should use new version) |
+
+## See Also
+
+- [Security Checklists](../../security-review/references/security-checklists.md) — Full OWASP Top 10 and API Security Top 10 checklists for deeper security review
+- [WCAG Checklist](../../accessibility-review/references/wcag-checklist.md) — Full WCAG 2.1 AA checklist for accessibility review of UI code

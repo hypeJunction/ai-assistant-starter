@@ -87,7 +87,22 @@ git diff $MAIN_BRANCH...HEAD
 
 ### Step 4: Review Each File
 
-For each changed file, read the full file for context. Use `references/review-checklist.md` for a comprehensive domain-organized checklist (correctness, security, performance, testing, maintainability, TypeScript/React/API-specific checks). Check:
+For each changed file, read the full file for context. Use `references/review-checklist.md` for a comprehensive domain-organized checklist (correctness, security, performance, testing, maintainability, TypeScript/React/API-specific checks).
+
+#### Context-Aware Checklist Loading
+
+Load review checklists based on file types in the diff:
+
+| File Type in Diff | Load Additional Checklists |
+|---|---|
+| .ts/.tsx (React) | `typescript-guidelines`, `accessibility-review/references/wcag-checklist.md` |
+| API routes | `rest-api-guidelines`, `security-review/references/security-checklists.md` |
+| Test files (.spec.ts) | `vitest-guidelines`, `tdd/references/testing-anti-patterns.md` |
+| Database / ORM files | `prisma-guidelines` |
+| Config / env files | `env-config-guidelines` |
+| CI / Docker files | `github-actions-guidelines`, `docker-node-guidelines` |
+
+Check:
 
 **Code Quality:** No `any` types, proper typing, correct imports, no lint warnings
 **Testing:** Test coverage for new code, meaningful descriptions, proper async handling

@@ -141,3 +141,7 @@ If the audit reveals the same pattern in 3+ locations:
 - Note the pattern and affected files in the todo for efficient batch fixing later
 
 Don't fix all instances during a debug session — that's scope creep. The current goal is to fix the reported bug and prevent regression.
+
+## See Also
+
+- [Testing Anti-Patterns](../../tdd/references/testing-anti-patterns.md) — Common testing mistakes that lead to low-quality regression tests

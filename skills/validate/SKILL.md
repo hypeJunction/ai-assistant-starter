@@ -100,7 +100,7 @@ npm run typecheck
 npm run lint -- [changed-files]
 ```
 
-**Security Scan (always runs):**
+**Security Scan (always runs — see `references/security-scan-patterns.md` for pattern details, false positive guidance, and severity classification):**
 
 ```bash
 # Secrets detection
@@ -234,7 +234,7 @@ Run exact same checks as CI pipeline.
 
 ---
 
-## Common Issues & Solutions
+## Common Issues & Solutions (see `references/validation-troubleshooting.md` for expanded patterns including build failures and CI discrepancies)
 
 ### Type Errors
 

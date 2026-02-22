@@ -384,7 +384,7 @@ npm run typecheck
 
 ### Step 7.1: Generate Rollback Steps
 
-For every migration, document the reverse operation:
+For every migration, document the reverse operation. See `references/rollback-cookbook.md` for ORM-specific rollback commands, expand-contract rollback patterns, and the emergency rollback checklist.
 
 ```markdown
 ## Rollback Plan

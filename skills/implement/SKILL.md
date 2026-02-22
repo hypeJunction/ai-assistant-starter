@@ -105,6 +105,21 @@ If scope is ambiguous, ask for clarification. Delegate large explorations (6+ fi
 
 Read relevant files, trace imports and dependencies, note patterns and conventions.
 
+### Context-Aware Guidelines
+
+Based on code detected during exploration, load relevant guideline references:
+
+| Detected Code | Load Guidelines |
+|---|---|
+| TypeScript files | `typescript-guidelines` |
+| React components (.tsx/.jsx) | `typescript-guidelines`, `storybook-react-guidelines` |
+| API routes / handlers | `rest-api-guidelines`, `zod-guidelines` |
+| Database queries / ORM | `prisma-guidelines` |
+| Test files | `vitest-guidelines` |
+| Environment config | `env-config-guidelines` |
+| Error handling / custom errors | `error-handling-guidelines` |
+| Docker / CI config | `docker-node-guidelines`, `github-actions-guidelines` |
+
 ### Step 1.4: Verify Understanding
 
 Restate the task, list assumptions, flag edge cases. **Wait for confirmation.**

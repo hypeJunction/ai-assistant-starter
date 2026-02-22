@@ -101,3 +101,8 @@ Common testing mistakes that undermine test suite value. Each anti-pattern inclu
 **Why it's harmful:** Slow tests don't get run. Developers skip them locally and wait for CI. The feedback loop stretches from seconds to minutes. TDD becomes impractical.
 
 **What to do instead:** Unit tests should be pure computation with no I/O. Mock I/O boundaries. Use in-memory implementations. Reserve real I/O for integration tests in a separate suite with its own run target.
+
+## See Also
+
+- [Defense in Depth](../../debug/references/defense-in-depth.md) — Regression test quality checklist and the revert-test verification pattern
+- [Debugging Techniques](../../debug/references/debugging-techniques.md) — Test polluter detection and bisection approach for shared-state failures

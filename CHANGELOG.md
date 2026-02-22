@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Change tier classification in `/commit` (nano/small/medium/large) — scales validation requirements based on change size
 - Structured `config.yaml` replacing `config.md` — 15 settings across workflow, git, quality, display, enforcement, and approval sections with typed defaults
 - Work queue fields in todo template — `estimated_effort` (nano/small/medium/large), `queue_position`, `blocked_by`; file naming convention: `NNN-{name}.md`
+- Reference documentation for `/security-review` — modular references for quick patterns, modern threats, supply chain security, and infrastructure security; expanded OWASP API Security Top 10 in security checklists
+- Reference documentation for `/implement`, `/debug`, `/commit` — plan templates, task decomposition, root-cause tracing, defense-in-depth, debugging techniques, commit conventions, pre-commit verification
+- Reference documentation for `/tdd`, `/review`, `/finish`, `/plan` — TDD rationalizations and troubleshooting, review checklist and feedback patterns, finish options, plan quality checklist
+- Reference documentation for `/accessibility-review`, `/e2e`, `/api-test` — screen reader testing, a11y remediation patterns, flaky test prevention, API mock and factory patterns
+- Reference documentation for `/validate`, `/refactor`, `/migrate` — security scan patterns, validation troubleshooting, safe refactoring patterns, rollback cookbook
+- Context-aware guideline loading tables in `/implement`, `/debug`, `/review` — auto-loads relevant guideline skills based on detected code types
+- Cross-skill reference linking across 7 reference files — See Also sections connecting related content (regression testing, test isolation, security checklists, evidence-before-claims)
 
 ### Changed
 - Skill instructions now use target-agnostic language — "subagent" → "parallel agent", "glob/grep" → "file/content search", Claude-specific Co-Authored-By → configurable `git.ai_attribution`

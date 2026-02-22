@@ -388,3 +388,7 @@ Always collect traces and screenshots on failure:
       playwright-report/
     retention-days: 7
 ```
+
+## See Also
+
+- [Debugging Techniques](../../debug/references/debugging-techniques.md) — Test polluter detection with bisection, race condition analysis, and general debugging methodology

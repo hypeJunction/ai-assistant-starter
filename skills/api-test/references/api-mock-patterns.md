@@ -483,3 +483,7 @@ describe('/api/users', () => {
   });
 });
 ```
+
+## See Also
+
+- [E2E Patterns](../../e2e/references/e2e-patterns.md) — Network mocking patterns for browser-level tests (Playwright route interception, Cypress interception)

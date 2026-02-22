@@ -172,3 +172,8 @@ Common excuses that lead to bad debugging. Recognize and resist them.
 | "It was working yesterday" | Something changed. Find what. | Use `git bisect` or `git log` to find the change |
 | "It's flaky, just retry" | Flaky tests have deterministic root causes | Find the root cause. See condition-based waiting and test polluter detection. |
 | "I just need more logging" | Logging without a hypothesis is fishing | Form a hypothesis FIRST, then add targeted logging to confirm or deny it |
+
+## See Also
+
+- [TDD Troubleshooting](../../tdd/references/tdd-troubleshooting.md) — Test isolation techniques and debugging test failures
+- [E2E Flaky Tests](../../e2e/references/e2e-flaky-tests.md) — Flaky test diagnosis for end-to-end tests

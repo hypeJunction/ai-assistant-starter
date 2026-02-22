@@ -110,6 +110,19 @@ Before investigating, identify the smallest possible reproduction case:
 
 Classify the bug by failure mode and use backward tracing to find the root cause (see `references/debugging-techniques.md` for failure taxonomy, and `references/root-cause-tracing.md` for the backward tracing methodology).
 
+#### Context-Aware References
+
+Load debugging references based on failure category:
+
+| Failure Category | Load References |
+|---|---|
+| Test failures / flaky tests | `references/debugging-techniques.md` (Test Polluter Detection) |
+| Logic errors / wrong output | `references/root-cause-tracing.md` (Backward Tracing) |
+| Type errors | `typescript-guidelines` |
+| API integration issues | `rest-api-guidelines`, `error-handling-guidelines` |
+| Security-related bugs | `security-guidelines` |
+| Performance issues | `performance-guidelines` |
+
 Use the debugging decision tree to select strategy:
 
 | Symptom | Strategy |

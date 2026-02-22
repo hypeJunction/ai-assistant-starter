@@ -121,3 +121,7 @@ Suggest stash when:
 - `git status` shows changes in files unrelated to the commit scope
 - The user asks to commit specific files but has other modifications
 - Switching to a different task mid-stream
+
+## See Also
+
+- [Task Decomposition](../../implement/references/task-decomposition.md) — Evidence-before-claims pattern and rationalization prevention during implementation
