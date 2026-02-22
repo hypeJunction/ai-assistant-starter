@@ -108,6 +108,8 @@ Before investigating, identify the smallest possible reproduction case:
 
 ### Step 2.2: Investigate
 
+Classify the bug by failure mode and use backward tracing to find the root cause (see `references/debugging-techniques.md` for failure taxonomy, and `references/root-cause-tracing.md` for the backward tracing methodology).
+
 Use the debugging decision tree to select strategy:
 
 | Symptom | Strategy |
@@ -200,6 +202,7 @@ Ask the user to help eliminate hypotheses:
 
 1. Apply fix — one change at a time
 2. Run typecheck after change
+3. Validate at multiple layers (see `references/defense-in-depth.md` for four-layer validation and related code audit)
 
 ### Step 4.3: Add Regression Test
 

@@ -116,6 +116,8 @@ Exclude test files and example/documentation files from blocking — flag them a
 
 ### Step 4: Validate (Optional)
 
+Validation scales by change tier. See `references/pre-commit-verification.md` for tier-specific requirements and evidence freshness rules.
+
 ```bash
 npm run typecheck
 npm run lint
@@ -154,6 +156,8 @@ git commit -m "[message]"
 ```
 
 ## Commit Message Format
+
+See `references/commit-conventions.md` for extended formats (breaking changes, reverts, multi-issue references, scope conventions, good/bad examples).
 
 ```
 [type](scope): [short description]

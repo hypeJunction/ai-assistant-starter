@@ -117,7 +117,7 @@ Restate the task, list assumptions, flag edge cases. **Wait for confirmation.**
 
 ### Step 2.1: Create Plan
 
-Every step must include exact file paths, specific changes, and code snippets showing the shape of the change. See `/plan` skill for the full plan quality checklist.
+Every step must include exact file paths, specific changes, and code snippets showing the shape of the change. See `references/plan-template.md` for a detailed template with bite-sized task format, and `/plan` skill for the plan quality checklist.
 
 ```markdown
 ## Implementation Plan
@@ -166,10 +166,11 @@ Or commit any existing work so you can revert cleanly if needed.
 
 ### Step 3.2: Implement (Verify Per File)
 
-For each file in plan:
-1. Edit the file
+For each file in plan, follow the micro-step pattern (see `references/task-decomposition.md`):
+1. Edit the file (one step per file — if a step touches >1 file, split it)
 2. **Run typecheck immediately** — don't batch multiple file edits
-3. Report progress
+3. Show fresh evidence of the result before claiming success
+4. Report progress
 
 If typecheck fails after a change, fix it before moving to the next file.
 
@@ -181,6 +182,8 @@ If typecheck fails after a change, fix it before moving to the next file.
 | **Missing dependency** | Note it, ask if it should be added. |
 | **Design conflict** | Present options. Don't force the original plan. |
 | **Existing bug found** | Create a todo. Do NOT fix — out of scope. |
+
+See `references/task-decomposition.md` for detailed decision trees for each surprise type and evidence-before-claims requirements.
 
 ### Step 3.4: Validate Code
 
