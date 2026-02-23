@@ -1,5 +1,7 @@
 # WCAG 2.1 AA Checklist
 
+> **Attribution:** Criterion names, numbers, and conformance levels in this checklist are from [Web Content Accessibility Guidelines (WCAG) 2.1](https://www.w3.org/TR/WCAG21/) by the [W3C Web Accessibility Initiative (WAI)](https://www.w3.org/WAI/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The "What to check," "Common violations," and "Fix pattern" content is original to this project.
+
 Reference checklist organized by WCAG principle. For each criterion: what to check, common violations, and fix pattern.
 
 ## 1. Perceivable

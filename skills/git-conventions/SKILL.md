@@ -22,6 +22,8 @@ experiment/new-caching-strategy
 
 ## Commit Messages (Conventional Commits)
 
+> **Attribution:** The commit message format and type definitions below are based on the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
 ```
 <type>(<scope>): <subject>
 

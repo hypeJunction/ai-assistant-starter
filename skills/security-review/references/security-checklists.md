@@ -1,5 +1,10 @@
 # Security Checklists
 
+> **Sources:**
+> - Web checklist based on the [OWASP Top 10 (2021)](https://owasp.org/Top10/) by the [OWASP Foundation](https://owasp.org/), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+> - API checklist based on the [OWASP API Security Top 10 (2023)](https://owasp.org/API-Security/) by the [OWASP Foundation](https://owasp.org/), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+> - Category names and risk descriptions are from OWASP; checklist items and fix patterns are original to this project.
+
 ## OWASP Web Top 10 Checklist
 
 ### 1. Injection

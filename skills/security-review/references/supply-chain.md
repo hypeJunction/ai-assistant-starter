@@ -1,5 +1,9 @@
 # Supply Chain Security Reference
 
+> **Sources:**
+> - SLSA framework levels referenced from [SLSA (Supply-chain Levels for Software Artifacts)](https://slsa.dev/) by [Google and the Open Source Security Foundation](https://slsa.dev/spec/v1.0/about).
+> - SBOM guidance based on [CycloneDX](https://cyclonedx.org/) and industry best practices.
+
 Covers dependency-level, build pipeline, and artifact integrity threats. Load this reference when reviewing `package.json`, lock files, CI/CD configs, or dependency management code.
 
 ## Dependency Confusion

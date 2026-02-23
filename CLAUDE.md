@@ -55,7 +55,7 @@ npx skills add ./ai-assistant-starter -s commit
 
 ## Available Skills
 
-### Workflow Skills (29 total, categories: process + meta)
+### Workflow Skills (30 total, categories: process + meta)
 
 **Development Workflows**
 
@@ -103,6 +103,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/adr` | Capture an Architecture Decision Record |
 | `/add-story` | Create Storybook stories |
 | `/add-todo` | Document deferred work |
+| `/research` | Ethical web research with attribution and license compliance |
 | `/track-files` | Track files for batch operations |
 | `/init` | Bootstrap project configuration |
 

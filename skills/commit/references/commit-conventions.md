@@ -1,5 +1,7 @@
 # Commit Conventions
 
+> **Attribution:** Commit message formats in this document follow the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) specification, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
 Extended commit format reference for edge cases beyond the standard `type(scope): description` pattern.
 
 ## Breaking Changes

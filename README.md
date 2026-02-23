@@ -76,6 +76,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/adr` | Capture an Architecture Decision Record |
 | `/add-story` | Create Storybook stories |
 | `/add-todo` | Document deferred work |
+| `/research` | Ethical web research with attribution and license compliance |
 | `/track-files` | Track files for batch operations |
 | `/init` | Bootstrap project configuration |
 
@@ -184,6 +185,10 @@ npx skills add ./ai-assistant-starter
 # Then refresh project config
 /init --update
 ```
+
+## Third-Party Notices
+
+This project includes content derived from third-party sources including WCAG 2.1 (W3C, CC BY 4.0), Conventional Commits (CC BY 3.0), and OWASP Top 10 (CC BY-SA 4.0). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for full attribution details.
 
 ## License
 

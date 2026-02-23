@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `/research` skill — ethical web research with attribution tracking, license detection, citation-based output, and compliance checklist references
+- `THIRD_PARTY_NOTICES.md` — centralized third-party content attribution for CC-BY (WCAG 2.1, Conventional Commits) and CC-BY-SA (OWASP Top 10, OWASP API Top 10) derived content
 - `category:` field in YAML frontmatter for all 51 skills — taxonomy: `process` (22), `meta` (7), `guideline` (16), `protocol` (4), `enforcement` (2)
 - Acceptance test tables on 10 key workflow skills (implement, debug, commit, review, plan, explore, refactor, validate, tdd, finish) — positive/negative/boundary trigger tests for skill routing validation
 - `branch-protection` enforcement skill — runtime PreToolUse hook that blocks force-push, hard reset, and branch deletion on protected branches; includes `references/hook.js`
@@ -60,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added When to Use / When NOT to Use sections to `/validate`, `/refactor`, `/review`, `/security-review`
 - Added `--files` scope flag to `/review` and `/test-coverage`
 - Renamed 5 skills for clarity and ecosystem alignment: `/cover` → `/test-coverage`, `/wrap` → `/finish`, `/e2e-test` → `/e2e`, `/create-todo` → `/add-todo`, `/file-list` → `/track-files`
+
+### Fixed
+- Added legally required CC-BY attribution to `accessibility-review/references/wcag-checklist.md` (W3C WCAG 2.1, CC BY 4.0), `git-conventions/SKILL.md` and `commit/references/commit-conventions.md` (Conventional Commits, CC BY 3.0)
+- Added source citations to `security-review/references/security-checklists.md` (OWASP Top 10, OWASP API Top 10) and `security-review/references/supply-chain.md` (SLSA framework)
 
 ## [2.0.0] - 2025-12-15
 
