@@ -49,6 +49,8 @@ triggers:
 
 **CRITICAL:** Do not mark any phase as complete without running commands and verifying output.
 
+> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
 **Key gates:**
 1. Discovery must list all endpoints before designing tests
 2. All tests must pass before generating the report
@@ -119,6 +121,27 @@ grep -rn --include="*.ts" --include="*.tsx" -E "(router\.(get|post|put|patch|del
 | DELETE | /api/users/:id | src/routes/users.ts:102 | Admin | Untested |
 ```
 
+### Step 1.4: Detect Auth Requirements
+
+For each endpoint, detect auth requirements by reading the route definition and middleware chain:
+
+1. **Check for auth middleware on the route** — Look for middleware like `requireAuth`, `authenticate`, `isAuthenticated`, `@UseGuards(AuthGuard)`, or similar patterns applied to the route or router group.
+2. **Check for role/permission checks** — Look for role guards like `requireRole('admin')`, `@Roles('admin')`, permission middleware, or inline role checks in the handler.
+3. **Classify each endpoint:**
+   - **Public** — No auth middleware. Accessible without a token.
+   - **Authenticated** — Auth middleware present, but no role restriction. Any logged-in user can access.
+   - **Role-restricted** — Auth middleware + role/permission check. Only specific roles can access (e.g., admin, editor).
+
+Auth boundaries **MUST** be tested. Update the "Auth Required" column in the endpoints table with the detected classification (Public / Auth / Admin / etc.).
+
+### Step 1.5: Identify Nested Resources
+
+Check for nested route patterns (e.g., `/posts/:id/comments`, `/users/:id/orders`). For each nested resource:
+
+1. Identify the parent-child relationship (e.g., comments belong to a post)
+2. Note the parent ID parameter name
+3. Flag for additional test cases: valid parent, non-existent parent (404), parent-child relationship integrity
+
 ---
 
 ## Phase 2: Design
@@ -136,6 +159,7 @@ For each endpoint, determine required test categories:
 | Auth: no token | Request without auth -> 401 | If auth required |
 | Auth: wrong role | Valid auth, insufficient permissions -> 403 | If role-based |
 | Not found | Valid request, resource missing -> 404 | If endpoint has path params |
+| Nested resource | Parent-child relationship integrity | If nested route (e.g., /posts/:id/comments) |
 | Conflict | Duplicate creation, stale update -> 409 | If applicable |
 | Server error | Internal failure handling -> 500 | Always (mock failure) |
 
@@ -162,11 +186,65 @@ For each endpoint, determine required test categories:
 **Estimated tests:** N
 ```
 
+### Step 2.3: Nested Resource Test Cases
+
+For nested resources (e.g., `/posts/:id/comments`):
+
+1. **Valid parent ID** — Test with a parent that exists and has children. Assert the response contains only children of the specified parent.
+2. **Non-existent parent ID** — Test with a parent ID that does not exist. Should return 404.
+3. **Parent-child relationship integrity** — Verify that resources only return children of the specified parent, not children of other parents.
+
+```markdown
+### GET /api/posts/:id/comments
+| Test Case | Expected Status | Assertions |
+|-----------|-----------------|------------|
+| List comments for valid post | 200 | Array of comments, all belong to post |
+| List comments for non-existent post | 404 | Error response |
+| List comments for invalid post ID format | 400 | Validation error |
+| Verify comments only belong to parent post | 200 | No comments from other posts |
+```
+
+### Step 2.4: Approval Gate
+
+**CRITICAL:** Present the test plan to the user before writing any tests.
+
+```markdown
+## API Test Plan
+
+| Endpoint | Auth | Tests Planned |
+|----------|------|--------------|
+| GET /api/posts | Public | happy path, empty state, pagination |
+| POST /api/posts | Auth | happy path, 401 unauth, validation errors |
+| GET /api/posts/:id/comments | Public | happy path, non-existent parent 404, invalid ID |
+| DELETE /api/posts/:id | Admin | happy path, 401 unauth, 403 wrong role, 404 not found |
+
+Estimated tests: N
+```
+
+**GATE: User must approve test plan before proceeding.** If the user requests changes to the test plan, update it and present again.
+
 ---
 
 ## Phase 3: Implement
 
 **Mode:** Full access -- write tests using project's test runner.
+
+See `references/api-test-patterns.md` for request/response testing patterns, auth testing helpers, and error response validation. See `references/api-mock-patterns.md` for external service mocking strategies, database setup, and test data factories.
+
+### Step 3.0: Verify Test Infrastructure
+
+Before writing tests, verify test infrastructure is in place:
+
+1. **Check for existing test setup** — Look for existing test utilities (supertest configuration, test helpers, factories, auth helpers). If they exist, reuse them.
+2. **If no test setup exists, create one:**
+   - **Test server:** Import the app/server, create a test instance. Do not start on a real port -- use supertest or equivalent in-process testing.
+   - **Test database:** Configure a test database (in-memory, transaction rollback, or isolated test DB). See `references/api-mock-patterns.md` for strategies.
+   - **Auth helpers:** Create token generation helpers for each role needed (admin, user, unauthenticated). See `references/api-mock-patterns.md` for auth helper patterns.
+   - **Data factories:** Create factory functions for test entities (posts, comments, users) with sensible defaults and easy overrides.
+3. **Ensure proper setup/teardown:**
+   - `beforeAll` — Start test server, connect to test database, run migrations/seed
+   - `afterAll` — Disconnect database, clean up server
+   - `beforeEach` / `afterEach` — Reset database state between tests (truncate tables or rollback transactions)
 
 ### Step 3.1: Set Up Test Utilities (see `references/api-mock-patterns.md` for database strategies, MSW setup, factories, and contract testing)
 
@@ -320,12 +398,24 @@ Common API test issues:
 
 ---
 
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| API-T1 | Positive | "Test the API endpoints" | Skill triggers |
+| API-T2 | Positive | "API coverage for the users route" | Skill triggers |
+| API-T3 | Positive | "Test all routes for status codes" | Skill triggers |
+| API-T4 | Negative | "Write unit tests for this utility" | Does NOT trigger (-> /test-coverage) |
+| API-T5 | Negative | "End-to-end test the login flow" | Does NOT trigger (-> /e2e) |
+| API-T6 | Negative | "Debug the 500 error on /api/users" | Does NOT trigger (-> /debug) |
+| API-T7 | Boundary | "Test this endpoint" | Context-dependent — if API endpoint, trigger; if UI component, route to /test-coverage |
+
 ## Quick Reference
 
 | Phase | Action | Gate |
 |-------|--------|------|
-| 1. Discover | Detect framework, list endpoints | All routes catalogued |
-| 2. Design | Plan test cases per endpoint | Test plan complete |
-| 3. Implement | Write tests with test runner | -- |
+| 1. Discover | Detect framework, list endpoints, detect auth requirements, identify nested resources | All routes catalogued with auth classification |
+| 2. Design | Plan test cases per endpoint, nested resource cases | **User approves test plan** |
+| 3. Implement | Verify test infrastructure, write tests with test runner | -- |
 | 4. Run | Execute and fix failures | **All tests pass** |
 | 5. Report | Coverage by endpoint and status code | -- |

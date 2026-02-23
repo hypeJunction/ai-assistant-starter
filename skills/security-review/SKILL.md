@@ -135,6 +135,23 @@ Classify each data flow as:
 
 Focus analysis on attacker-controlled and gray-area flows.
 
+### Cross-File Data Flow Tracing
+
+For each user input entry point, trace the data flow across files:
+
+1. **Where does input enter?** — Identify the route handler, controller, or resolver that first receives user data
+2. **What transformations are applied?** — Follow the data through helper functions, service layers, and middleware. Note any validation, sanitization, encoding, or escaping applied along the way
+3. **Where is it used?** — Identify the terminal sink where the data is consumed:
+   - Database query (SQL, NoSQL, ORM raw query)
+   - Shell command (`exec`, `spawn`, `execFile`)
+   - HTML output (`innerHTML`, `dangerouslySetInnerHTML`, template rendering)
+   - File system operation (`readFile`, `writeFile`, path construction)
+   - HTTP request (SSRF via `fetch`, `axios`, `http.request`)
+   - Deserialization (`JSON.parse` with reviver, `yaml.load`, `pickle.loads`)
+4. **Flag any path where input reaches a sensitive sink without validation or sanitization** — If user input flows from entry point to a dangerous sink with no transformation, that is a HIGH confidence finding
+
+Trace across file boundaries: follow imports, function calls, and callback chains. Do not stop at a function boundary — if `handleUser(req.body)` calls `createSystemUser(username)` which calls `exec()`, the full chain must be traced.
+
 ### Quick Triage
 
 Before deep scanning, run through the quick patterns reference (`references/quick-patterns.md`):
@@ -165,6 +182,12 @@ Check each attack surface against OWASP categories (see `references/security-che
 When reviewing API endpoints, also check the OWASP API Security Top 10 (see `references/security-checklists.md`):
 mass assignment, broken object-level authorization, unrestricted resource consumption, SSRF, security misconfiguration.
 
+**Security Error Handling Check** — For each endpoint and error path in scope, check error handling for security implications:
+
+1. **Error message exposure** — Do error responses expose internal file paths, stack traces, database schema details, or SQL error messages? Production error responses must return generic messages (e.g., "Internal server error") without internal details.
+2. **Sensitive data in catch blocks** — Do catch blocks log the full request body, headers, or authentication tokens? Logs should redact sensitive fields (`password`, `token`, `authorization`, `cookie`).
+3. **Authentication vs authorization error differentiation** — Are authentication failures (wrong password) distinguishable from authorization failures (insufficient permissions) in HTTP responses? Responses should not reveal whether a user account exists. Use timing-safe comparison (`crypto.timingSafeEqual`) for credential checks to prevent timing attacks.
+
 When reviewing infrastructure configs, check against `references/infrastructure-security.md`:
 Docker (non-root, no secrets in layers), K8s (security contexts, RBAC), Terraform (no hardcoded secrets, least privilege IAM), CI/CD (pinned actions, minimal permissions).
 
@@ -172,6 +195,15 @@ For each potential finding, record:
 - The vulnerable code (file and line)
 - The attack vector (how attacker reaches it)
 - Initial confidence level
+
+**Attack Chain Analysis** — For P0/P1 findings, analyze attack chains after identifying individual vulnerabilities. How could an attacker combine this vulnerability with others? What is the maximum impact if exploited? For each critical finding, document:
+
+- **Entry point** — How the attacker initiates the attack (e.g., unauthenticated API endpoint, authenticated user input)
+- **Exploitation** — What the attacker does to trigger the vulnerability (e.g., inject shell metacharacters, store malicious HTML)
+- **Impact** — The immediate consequence (e.g., remote code execution, session hijacking, data theft)
+- **Data at risk** — What sensitive data becomes accessible (e.g., environment variables, database contents, user PII, API keys)
+
+If multiple vulnerabilities exist, assess whether they can be chained: for example, command injection enabling RCE, followed by credential theft from environment variables, leading to database exfiltration. Include the chain analysis in the report alongside individual findings.
 
 ### Phase 4: Context Research
 
@@ -248,6 +280,18 @@ Before concluding, verify completeness:
 ---
 **Recommendation:** [Approve / Needs fixes / Needs deeper review by security specialist]
 ```
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| SEC-T1 | Positive | "Security audit of the auth module" | Skill triggers |
+| SEC-T2 | Positive | "Check for vulnerabilities in the API" | Skill triggers |
+| SEC-T3 | Positive | "OWASP review before release" | Skill triggers |
+| SEC-T4 | Negative | "Review code quality" | Does NOT trigger (-> /review) |
+| SEC-T5 | Negative | "Fix the SQL injection bug" | Does NOT trigger (-> /debug or /hotfix) |
+| SEC-T6 | Negative | "Run the tests" | Does NOT trigger (-> /validate) |
+| SEC-T7 | Boundary | "Review this PR for security and code quality" | Triggers for security phase; code quality defers to /review |
 
 **Clean review template** (when nothing found):
 

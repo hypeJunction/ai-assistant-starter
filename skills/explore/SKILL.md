@@ -64,6 +64,25 @@ triggers:
 | **Standard** | Code flow + patterns + dependencies — full explanation (default) |
 | **Deep** | Architecture + history + alternatives + edge cases — comprehensive |
 
+### Cross-Strategy Techniques for Deep Explorations
+
+Deep explorations should combine multiple strategies rather than relying on a single approach:
+
+1. **Find all related files** — Start with grep/glob to discover every file related to the topic across the entire codebase
+2. **Read key files fully** — Read complete implementations, not just function signatures or exports
+3. **Trace imports to map dependencies** — Follow import statements to build a dependency graph between modules and packages
+4. **Follow data flow end-to-end** — Trace data from entry point (e.g., user input, API request) through transformations to storage or output
+5. **Check tests for behavior documentation** — Tests often document expected behavior, edge cases, and integration points that code alone does not reveal
+
+### Monorepo Guidance
+
+For monorepo projects (multiple packages/workspaces in one repository):
+
+1. **Search across ALL packages/workspaces** — Do not stop after finding results in one package. A feature often spans multiple packages (e.g., frontend, backend, shared utilities)
+2. **Identify cross-package dependencies via imports** — Trace imports that cross package boundaries to understand how packages communicate
+3. **Map which packages own which parts of the feature** — Document which layer each package is responsible for (e.g., UI, API, shared types)
+4. **Note shared types/utilities used across packages** — Shared packages are dependency hubs; identify what they export and who consumes it
+
 ## Context Management
 
 - **Delegate deep explorations.** When exploring a large area (6+ files), delegate to a parallel agent to prevent context exhaustion. The agent reports a summary; the main session stays clean.
@@ -118,7 +137,35 @@ Every exploration must include:
 - [Things to be aware of for future changes]
 ```
 
-**Deep explorations** additionally include: Git History, Design Decisions, Edge Cases, and Suggested Next Steps.
+**Deep explorations** use the following expanded template instead:
+
+```markdown
+## Deep Exploration: [Topic]
+
+### Architecture Overview
+[High-level description of the system/feature — how components relate, what patterns are used]
+
+### Component Map
+| File | Package/Module | Role |
+|------|----------------|------|
+| `path/to/file.ts` | [package] | [what it does] |
+
+### Data Flow
+[Numbered steps showing how data moves through the system — from entry point to storage/output, referencing file:line]
+
+### Dependencies
+**Internal:** [Cross-module/cross-package imports — which modules depend on which]
+**External:** [Third-party libraries used and their role]
+
+### Key Design Decisions
+- [Decision — why this approach was chosen, with evidence from code/comments/history]
+
+### Security Implications
+- [Security-relevant observations — NOT fixes, just observations]
+
+### Areas for Further Exploration
+- [Related topics the developer should investigate next]
+```
 
 ### Step 5: Indicate Confidence
 

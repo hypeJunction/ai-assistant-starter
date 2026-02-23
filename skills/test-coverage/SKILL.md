@@ -13,7 +13,7 @@ triggers:
 # Test Coverage
 
 > **Purpose:** Ensure test coverage for changed code
-> **Phases:** Analyze → Design → Write → Run → Report
+> **Phases:** Analyze → Discover → Baseline → Design → Write → Run → Measure → Report
 > **Usage:** `/test-coverage [scope flags]`
 
 ## Iron Laws
@@ -110,7 +110,55 @@ git diff --name-only $MAIN_BRANCH..HEAD
 | `*.ts` types/interfaces | Skip | — |
 | Config/build files | Skip | — |
 
-### Step 3: Design Test Plans
+**Early exit:** If all changed files are type-only (interfaces, type definitions, enums, constants), config-only, or already have adequate test coverage, report this and exit:
+
+```markdown
+## Nothing to Test
+
+All changed files are either type-only definitions or already have adequate coverage:
+- `types/user.ts` — type definitions only (skip)
+- `services/auth.service.ts` — existing tests cover changes (skip)
+
+No new tests needed.
+```
+
+### Step 3: Discover Test Patterns
+
+Before writing any tests, discover where existing tests live and what patterns they use:
+
+1. **File naming:** Search for `*.spec.ts`, `*.test.ts`, `*.spec.tsx`, `*.test.tsx` to determine the project convention
+2. **Directory structure:** Check if tests are co-located with source files or in separate `__tests__/` directories
+3. **Import patterns:** Note how modules under test are imported (relative paths, aliases, barrel imports)
+4. **Mock patterns:** Identify how dependencies are mocked (manual mocks, `vi.mock()`, `jest.mock()`, dependency injection)
+
+Read 1-2 existing test files that are closest to the files being tested (same directory or same file type) and adopt their:
+- `describe`/`it` nesting structure
+- Setup/teardown patterns (`beforeEach`, `afterEach`, factories)
+- Assertion style (`expect().toBe()`, `expect().toEqual()`, custom matchers)
+- Mock approach (inline mocks, shared fixtures, mock factories)
+
+If no existing test files are found, use the default structure in Step 6.
+
+### Step 4: Measure Coverage Baseline
+
+Check if the project has coverage tooling configured:
+
+1. Look for coverage configuration in `vitest.config.*`, `jest.config.*`, `package.json` (jest/vitest sections), or `.nycrc`
+2. Check `package.json` scripts for a coverage command (e.g., `test:coverage`, `coverage`)
+
+If coverage tooling is available, run coverage on affected files to establish a baseline:
+
+```bash
+# Vitest example
+npm run test -- --coverage --run <affected-pattern>
+
+# Jest example
+npm run test -- --coverage --collectCoverageFrom='<affected-pattern>' --forceExit
+```
+
+Record the baseline coverage percentages for affected files. If no coverage tooling exists, note this in the final report and proceed without numeric measurements.
+
+### Step 5: Design Test Plans
 
 For each file needing tests:
 
@@ -122,7 +170,7 @@ For each file needing tests:
 | `functionA` | happy path, error path | null input, empty array |
 ```
 
-### Step 4: Write Tests
+### Step 6: Write Tests
 
 **Required test plan (Gherkin) as comment:**
 ```typescript
@@ -136,7 +184,7 @@ For each file needing tests:
  */
 ```
 
-**Test structure:**
+**Test structure (default — override with patterns discovered in Step 3):**
 ```typescript
 describe('ModuleName', () => {
   describe('functionName', () => {
@@ -153,7 +201,7 @@ describe('ModuleName', () => {
 
 **For utilities with well-defined contracts**, consider property-based testing (e.g., with fast-check) to catch edge cases that example-based tests miss.
 
-### Step 5: Run and Fix
+### Step 7: Run and Fix
 
 ```bash
 npm run test -- path/to/file.spec.ts
@@ -161,34 +209,75 @@ npm run test -- path/to/file.spec.ts
 
 If failures: fix mocks, assertions, missing `await`, or isolation issues. Re-run until green.
 
-### Step 6: Report
+### Step 8: Measure Coverage After
+
+If coverage tooling was available in Step 4, re-run coverage to show improvement:
+
+```bash
+npm run test -- --coverage --run <affected-pattern>
+```
+
+Compare before vs after for each affected file. Record the delta.
+
+If coverage tooling is not available, skip this step — the report in Step 9 will note that numeric coverage was not measurable.
+
+### Step 9: Report and Approve
+
+Present the coverage report and wait for user approval before committing.
 
 ```markdown
 ## Test Coverage Report
 
+### Coverage Summary (if measurable)
+| File | Before | After | Delta |
+|------|--------|-------|-------|
+| `services/user.service.ts` | 12% | 85% | +73% |
+| `utils/validator.ts` | 0% | 92% | +92% |
+
 ### Tests Created
-- utility.spec.ts — 8 tests, all passing
-- service.spec.ts — 5 tests, all passing
+- `user.service.spec.ts` — 8 tests, all passing
+- `validator.spec.ts` — 5 tests, all passing
 
 ### Skipped (No Tests Needed)
-- types.ts — type definitions only
+- `types.ts` — type definitions only
+
+### Remaining Gaps
+- `user.service.ts` line 45-52: error recovery branch (edge case, low risk)
 
 ### Test Quality Check
 | Criterion | Status |
 |-----------|--------|
-| Independent | ✓ |
-| Fast | ✓ |
-| Focused | ✓ |
-| Deterministic | ✓ |
+| Independent | Pass |
+| Fast | Pass |
+| Focused | Pass |
+| Deterministic | Pass |
 ```
+
+**GATE: Do NOT commit until user responds with explicit approval.** See `ai-assistant-protocol` for valid approval terms and invalid responses.
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| COV-T1 | Positive | "Add tests for this code" | Skill triggers |
+| COV-T2 | Positive | "Ensure test coverage for my changes" | Skill triggers |
+| COV-T3 | Positive | "These files need tests" | Skill triggers |
+| COV-T4 | Negative | "Write the test first, then implement" | Does NOT trigger (-> /tdd) |
+| COV-T5 | Negative | "Run the test suite" | Does NOT trigger (-> /validate) |
+| COV-T6 | Negative | "Debug the failing test" | Does NOT trigger (-> /debug) |
+| COV-T7 | Boundary | "This function needs a test" | Triggers (adding coverage to existing code) |
+| COV-T8 | Early-exit | All changed files are type-only or already covered | Reports "No new tests needed" and exits |
 
 ## Quick Reference
 
 | Phase | Gate |
 |-------|------|
 | 1. Analyze | — |
-| 2. Categorize | — |
-| 3. Design | — |
-| 4. Write | — |
-| 5. Run | **All tests pass** |
-| 6. Report | — |
+| 2. Categorize | **Early exit if nothing to test** |
+| 3. Discover Patterns | — |
+| 4. Baseline Coverage | — |
+| 5. Design | — |
+| 6. Write | — |
+| 7. Run | **All tests pass** |
+| 8. Measure Coverage | — |
+| 9. Report & Approve | **User approves before commit** |

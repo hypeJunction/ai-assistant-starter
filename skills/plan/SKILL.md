@@ -82,7 +82,16 @@ Delegate large explorations (6+ files) to parallel agents to preserve context.
 | **Complex** | 6+ files, architectural impact | Full plan with alternatives analysis |
 | **Risky** | Breaking changes, migrations, data loss potential | Plan + rollback plan + test strategy |
 
-For Complex and Risky, present 2-3 alternative approaches with trade-offs before recommending one.
+For Complex and Risky, present 2-3 alternative approaches with trade-offs before recommending one. Use this template:
+
+```markdown
+### Alternatives Considered
+| Option | Pros | Cons | Effort |
+|--------|------|------|--------|
+| A: [approach] | ... | ... | ... |
+| B: [approach] | ... | ... | ... |
+**Recommended:** [option] because [reasoning]
+```
 
 ### Step 5: Create Plan
 
@@ -125,6 +134,8 @@ For Complex and Risky, present 2-3 alternative approaches with trade-offs before
 - [ ] Calls external services? → Input sanitization and response validation
 - [ ] N/A — no security-sensitive changes
 
+When the plan involves security-sensitive work (auth, input handling, data access), connect security considerations to specific plan steps rather than listing them separately. Add a "Security:" annotation to each relevant step. Example: "Step 3: Add OAuth callback handler — Security: validate redirect URL against allowlist, use state parameter for CSRF prevention." This ensures security requirements are visible when `/implement` executes each step.
+
 ### Risks
 | Risk | Mitigation |
 |------|------------|
@@ -141,6 +152,8 @@ For Complex/Risky plans, optionally include a Mermaid diagram showing component 
 **GATE: Do NOT proceed to implementation without explicit approval.**
 
 See `ai-assistant-protocol` for valid approval terms and invalid responses.
+
+**Plan/Implement Boundary:** The `/plan` skill produces a plan document that can be executed by `/implement`. The plan is complete when: (a) every step has a specific file path, (b) code shapes show the structure of changes, (c) edge cases are identified with handling strategies, (d) the user has approved the plan. Do NOT start implementation — that is `/implement`'s job.
 
 ### Step 7: Persist Plan as Todos
 

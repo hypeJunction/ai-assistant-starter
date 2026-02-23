@@ -82,7 +82,12 @@ git diff $MAIN_BRANCH...HEAD
 ### Step 3: Validate Scope
 
 - **Empty diff** → Report "No changes found" and exit
-- **Large diff (>500 lines)** → Warn user, ask to review all or focus on specific areas
+- **Large diff (>500 lines)** → Warn user and apply the large diff strategy:
+  1. Ask user: "Full review (all files) or focused review (specific areas)?"
+  2. If full review, group files by logical area (e.g., API routes, services, tests, config) and review one group at a time
+  3. Prioritize security-sensitive files first (auth, API routes, data access layers, middleware)
+  4. Track which files have been reviewed — include a running count (e.g., "Reviewed 4/12 files")
+  5. Summarize findings per group before moving to the next
 - **Mixed-concern changes** (feature + refactor + config) → Flag as candidate for splitting into separate PRs
 
 ### Step 4: Review Each File
@@ -117,6 +122,19 @@ Check:
 - Auth/authz checks present on protected operations
 - No open redirects (redirect URLs validated against allowlist)
 - No sensitive data in logs or error messages exposed to users
+- No mass assignment — request body should not be passed directly to ORM create/update without field allowlisting (`select` or explicit field mapping)
+
+#### Mitigation Search (before reporting P0/P1)
+
+Before reporting a finding at P0 or P1, search for existing mitigations that may reduce severity or confidence:
+- Does the ORM model have field selection (`select`, `pick`) that limits writable fields?
+- Is there input validation upstream (e.g., Zod schema, DTO class) that strips unknown fields?
+- Is there middleware that filters or sanitizes the request body?
+- Is the vulnerable code path gated behind auth/authz that limits who can reach it?
+- Does a test explicitly verify the security property (e.g., rejects extra fields)?
+
+If a mitigation exists, adjust confidence accordingly (HIGH to MEDIUM) and note the mitigation in the finding. If no mitigation is found, report at the original severity with HIGH confidence. Do NOT skip the finding just because you are unsure — report it as "needs verification" at MEDIUM confidence if uncertain.
+
 **Performance:** No obvious bottlenecks, efficient data fetching
 **General:** No `console.log` in prod, error handling present, no dead code
 
@@ -188,9 +206,16 @@ When providing feedback, use severity labels and the question approach (see `ref
 4. **No changes** — Keep as read-only review
 ```
 
-**STOP HERE. Wait for user selection.**
+**GATE: User must select an action before proceeding.**
 
-If user picks a fix option, apply fixes in priority order (P0 → P1 → P2), run typecheck and lint after, then offer to commit.
+#### Read-Only / Fix Mode Transition
+
+The review phase (Steps 1-5) is **strictly read-only**. No file modifications, no test runs, no git operations beyond context gathering. If the user selects a fix option from the action menu, transition to **write mode** for the fix phase only:
+
+1. Apply fixes in priority order: P0 first, then P1, then P2
+2. After each fix, run typecheck and lint to verify the fix does not introduce new issues
+3. If a fix introduces new errors, resolve them before moving to the next finding
+4. After all selected fixes are applied, offer to commit the changes
 
 ## Acceptance Tests
 

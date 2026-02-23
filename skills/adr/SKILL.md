@@ -45,6 +45,23 @@ Requires `.ai-project/decisions/` directory (created by `/init`). If it does not
 
 ### Step 1: Gather Context
 
+#### Step 1.1: Read Existing ADRs
+
+Before interviewing or creating anything, read all existing ADRs in `.ai-project/decisions/`:
+
+```bash
+ls .ai-project/decisions/
+```
+
+For each existing ADR, note:
+- Title and status
+- Whether it relates to the current decision topic
+- Whether the new decision supersedes it
+
+**If a related ADR exists with status "Accepted":** Confirm with the user whether the new decision supersedes it.
+
+#### Step 1.2: Interview (if needed)
+
 If `--from-todo <todo-file>` is provided, read the todo file to extract:
 - The original problem description
 - Context about shortcuts taken or design constraints
@@ -58,6 +75,21 @@ Otherwise, interview for context:
 4. What are the expected consequences?
 
 **Skip the interview** if the user provided sufficient detail in the command.
+
+#### Step 1.3: Search for Related ADRs
+
+Search existing ADRs for references to the decision topic:
+
+```bash
+grep -ril "<topic keyword>" .ai-project/decisions/ 2>/dev/null
+```
+
+Any ADR that references the topic domain should be noted in the "Related Decisions" section of the new ADR, with a brief note about whether it needs updating as a consequence.
+
+**If the decision is trivial or forced (see "When NOT to Create"):** Suggest skipping the ADR and explain why:
+- Forced decision (e.g., security patch with no alternatives) — not worth recording
+- Trivial implementation detail — too granular for an ADR
+- Already documented — point to existing ADR
 
 ### Step 2: Assess Scope
 
@@ -74,7 +106,7 @@ Otherwise, interview for context:
 **Naming conventions:**
 - Use kebab-case
 - Name after the decision topic, not the date: `api-client-pattern.md`, `state-management.md`
-- If superseding an existing ADR, use the same name (the old content is in git history)
+- **When superseding:** Create a NEW file with a descriptive name for the new decision (e.g., `jwt-authentication.md`). Do NOT reuse the old ADR's filename — even though git history preserves the old content, having two distinct files makes the superseding relationship explicit and both decisions discoverable.
 
 **Template:**
 
@@ -161,9 +193,10 @@ ADR written to `.ai-project/decisions/{name}.md`
 | **Superseded** | Replaced by a newer ADR (link to replacement) |
 
 When superseding an ADR:
-1. Update the old ADR's status to `Superseded by [new-adr-name.md]`
-2. Create the new ADR with context referencing the previous decision
-3. The old ADR content is preserved in git history
+1. Create a NEW ADR file with a descriptive name for the new decision
+2. Update the old ADR's status to `Superseded by [new-adr-name.md]`
+3. The new ADR's context should reference the previous decision so it stands alone
+4. Both files remain in `.ai-project/decisions/` — the old content is preserved in place, not just in git history
 
 ## Creating from a Completed Todo
 
@@ -186,3 +219,6 @@ When invoked with `--from-todo`, the workflow adapts:
 | ADR-T5 | Negative | "Add documentation to the codebase" | Does NOT trigger (-> /docs) |
 | ADR-T6 | Negative | "Note this tech debt for later" | Does NOT trigger (-> /add-todo) |
 | ADR-T7 | Boundary | "Why did we choose this approach?" | Context-dependent — if asking about an existing decision, route to /explore; if recording a new decision, trigger /adr |
+| ADR-T8 | Positive | `/adr` when existing ADR will be superseded | Agent reads existing ADRs, detects superseding relationship, creates new file (does NOT reuse old filename), updates old ADR status |
+| ADR-T9 | Boundary | `/adr` for a trivial formatting decision | Agent suggests skipping — too granular for an ADR per "When NOT to Create" |
+| ADR-T10 | Boundary | `/adr` for a forced security patch | Agent suggests skipping — forced decision with no real alternatives |

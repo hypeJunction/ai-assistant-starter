@@ -213,6 +213,39 @@ touch migrations/$(date +%Y%m%d%H%M%S)_<description>.sql
 ```
 Then write the up and down SQL in the file.
 
+### Prisma: Adding NOT NULL Column to Existing Table
+
+When adding a NOT NULL column to a table with existing data, use a 3-step migration. Never add it in a single migration -- existing rows will fail the constraint.
+
+**Step 1 -- Add nullable column:**
+- Update `schema.prisma`: add the field as optional (e.g., `phone String?`)
+- Generate: `npx prisma migrate dev --name add_phone_nullable --create-only`
+- Review the generated SQL (`ALTER TABLE ... ADD COLUMN`)
+- Apply: `npx prisma migrate dev`
+
+**Step 2 -- Backfill existing rows:**
+- Create a standalone SQL file (e.g., `prisma/backfill-phone.sql`) -- this is NOT a Prisma schema migration
+- Write the UPDATE statement with the user-specified value
+- Apply: `npx prisma db execute --file ./prisma/backfill-phone.sql`
+
+**Step 3 -- Add NOT NULL constraint:**
+- Update `schema.prisma`: remove the `?` to make the field required (e.g., `phone String`)
+- Generate: `npx prisma migrate dev --name make_phone_required --create-only`
+- Review the generated SQL (`ALTER TABLE ... SET NOT NULL`)
+- Apply: `npx prisma migrate dev`
+
+Each step is a separate migration file. Never combine schema and data migrations.
+
+### Backfill Value Guidance
+
+When a migration requires backfilling existing rows, always ask the user before proceeding:
+
+1. **What default value should existing rows receive?** (e.g., a literal value like `"unknown"`, `0`, `false`)
+2. **Should it be a computed value?** (e.g., derived from another column, a UUID, a timestamp)
+3. **Is there a business rule?** (e.g., "use the user's email domain", "set to the team default")
+
+Never backfill with empty string, placeholder values, or arbitrary defaults without explicit user input. The backfill value is a business decision, not a technical default.
+
 ### Step 3.2: Verify File Was Created
 
 ```bash
@@ -393,7 +426,7 @@ For every migration, document the reverse operation. See `references/rollback-co
 **To rollback, run:**
 
 \`\`\`bash
-[rollback command -- e.g., npx prisma migrate reset, npx knex migrate:rollback]
+[rollback command -- see ORM-specific instructions below]
 \`\`\`
 
 **Manual rollback SQL (if needed):**
@@ -407,6 +440,18 @@ For every migration, document the reverse operation. See `references/rollback-co
 2. [any cache clearing needed]
 3. [verification steps]
 ```
+
+**ORM-specific rollback commands:**
+
+| ORM | Rollback Command | Notes |
+|-----|-----------------|-------|
+| Prisma | Write reverse SQL, apply with `npx prisma db execute --file ./rollback.sql`, then `npx prisma migrate resolve --rolled-back <name>` | `prisma migrate reset` drops the entire database -- never use it as a targeted rollback |
+| Knex | `npx knex migrate:rollback` | Rolls back the last batch; each migration has a `down()` function |
+| TypeORM | `npx typeorm migration:revert` | Reverts the last migration; run repeatedly for multiple |
+| Drizzle | Revert schema file, `npx drizzle-kit generate`, `npx drizzle-kit migrate` | No built-in rollback command |
+| Raw SQL | `psql -d $DATABASE_URL -f rollback.sql` | Always write DOWN SQL alongside UP SQL |
+
+See `references/rollback-cookbook.md` for detailed rollback procedures, expand-contract rollback patterns, and the emergency rollback checklist.
 
 ### Step 7.2: Commit
 
@@ -429,7 +474,7 @@ Rollback: [brief rollback instructions]
 **Commit?** (yes / no / edit)
 ```
 
-**STOP HERE. Wait for explicit approval before committing.**
+**GATE: User must approve before committing.**
 
 ---
 
@@ -445,6 +490,19 @@ Rollback: [brief rollback instructions]
 | 6. Validate | Testing | All checks pass |
 | 7. Document Rollback | Write | **User approves commit** |
 
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| MIG-T1 | Positive | "Add a new column to the users table" | Skill triggers |
+| MIG-T2 | Positive | "Create a posts table" | Skill triggers |
+| MIG-T3 | Positive | "Database migration for adding indexes" | Skill triggers |
+| MIG-T4 | Negative | "Fix the query performance" | Does NOT trigger (-> /debug or direct edit) |
+| MIG-T5 | Negative | "Change the API response format" | Does NOT trigger (-> /implement) |
+| MIG-T6 | Negative | "Seed the database with test data" | Does NOT trigger (direct script) |
+| MIG-T7 | Boundary | "Rename the email column to user_email" | Triggers (schema change, uses add-copy-drop pattern) |
+
 ## References
 
 - [Migration Patterns](references/migration-patterns.md) -- Common migration patterns, ORM command reference, and zero-downtime strategies
+- [Rollback Cookbook](references/rollback-cookbook.md) -- ORM-specific rollback commands, expand-contract rollback, and emergency procedures

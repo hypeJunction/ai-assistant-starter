@@ -92,6 +92,19 @@ Present edge cases for discussion. **Wait for user guidance.**
 
 Present the refactor plan summary (see `references/refactor-templates.md` — Plan Summary).
 
+### Step 3.1: Evaluate Direct Change vs. Abstraction Layer
+
+For most refactors, direct changes are fine. However, when a direct rename or change is too risky (high coupling, external API surface, published package), use the **Introduce Abstraction Layer** pattern:
+
+1. **Introduce an abstraction layer** — Create an adapter, wrapper, or re-export that maps the old name/interface to the new one
+2. **Migrate consumers to the abstraction** — Update import sites to use the adapter (this can be done incrementally and is safe to pause)
+3. **Swap the implementation behind the abstraction** — Replace the old implementation with the new one; consumers are unaffected because they use the adapter
+4. **Remove the abstraction if desired** — Once all consumers point to the new implementation, the adapter layer can be removed in a final cleanup pass
+
+This pattern is safer for public APIs, published packages, and widely-used internal interfaces where a single atomic rename would be too disruptive or where the migration must be done incrementally across multiple PRs.
+
+Present the chosen strategy (direct change or abstraction layer) as part of the plan summary.
+
 **GATE: Do NOT begin modifying files until user approves.**
 
 ---
@@ -108,7 +121,30 @@ git stash push -m "savepoint: before refactor" --include-untracked 2>/dev/null; 
 
 Or ensure all current work is committed so you can revert cleanly.
 
-### Step 4.2: Execute in Batches (max 5 files per batch, see `references/safe-refactoring-patterns.md` for pattern-specific risk and batch safety guidance)
+### Step 4.2: Determine Change Order (Phased Refactoring)
+
+Apply refactoring changes in a safe order to catch breakage early:
+
+1. **Type definitions and interfaces first** — These catch downstream breakage at compile time. If a type rename is wrong, the typecheck immediately surfaces every affected file.
+2. **Implementation files second** — Guided by type errors from the previous phase. Update services, handlers, and utilities.
+3. **Test files last** — Tests verify the refactoring works. Updating them last ensures they validate the final state, not an intermediate one.
+
+Run typecheck after each phase. If the typecheck fails, fix issues in the current phase before proceeding.
+
+### Step 4.3: Group Changes into Batches
+
+For large refactors, group changes into logical batches (max 5 files per batch). Present the batch grouping to the user for approval before executing.
+
+**Grouping strategies:**
+- **By dependency layer** (default): types/interfaces -> services/implementations -> routes/handlers -> tests. This ensures each batch is independently type-checkable.
+- **By feature area**: When the refactor is cross-cutting (e.g., rename used in auth, billing, and notifications), group by feature so each batch leaves one feature area fully migrated.
+- **Mixed**: Use dependency-layer ordering within each feature area for very large refactors.
+
+Each batch should be independently type-checkable — after applying a batch and running typecheck, there should be no new type errors introduced by that batch (existing errors from not-yet-migrated code are expected and acceptable).
+
+See `references/safe-refactoring-patterns.md` for pattern-specific risk and batch safety guidance.
+
+### Step 4.4: Execute Batches
 
 For each batch:
 1. Apply changes
@@ -118,7 +154,7 @@ For each batch:
 
 **If tests fail after a batch:** Revert the batch (`git checkout -- [affected-files]`), reassess the approach, and try again with a corrected strategy. Do not debug individual file changes within a broken batch.
 
-### Step 4.3: Handle Discrepancies
+### Step 4.5: Handle Discrepancies
 
 If a file doesn't match expected patterns, present discrepancy report. **Wait for user decision.** Don't force the change.
 
@@ -179,6 +215,7 @@ Keep refactoring commits separate from feature commits. Never mix refactoring an
 ## References
 
 - [Refactor Templates](references/refactor-templates.md) — Display templates for plan summaries, batch progress, discrepancy reports, verification reports, and commit messages
+- [Safe Refactoring Patterns](references/safe-refactoring-patterns.md) — Pattern-specific risk levels, before/after examples, batch safety guidance, and import/export chaining
 
 ## Acceptance Tests
 

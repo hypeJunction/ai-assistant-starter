@@ -33,7 +33,7 @@ triggers:
 - Create todos for deferred major updates
 - Lock file always committed with package.json
 
-> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+> **Note:** All commands use `$PKG_MGR` which is detected in Step 1.1 (pnpm, yarn, or npm). Lock file variable `$LOCK_FILE` maps to: pnpm-lock.yaml, yarn.lock, or package-lock.json respectively.
 
 ## Actions
 
@@ -84,8 +84,7 @@ $PKG_MGR outdated 2>/dev/null || true
 #### Step 1.2: Security Audit
 
 ```bash
-npm audit 2>/dev/null || true
-# Or: pnpm audit / yarn audit
+$PKG_MGR audit 2>/dev/null || true
 ```
 
 #### Step 1.3: Supply Chain Checks
@@ -96,19 +95,31 @@ For any new dependencies being added, verify:
 2. **Maintenance status** — Is the package actively maintained? Check last publish date
 3. **Download count** — Very low downloads on a common-sounding name is a red flag
 4. **Install scripts** — Check for `preinstall`/`postinstall` scripts that execute arbitrary code
+5. **Deprecation status** — Check if any installed packages are deprecated
 
 ```bash
 # Check for install scripts in new packages
 npm show [package-name] scripts 2>/dev/null
 # Check publish date and maintainers
 npm view [package-name] time dist-tags maintainers 2>/dev/null
+# Check if any installed packages are deprecated
+npm view [package-name] deprecated 2>/dev/null
 ```
 
 **If suspicious patterns found:** Warn user and recommend verification before installing.
 
+**If deprecated packages found:** Flag in audit results with replacement suggestions. Deprecated packages receive no further security patches and are a supply chain risk.
+
 #### Step 1.4: Present Audit Results
 
-Present vulnerability and outdated package tables, then confirm scope. See [references/audit-mode.md](references/audit-mode.md) for full audit results presentation template and scope confirmation prompt.
+Present vulnerability and outdated package tables, then confirm scope. Include a "Deprecated Packages" section if any are found. See [references/audit-mode.md](references/audit-mode.md) for full audit results presentation template and scope confirmation prompt.
+
+**Scope flag behavior:**
+- `--dev`: Filter outdated and audit output to devDependencies only
+- `--prod`: Filter outdated and audit output to production dependencies only
+- `--package=<name>`: Filter all results to the specified package(s) only
+
+**If no vulnerabilities found and all packages up to date and no deprecated packages:** Report clean audit results and exit. No further action needed.
 
 **GATE: User must confirm update scope.**
 
@@ -122,6 +133,8 @@ Present vulnerability and outdated package tables, then confirm scope. See [refe
 
 Group updates by risk level and present batch plan. See [references/update-plan-template.md](references/update-plan-template.md) for full batch plan, risk assessment, and update strategy templates.
 
+**Security fix requiring major version:** If a vulnerability fix is only available in a major version (e.g., `lodash@3 -> lodash@4`), present this separately with breaking change analysis. User must explicitly approve major version bumps even for security fixes.
+
 #### Step 2.2: Approve Plan
 
 Present the update strategy and get approval.
@@ -134,19 +147,23 @@ Present the update strategy and get approval.
 
 **Goal:** Apply updates in batches with validation after each
 
+**Scope flag behavior:**
+- `--dry-run`: Skip Phase 3-5 entirely. Run through Phase 1-2 (audit + plan) only, then exit.
+- `--package=<name>`: Apply updates only to the specified package(s).
+
 #### Step 3.1: Apply Updates in Batches
 
 **For each approved batch:**
 
 ```bash
-# Install updates (adapt for pnpm/yarn)
-npm install package1@X.Y.W package2@A.B.D
+# Install updates using detected package manager
+$PKG_MGR install package1@X.Y.W package2@A.B.D
 ```
 
 #### Step 3.2: Quick Validation After Each Batch
 
 ```bash
-npm run typecheck
+$PKG_MGR run typecheck
 ```
 
 **If type errors occur:** Present warning with options (fix, revert batch, pin version). Wait for decision. See [references/common-issues.md](references/common-issues.md) for troubleshooting.
@@ -173,10 +190,10 @@ npm run typecheck
 #### Step 4.1: Full Validation
 
 ```bash
-npm run typecheck
-npm run lint
-npm run test
-npm run build
+$PKG_MGR run typecheck
+$PKG_MGR run lint
+$PKG_MGR run test
+$PKG_MGR run build
 ```
 
 #### Step 4.2: Validation Report
@@ -208,8 +225,14 @@ Present summary of files changed, packages updated, and security fixes resolved.
 
 #### Step 5.2: Create Commit
 
+Determine the correct lock file name based on the detected package manager:
+- pnpm: `pnpm-lock.yaml`
+- yarn: `yarn.lock`
+- npm: `package-lock.json`
+
 ```bash
-git add package.json package-lock.json
+# Stage both package.json and the correct lock file
+git add package.json $LOCK_FILE
 git commit -m "chore(deps): update dependencies
 
 Security:
@@ -221,6 +244,17 @@ Updates:
 ```
 
 **GATE: User confirmation required before commit.**
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| DEP-T1 | Positive | "Check for vulnerabilities" | Skill triggers |
+| DEP-T2 | Positive | "Update outdated packages" | Skill triggers |
+| DEP-T3 | Positive | "Audit dependencies" | Skill triggers |
+| DEP-T4 | Negative | "Install a new package" | Does NOT trigger (manual task) |
+| DEP-T5 | Negative | "What version of React are we using?" | Does NOT trigger (-> /explore) |
+| DEP-T6 | Boundary | "Update lodash" | Triggers with --package=lodash scope |
 
 ## References
 

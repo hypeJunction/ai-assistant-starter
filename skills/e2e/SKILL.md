@@ -72,7 +72,20 @@ See `ai-assistant-protocol` for valid approval terms and invalid responses.
 
 **Mode:** Read-only investigation — verify testing infrastructure.
 
-### Step 1.1: Detect Framework
+### Step 1.1: Detect Package Manager
+
+Detect the package manager from the project's lockfile. Check in this order:
+
+| Lockfile | Package Manager | Run command |
+|----------|----------------|-------------|
+| `pnpm-lock.yaml` | pnpm | `pnpm exec` |
+| `yarn.lock` | yarn | `yarn` |
+| `bun.lockb` | bun | `bun` / `bunx` |
+| `package-lock.json` | npm | `npx` |
+
+Use the detected package manager for **all** commands throughout this workflow (installs, running tests, starting dev server). Do not mix package managers.
+
+### Step 1.2: Detect Framework
 
 ```bash
 cat package.json | grep -E "playwright|cypress"
@@ -83,23 +96,55 @@ ls playwright.config.* cypress.config.* 2>/dev/null
 - If neither detected, recommend Playwright and offer to scaffold
 - Verify test config exists (`playwright.config.ts`, `cypress.config.ts`)
 
-### Step 1.2: Verify Configuration
+### Step 1.3: Verify Browser Installation
+
+Verify browser binaries are installed for the testing framework:
+
+- **Playwright:** Check if browsers are available by running `npx playwright install --dry-run` or checking the Playwright cache. If missing, install the project's configured browsers (or `chromium` as a default):
+  ```bash
+  # Using detected package manager (example: pnpm)
+  pnpm exec playwright install chromium
+  # Or install all configured browsers:
+  pnpm exec playwright install
+  ```
+- **Cypress:** Cypress bundles its browser, but verify with `npx cypress verify`. If not verified, run `npx cypress install`.
+
+Do not skip this step. Browser binaries are often missing in fresh clones, CI environments, and containers.
+
+### Step 1.4: Verify Dev Server
+
+Check if the dev server is needed and running:
+
+1. **Check framework config for server management:**
+   - Playwright: look for `webServer` in `playwright.config.ts`
+   - Cypress: look for `baseUrl` in `cypress.config.ts` and any start scripts
+2. **If `webServer` is configured in Playwright config** — the framework handles starting/stopping the server automatically. Note this and proceed.
+3. **If `webServer` is NOT configured:**
+   - Check if a server is already running on the expected port (e.g., `curl -s http://localhost:3000 > /dev/null` or similar)
+   - If not running, either: (a) add a `webServer` block to the Playwright/Cypress config so the framework manages it, or (b) start the server and document how to stop it
+4. **For Cypress without `baseUrl`:** set `baseUrl` in the config to avoid hardcoded URLs in tests.
+
+Tests must not fail due to `ECONNREFUSED` because no server is listening.
+
+### Step 1.5: Verify Configuration
 
 ```markdown
 ## E2E Setup
 
 | Check | Status |
 |-------|--------|
+| Package manager | [pnpm/yarn/bun/npm] |
 | Framework | [Playwright/Cypress/None] |
 | Config file | [Found/Missing] |
 | Base URL | [configured/missing] |
 | Test directory | [path or missing] |
-| Browsers installed | [yes/no] |
+| Browsers installed | [yes/no → installed] |
+| Dev server | [webServer configured / running on port X / needs setup] |
 ```
 
 If setup is incomplete, offer to scaffold before proceeding.
 
-### Step 1.3: Parse Scope
+### Step 1.6: Parse Scope
 
 ```bash
 git branch --show-current
@@ -203,13 +248,15 @@ For flows spanning multiple pages, outline Page Object Model structure:
 **Approve test design?** (yes / no / modify)
 ```
 
-**STOP HERE. Do NOT implement tests until user responds with explicit approval.**
+**GATE: User must approve test design before implementing.**
 
 ---
 
 ## Phase 4: Implement
 
 **Mode:** Full access — create test files.
+
+> **Reference:** See `references/e2e-patterns.md` for page object patterns, selector strategies, and common flow templates. See `references/e2e-flaky-tests.md` for flaky test prevention and mitigation.
 
 ### Step 4.1: Create Test Files
 
@@ -275,6 +322,33 @@ Ensure each test:
 - Starts from a clean state (fresh page, no leftover data)
 - Does not depend on test execution order
 - Cleans up any data it creates (users, records, files)
+
+### Step 4.5: Handle Third-Party Iframes
+
+If the flow involves third-party iframes (OAuth providers like Google/GitHub, payment widgets like Stripe, CAPTCHAs):
+
+1. **These cannot be tested end-to-end in most cases** — third-party iframes block cross-origin automation and change without notice.
+2. **Mock the third-party at the API level** — intercept the callback endpoint (e.g., `/api/auth/callback`) and return a valid session/token.
+3. **Test up to the redirect and after the callback** — verify the app correctly initiates the OAuth flow (redirect URL, parameters) and correctly handles the callback response (session created, user redirected to dashboard).
+4. **Document the limitation in the test** — add a comment explaining what is mocked and why.
+
+```typescript
+// Example: mock OAuth callback for login flow
+test('OAuth login redirects to dashboard', async ({ page }) => {
+  // Mock the OAuth callback to return a valid session
+  await page.route('**/api/auth/callback**', (route) => {
+    route.fulfill({
+      status: 302,
+      headers: { Location: '/dashboard' },
+    });
+  });
+
+  // Note: We cannot test the third-party OAuth provider's login page.
+  // This test verifies the app handles the callback correctly.
+  await page.goto('/api/auth/callback?code=mock-auth-code');
+  await expect(page).toHaveURL('/dashboard');
+});
+```
 
 ---
 
@@ -381,7 +455,7 @@ submission. Uses Page Object Model for maintainability.
 **Commit?** (yes / no / edit)
 ```
 
-**STOP HERE. Wait for explicit approval before committing.**
+**GATE: User must approve before committing.**
 
 ---
 
@@ -416,6 +490,18 @@ A test is flaky if:
 - Never add retry logic as a "fix" for flakiness — that masks the real problem
 
 ---
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| E2E-T1 | Positive | "Write end-to-end tests for the login flow" | Skill triggers |
+| E2E-T2 | Positive | "Add Playwright tests for checkout" | Skill triggers |
+| E2E-T3 | Positive | "Browser test the signup flow" | Skill triggers |
+| E2E-T4 | Negative | "Write unit tests for this function" | Does NOT trigger (-> /test-coverage or /tdd) |
+| E2E-T5 | Negative | "Test the API endpoints" | Does NOT trigger (-> /api-test) |
+| E2E-T6 | Negative | "Fix the flaky test" | Does NOT trigger (-> /debug) |
+| E2E-T7 | Boundary | "Test the full user flow" | Triggers if referring to browser-based user flow |
 
 ## Quick Reference
 

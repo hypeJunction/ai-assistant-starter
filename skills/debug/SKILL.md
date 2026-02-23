@@ -122,6 +122,7 @@ Load debugging references based on failure category:
 | API integration issues | `rest-api-guidelines`, `error-handling-guidelines` |
 | Security-related bugs | `security-guidelines` |
 | Performance issues | `performance-guidelines` |
+| Database / ORM errors | `prisma-guidelines`, `references/debugging-techniques.md` (Schema Drift Detection) |
 
 Use the debugging decision tree to select strategy:
 
@@ -130,6 +131,7 @@ Use the debugging decision tree to select strategy:
 | Error message present | Read stack trace, trace to source |
 | Intermittent failure | Suspect race condition, timing, shared state |
 | Works locally, fails in CI | Environment difference (env vars, Node version) |
+| Production-only failure | Check: (a) database schema/migration state, (b) environment variables, (c) connection strings, (d) Node.js version, (e) dependency versions, (f) server logs for full stack trace. Cannot reproduce locally? Analyze logs and schema diffs. |
 | Worked before a specific date | `git bisect` to find breaking commit |
 | Works for some inputs | Boundary analysis around failing input |
 | Silent wrong output | Add logging at each transformation step |
@@ -236,6 +238,18 @@ it('should [correct behavior] when [bug trigger condition]', () => {
 | 1st failure | Re-examine root cause, form new hypothesis |
 | 2nd failure | Expand investigation scope, check assumptions |
 | 3rd failure | **STOP.** Present architectural concerns. Don't attempt another fix. |
+
+Present an escalation report:
+
+```
+## Escalation Report
+**Bug:** [description]
+**Attempts:** 3
+**Hypotheses Tested:** [list with evidence for/against]
+**Remaining Theories:** [what hasn't been ruled out]
+**Suggested Next Steps:** [what a human should investigate]
+**Architectural Concern:** [why this may be a design problem]
+```
 
 ---
 

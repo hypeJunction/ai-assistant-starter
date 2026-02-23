@@ -64,16 +64,55 @@ Everything that makes TDD tedious for humans makes it ideal for AI: clear measur
 
 ---
 
+## Phase 0: Setup -- Decompose and Plan
+
+**Mode:** Analysis and test file creation -- no production code.
+
+### Step 0.1: Decompose into Testable Behaviors
+
+Decompose features into testable behaviors, not methods. A behavior is a single observable outcome: "When [condition], it should [result]." Methods may have multiple behaviors -- happy paths, edge cases, and error cases are separate behaviors. Decompose complex behaviors into simpler ones until each can be tested with a single assertion.
+
+```markdown
+## Feature Decomposition
+
+**Feature:** [Feature name]
+**Behaviors identified:** [count]
+
+| # | Behavior | Expected |
+|---|----------|----------|
+| 1 | When [condition], it should [result] | [expected output] |
+| 2 | When [condition], it should [result] | [expected output] |
+| ... | ... | ... |
+```
+
+### Step 0.2: Create Test File with Roadmap
+
+Before the first RED phase, create the test file with the `describe` block and a list of planned test descriptions as skipped/todo tests. This provides a roadmap for the session and makes progress visible:
+
+```typescript
+describe('ModuleName', () => {
+  it.todo('calculates subtotal from item prices and quantities');
+  it.todo('returns zero for an empty item list');
+  it.todo('applies percentage discount code');
+  it.todo('rejects invalid discount codes with an error');
+  it.todo('calculates tax based on region-specific rate');
+});
+```
+
+Run the test file to confirm it loads without errors (all tests show as "todo/skipped"). This file is the session plan -- each RED phase replaces the next `it.todo` with a real test.
+
+---
+
 ## Phase 1: RED -- Write a Failing Test
 
 **Mode:** Test files only -- no production code.
 
 ### Step 1.1: Identify the Next Behavior
 
-Break the feature into the smallest testable behavior. One assertion, one concept.
+Pick the next behavior from the decomposition (Step 0.1). Replace its `it.todo` entry with a real test. One assertion, one concept.
 
 ```markdown
-## TDD Cycle
+## TDD Cycle -- Behavior N/M
 
 **Behavior:** [What the code should do]
 **Input:** [What goes in]
@@ -262,6 +301,36 @@ npm run lint
 
 Cycle complete. Ready for next behavior or commit.
 ```
+
+### Step 5.4: Track Progress
+
+Track progress across cycles: "Behavior N/M: [description] -- RED/GREEN/REFACTOR". This prevents losing track in long TDD sessions. Report progress after each cycle completion.
+
+```markdown
+## Progress
+
+- [x] Behavior 1/M: [description] -- COMPLETE
+- [x] Behavior 2/M: [description] -- COMPLETE
+- [ ] Behavior 3/M: [description]
+- [ ] ...
+```
+
+---
+
+## Commit Frequency
+
+Commit at natural TDD boundaries:
+
+1. **After completing each behavior cycle** for complex features (each behavior involves significant logic or multiple files)
+2. **After every 2-3 cycles** for simpler features (behaviors are straightforward, single-file changes)
+3. **Always commit before starting a risky refactor** -- if the refactor might break things, ensure the current green state is committed first
+
+Commit messages should reference the behavior:
+- `test: add PriceCalculator subtotal calculation`
+- `test: add discount validation and tax calculation`
+- `refactor: extract shared pricing helpers`
+
+Never commit with failing tests. Every commit must be GREEN.
 
 ---
 

@@ -1,55 +1,27 @@
 ---
-id: todo-id-here
 title: Brief Descriptive Title
-priority: medium
-category: tech-debt
-status: open
+priority: P2
 estimated_effort: medium
-queue_position: 0
-blocked_by: []
-created: 2025-01-01
-updated: 2025-01-01
-labels: []
+created: YYYY-MM-DD
+context: What triggered this — e.g., "found during /implement session"
 ---
-
-# Brief Descriptive Title
 
 ## Description
 
-Clear description of what needs to be done and why.
-
-## Context
-
-| Aspect | Details |
-|--------|---------|
-| **Shortcut Taken** | What compromise was made |
-| **Reason** | Why it couldn't be done properly at the time |
-| **Proper Solution** | What the ideal solution would look like |
+Clear description of what needs to be done and why. Future readers must
+understand the issue without extra research.
 
 ## Affected Files
 
-| File | Changes Needed |
-|------|----------------|
-| `path/to/file.ts` | Description of changes |
+- `path/to/file.ts` — what needs to change and why
+
+## Suggested Approach
+
+1. Step-by-step outline of how to fix this
+2. Include enough detail to act on without re-investigation
 
 ## Acceptance Criteria
 
 - [ ] Criterion 1
 - [ ] Criterion 2
 - [ ] Criterion 3
-
-## Subtasks
-
-- [ ] `subtask-1`: First subtask description
-- [ ] `subtask-2`: Second subtask description
-
-## Related
-
-- **Todos:** [related-todo-id](./related-todo-id.md)
-- **Issues:** [#123](https://github.com/org/repo/issues/123)
-
-## Progress Log
-
-| Date | Update |
-|------|--------|
-| 2025-01-01 | Created todo |

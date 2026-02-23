@@ -78,7 +78,8 @@ export const WithPlay: Story = createStory({}, {
 ## Running Tests
 
 ```bash
-npm run test-storybook -- --grep "ComponentName"
+# Use the project's package manager (detected in Step 0)
+$PKG_MGR run test-storybook -- --grep "ComponentName"
 ```
 
 Fix failures by:
@@ -118,7 +119,7 @@ Re-run tests until all pass.
    - SubmitInvalid: enter invalid data, click submit, verify error
 
 6. Run tests:
-   npm run test-storybook -- --grep "LoginForm"
+   $PKG_MGR run test-storybook -- --grep "LoginForm"
 
 7. Fix failures if any, re-run tests
 

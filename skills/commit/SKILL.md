@@ -61,6 +61,8 @@ git status --porcelain
 MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
 ```
 
+**If clean working tree (no staged, unstaged, or untracked changes):** Report "Nothing to commit — working tree is clean" and exit.
+
 **If on main/master:** Warn and suggest creating a feature branch. **Wait for response.**
 
 ### Step 1: Review Changes
@@ -70,6 +72,8 @@ git diff $MAIN...HEAD -- [scope-paths]
 git diff -- [scope-paths]
 git diff --staged -- [scope-paths]
 ```
+
+**Unstaged changes:** If `git status` shows unstaged changes not related to the current commit, leave them alone. Note them in the review output as "out of scope" so the user is aware, but do NOT stage them. Do NOT run `git add .` or `git add -A`. Only stage files that are part of the intended commit. If the user asks to include additional files, stage them explicitly by name.
 
 ```markdown
 ## Changes to Commit
@@ -81,6 +85,8 @@ git diff --staged -- [scope-paths]
 **Deleted:** `path/to/old.ts` — [reason]
 
 **Stats:** X files changed, +Y insertions, -Z deletions
+
+**Out of scope (unstaged):** `path/to/other.ts`, `path/to/another.ts` — not included in this commit
 ```
 
 ### Step 2: Mixed-Concern Check
@@ -100,19 +106,48 @@ Split into separate commits? (yes / no)
 Scan changed files for security issues before committing:
 
 ```bash
-# Secrets detection in changed files
+# Secrets detection — generic assignment patterns
 grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
   -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" [scope-paths]
+
+# Secrets detection — specific high-confidence patterns
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" --include="*.yaml" --include="*.yml" --include="*.env*" \
+  -E "(AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----|ghp_[a-zA-Z0-9]{36}|sk-[a-zA-Z0-9]{48}|Bearer [a-zA-Z0-9_.\\-]{20,})" [scope-paths]
+
+# Secrets detection — passwords and tokens in strings
+grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
+  -E "(password|passwd|pwd|token|secret)\s*[:=]\s*[\"'][^\"']{8,}" [scope-paths]
 
 # Insecure patterns
 grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
   -E "(eval\(|new Function\(|innerHTML\s*=|dangerouslySetInnerHTML|\.exec\(|rejectUnauthorized:\s*false)" [scope-paths]
 ```
 
-**If secrets detected:** **STOP.** Warn the user. Do NOT proceed to commit.
+**Common secret patterns detected by the scan above:**
+
+| Pattern | Example | Risk |
+|---------|---------|------|
+| AWS access key | `AKIA...` (20 chars) | Full AWS account access |
+| Private key header | `-----BEGIN RSA PRIVATE KEY-----` | TLS/SSH compromise |
+| GitHub PAT | `ghp_...` (36 chars) | Repository access |
+| OpenAI API key | `sk-...` (48 chars) | API billing abuse |
+| Bearer token in code | `Bearer eyJ...` | Auth bypass |
+| Password in string | `password = "hunter2"` | Credential leak |
+
+**If secrets detected:** **STOP.** Warn the user with the specific file, line number, and secret type. Do NOT proceed to commit.
 **If insecure patterns detected:** Flag for review — ask user to confirm these are intentional before proceeding.
 
 Exclude test files and example/documentation files from blocking — flag them as informational only.
+
+#### Re-Scan After Secret Fix
+
+If a secret is detected and fixed (moved to environment variable, removed, etc.):
+
+1. Re-run the full security scan on staged changes
+2. If new issues are found, fix and re-scan
+3. Continue until the scan is clean
+4. **Maximum 3 iterations** — if secrets persist after 3 fix-and-rescan cycles, stop and escalate to the user with a summary of remaining issues
+5. Do NOT proceed to Step 4 until the security scan passes with zero findings
 
 ### Step 4: Validate (Optional)
 
@@ -142,9 +177,11 @@ Options: **yes** / **edit** / **review** / **cancel**
 ### Step 6: Commit
 
 ```bash
-git add [scope-paths]  # NOT -A unless scope is "all"
+git add [scope-paths]  # Stage files explicitly by name — NEVER use -A or .
 git commit -m "[message]"
 ```
+
+**Staging rule:** Only stage files that are part of the intended commit scope. If there are unstaged changes in other files, they must remain unstaged. Verify with `git status` after staging that no unintended files were included.
 
 ### Step 7: Report
 

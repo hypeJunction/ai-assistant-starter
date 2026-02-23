@@ -105,6 +105,8 @@ If scope is ambiguous, ask for clarification. Delegate large explorations (6+ fi
 
 Read relevant files, trace imports and dependencies, note patterns and conventions.
 
+When reading existing code for patterns, verify the patterns are current: check recent commits to the file (`git log --oneline -5 -- path/to/file`). If the file was recently refactored, the new pattern may differ from older files.
+
 ### Context-Aware Guidelines
 
 Based on code detected during exploration, load relevant guideline references:
@@ -113,7 +115,7 @@ Based on code detected during exploration, load relevant guideline references:
 |---|---|
 | TypeScript files | `typescript-guidelines` |
 | React components (.tsx/.jsx) | `typescript-guidelines`, `storybook-react-guidelines` |
-| API routes / handlers | `rest-api-guidelines`, `zod-guidelines` |
+| API routes / handlers | `rest-api-guidelines`, `zod-guidelines`, `security-guidelines` |
 | Database queries / ORM | `prisma-guidelines` |
 | Test files | `vitest-guidelines` |
 | Environment config | `env-config-guidelines` |
@@ -188,6 +190,8 @@ For each file in plan, follow the micro-step pattern (see `references/task-decom
 4. Report progress
 
 If typecheck fails after a change, fix it before moving to the next file.
+
+When creating a new file: (a) Check if an existing file should be extended instead, (b) Follow the project's file naming conventions, (c) Mirror the structure of similar existing files, (d) Ensure the new file is properly imported/registered where needed (e.g., route registration, barrel exports).
 
 ### Step 3.3: Handle Surprises
 

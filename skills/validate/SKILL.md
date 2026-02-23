@@ -36,6 +36,10 @@ triggers:
 - Fixing bugs → `/debug`
 - Security-specific audit → `/security-review`
 
+## Early Exit
+
+If `git status` shows no changes and no specific mode is requested, report "No changes to validate" and offer to run full validation anyway.
+
 ## Constraints
 
 - Type check must pass before running tests
@@ -45,7 +49,7 @@ triggers:
 - Never commit with lint errors
 - Run scoped tests by default (not full suite unless `--full`)
 
-> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+> **Note:** Detect package manager from lockfile (`package-lock.json` = npm, `pnpm-lock.yaml` = pnpm, `yarn.lock` = yarn, `bun.lockb` = bun). Use detected manager for all commands. Command examples below use `npm` as placeholder — substitute the detected manager.
 
 ## Scope Flags
 
@@ -85,6 +89,8 @@ git diff --name-only --staged  # if --staged flag
 
 ### Level 1: Syntax & Style
 
+> **Execution order within this level:** Run checks in dependency order: (a) Typecheck first (catches type errors that cause other failures), (b) Lint second (may depend on types), (c) Tests third (need types and imports correct), (d) Build last (depends on all above). This prevents cascading failures from obscuring root causes.
+
 **Format Check:**
 ```bash
 npm run format:check 2>/dev/null || npx prettier --check [changed-files]
@@ -100,7 +106,9 @@ npm run typecheck
 npm run lint -- [changed-files]
 ```
 
-**Security Scan (always runs — see `references/security-scan-patterns.md` for pattern details, false positive guidance, and severity classification):**
+**Security Scan (always runs):**
+
+> See `references/security-scan-patterns.md` for concrete grep patterns for secrets, dangerous functions, and security anti-patterns. Run these scans as part of full validation.
 
 ```bash
 # Secrets detection
@@ -231,6 +239,12 @@ Run exact same checks as CI pipeline.
 1. **Detect CI config:** Look for `.github/workflows/*.yml`, `.gitlab-ci.yml`, `Jenkinsfile`
 2. **Extract CI steps:** Parse config and run equivalent local commands
 3. **Report:** Show CI job → local command → status mapping
+
+In CI mode (`--mode=ci`):
+- Run the same checks as full mode
+- Use non-interactive output (no fix offers)
+- Exit with non-zero code on any failure
+- Output results in a format parseable by CI systems (structured JSON or standard exit codes)
 
 ---
 

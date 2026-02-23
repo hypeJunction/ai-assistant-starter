@@ -72,6 +72,8 @@ find . -type d -name "src" -exec test ! -f {}/README.md \; -print
 - Public APIs and interfaces
 - Package/module entry points
 
+**If all exported functions, classes, and interfaces already have complete, accurate JSDoc:** Report "Documentation is complete — no changes needed" and exit.
+
 ### Step 2: Analyze Code Purpose
 
 Before documenting, understand:
@@ -82,6 +84,11 @@ Before documenting, understand:
 
 Read the implementation and any existing tests to understand behavior.
 
+**Finding test files:** Look for tests in common locations:
+- `__tests__/` directory adjacent to the source file
+- `.spec.ts` or `.test.ts` suffix next to the source file
+- `tests/` directory at the project root
+
 ### Step 3: Add Documentation
 
 **For Functions (JSDoc):**
@@ -91,6 +98,7 @@ Read the implementation and any existing tests to understand behavior.
  *
  * @param paramName - Description of the parameter
  * @returns Description of the return value
+ * @throws {ErrorType} Description of when this error is thrown
  *
  * @example
  * ```typescript
@@ -115,6 +123,23 @@ export function functionName(paramName: Type): ReturnType {
  */
 export class ClassName {
   // ...
+}
+```
+
+**For Interfaces and Type Aliases:**
+```typescript
+/**
+ * Brief description of the interface purpose.
+ * Explain when this type is used and any important constraints.
+ *
+ * @example
+ * ```typescript
+ * const config: InterfaceName = { key: 'value' };
+ * ```
+ */
+export interface InterfaceName {
+  /** Description of this property */
+  propertyName: Type;
 }
 ```
 
@@ -162,6 +187,24 @@ Description of the function.
 - Add comments to self-explanatory code
 - Use vague descriptions ("Handles stuff")
 
+### Step 4.5: Confirm Documentation Changes
+
+Present a summary of planned documentation changes before applying:
+
+```markdown
+## Planned Documentation Changes
+
+| File | Change |
+|------|--------|
+| `src/services/payment.service.ts` | Add JSDoc to `processPayment()`, `getPaymentStatus()` |
+| `src/services/payment.service.ts` | Update stale JSDoc on `refundPayment()` |
+| `src/services/payment.service.ts` | Add interface docs for `PaymentConfig` |
+
+**Apply these changes?** (yes / edit / cancel)
+```
+
+**GATE: User must approve documentation plan before changes are applied.**
+
 ### Step 5: Verify Documentation
 
 After adding documentation:
@@ -173,6 +216,10 @@ After adding documentation:
 ```bash
 npm run typecheck
 ```
+
+### Step 6: Present Documentation Report
+
+Present the documentation report using the Output Format defined below. Include what was added, updated, and skipped.
 
 ## Rules
 
@@ -249,3 +296,9 @@ Report what was documented:
 | DOC-T5 | Negative | "How does this work?" | Does NOT trigger (-> /explore) |
 | DOC-T6 | Negative | "Record why we chose this approach" | Does NOT trigger (-> /adr) |
 | DOC-T7 | Boundary | "Explain this function" | Context-dependent — if user wants docs added, trigger; if exploring to understand, route to /explore |
+| DOC-T8 | Positive | `/docs --files=src/services/payment.service.ts` | Skill triggers, scopes to the specified file |
+| DOC-T9 | Positive | "Update the stale JSDoc on this function" | Skill triggers — stale doc update is in scope |
+| DOC-T10 | Positive | "Document this interface" | Skill triggers — interface documentation is in scope |
+| DOC-T11 | Negative | "Document this private helper" | Does NOT document — private/non-exported helpers are out of scope |
+| DOC-T12 | Boundary | "Add @throws tags to error-throwing functions" | Skill triggers — @throws documentation is in scope |
+| DOC-T13 | Early-exit | All exports already have complete JSDoc | Reports "Documentation is complete — no changes needed" and exits |

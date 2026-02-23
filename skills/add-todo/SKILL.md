@@ -18,8 +18,9 @@ triggers:
 ## Iron Laws
 
 1. **FULL CONTEXT ALWAYS** -- Future readers must understand the todo without extra research. If you can't explain it standalone, you haven't captured enough.
-2. **USE THE TEMPLATE** -- Consistent structure aids discovery, tracking, and queue management. No freeform notes.
-3. **REALISTIC PRIORITIES** -- Not everything is high priority. Default to `medium` unless there's a clear reason otherwise.
+2. **ONE TEMPLATE** -- Use the canonical template defined in this file's workflow section. No freeform notes. No alternate formats.
+3. **REALISTIC PRIORITIES** -- Not everything is high priority. Default to `P2-medium` unless there's a clear reason otherwise.
+4. **CONFIRM BEFORE WRITING** -- Always show the complete todo content to the user and get approval before writing the file.
 
 ## Prerequisites
 
@@ -37,6 +38,7 @@ Create a todo entry when:
 
 ## When NOT to Create
 
+- **P0-critical issues in current scope** — Fix it now with `/debug` or `/implement` instead of deferring. If the user describes something critical that belongs in the current work, say: *"This sounds like a P0-critical issue in scope — consider using `/debug` or `/implement` to address it now rather than deferring."*
 - Active bugs that should be fixed now -> `/debug`
 - Work that's part of the current task scope — just do it
 - Vague ideas without concrete action ("maybe someday...") — not actionable
@@ -59,13 +61,33 @@ Create a todo entry when:
 
 | Priority | Description | Action Timeline |
 |----------|-------------|-----------------|
-| `high` | Blocking or high-impact | Address soon |
-| `medium` | Should be addressed | Next opportunity |
-| `low` | Nice to have | When time permits |
+| `P0` | Critical — blocking or causes data loss | Fix now (consider `/debug` or `/implement` instead) |
+| `P1` | High — significant impact, needs attention soon | Address in next session |
+| `P2` | Medium — should be addressed | Next opportunity |
+| `P3` | Low — nice to have | When time permits |
 
 ## Workflow
 
-### Step 1: Create the File
+### Step 1: Gather Information
+
+Parse the user's description and identify what is provided vs. missing.
+
+**Required metadata — ask if not provided:**
+
+- **Priority:** If the user hasn't specified, ask: *"What priority? (P0-critical, P1-high, P2-medium, P3-low)"*
+- **Estimated effort:** If the user hasn't specified, ask: *"Estimated effort? (nano/small/medium/large)"*
+
+**Determine from context (do not ask):**
+
+- **Affected files** — infer from the description or current working context
+- **Context** — what triggered this (e.g., "found during /implement session")
+- **Category** — match to the todo categories table
+
+**If the description is vague**, ask for specifics before proceeding: *"Can you clarify what exactly the issue is and what the expected behavior should be?"*
+
+**If the issue sounds P0-critical and in scope**, suggest fixing it now: *"This sounds like a critical issue in the current scope — would you prefer to use `/debug` or `/implement` to address it now?"*
+
+### Step 2: Determine File Name
 
 Create a new file in `.ai-project/todos/`:
 
@@ -77,51 +99,39 @@ Create a new file in `.ai-project/todos/`:
 - Prefix with a 3-digit sequence number for queue ordering: `001-`, `002-`, etc.
 - Use kebab-case for the description
 - Be descriptive but concise
-- Examples: `001-refactor-api-client.md`, `002-tech-debt-config-loading.md`
+- Examples: `001-refactor-api-client.md`, `002-optimize-search-full-table-scan.md`
 
 To determine the next sequence number, check existing files:
 ```bash
 ls .ai-project/todos/[0-9]*.md 2>/dev/null | tail -1
 ```
 
-### Step 2: Use the Template
+### Step 3: Fill In the Canonical Template
 
-Fill in the template (see `_template.md` in todos directory):
+This is the **single authoritative template** for all todo files. Do not use any other format.
 
 ```markdown
 ---
-id: {unique-id}
 title: Brief Descriptive Title
-priority: medium
-category: tech-debt
-status: open
+priority: P2
 estimated_effort: medium
-queue_position: 0
-blocked_by: []
-created: {YYYY-MM-DD}
-updated: {YYYY-MM-DD}
-labels: []
+created: YYYY-MM-DD
+context: What triggered this — e.g., "found during /implement session"
 ---
-
-# Brief Descriptive Title
 
 ## Description
 
-Clear description of what needs to be done and why.
-
-## Context
-
-| Aspect | Details |
-|--------|---------|
-| **Shortcut Taken** | What compromise was made |
-| **Reason** | Why it couldn't be done properly at the time |
-| **Proper Solution** | What the ideal solution would look like |
+Clear description of what needs to be done and why. Future readers must
+understand the issue without extra research.
 
 ## Affected Files
 
-| File | Changes Needed |
-|------|----------------|
-| `path/to/file.ts` | Description of changes |
+- `path/to/file.ts` — what needs to change and why
+
+## Suggested Approach
+
+1. Step-by-step outline of how to fix this
+2. Include enough detail to act on without re-investigation
 
 ## Acceptance Criteria
 
@@ -130,17 +140,33 @@ Clear description of what needs to be done and why.
 - [ ] Criterion 3
 ```
 
-### Queue Fields
+**Effort levels:**
 
-| Field | Values | Description |
-|-------|--------|-------------|
-| `estimated_effort` | `nano`, `small`, `medium`, `large` | Matches task tier system |
-| `queue_position` | integer | Ordering within same priority (0 = unordered) |
-| `blocked_by` | list of todo IDs | Todos that must complete before this one |
+| Effort | Description |
+|--------|-------------|
+| `nano` | < 15 minutes, trivial change |
+| `small` | 15-60 minutes, straightforward |
+| `medium` | 1-4 hours, moderate complexity |
+| `large` | 4+ hours, significant work |
 
-### Step 3: Link Related Resources
+### Step 4: Show and Confirm
 
-Add references to related work:
+**REQUIRED — do not skip.** Show the complete todo content (frontmatter + body) to the user and ask for approval before writing:
+
+> *"Here's the todo I'll create at `.ai-project/todos/NNN-name.md`. Does this look good?"*
+
+Wait for the user to confirm. If they request changes, adjust and re-show.
+
+### Step 5: Write and Confirm
+
+After approval:
+
+1. Write the file to `.ai-project/todos/NNN-{descriptive-name}.md`
+2. Confirm creation: *"Created `.ai-project/todos/NNN-name.md`."*
+
+### Optional: Link Related Resources
+
+If there are related todos or issues, add a Related section at the end:
 
 ```markdown
 ## Related

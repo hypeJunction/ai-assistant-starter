@@ -1,6 +1,6 @@
 ---
 name: finish
-description: End-of-session routine. Ensures test coverage, runs validation, performs self-review, and commits cleanly. Use when finishing a unit of work.
+description: End-of-session routine. Ensures test coverage, performs self-review, runs validation, and commits cleanly. Use when finishing a unit of work.
 category: process
 triggers:
   - done for now
@@ -11,7 +11,7 @@ triggers:
 
 # Finish
 
-> **Purpose:** Systematically conclude a unit of work — test, validate, review, commit
+> **Purpose:** Systematically conclude a unit of work — test, review, validate, commit
 > **Usage:** `/finish`
 
 ## Constraints
@@ -28,8 +28,8 @@ triggers:
 
 This skill performs lightweight end-of-session versions of these workflows:
 - `/test-coverage` — Phase 2 (test coverage check)
-- `/validate` — Phase 3 (quality validation)
-- `/review` — Phase 4 (self-review)
+- `/review` — Phase 3 (self-review)
+- `/validate` — Phase 4 (quality validation, runs after review fixes)
 - `/commit` — Phase 6 (commit changes)
 - `/adr` + `/add-todo` — Phase 8 (close completed todos)
 
@@ -47,7 +47,9 @@ git status --short
 git log --oneline $MAIN..HEAD
 ```
 
-**Decision:** If uncommitted changes exist, run full workflow. If only commits, skip to Phase 4 (Review).
+**If no uncommitted changes and no commits ahead of base branch:** Report "Nothing to finish — working tree is clean and branch is up to date" and exit.
+
+**Decision:** If uncommitted changes exist, run full workflow. If only commits, skip to Phase 3 (Review).
 
 ### Phase 2: Cover with Tests
 
@@ -61,30 +63,28 @@ Ensure changed code has test coverage.
 
 2. **Check for missing tests:** Each changed `.ts` file should have a `.spec.ts`
 
-3. **Create missing tests** with Gherkin test plans
+3. **Create missing tests** with Gherkin test plans. If a test cannot be created (e.g., no testing framework configured, untestable code pattern, missing test utilities), report this to the user with the reason rather than silently skipping. Let the user decide whether to proceed without coverage for that file.
 
 4. **Run tests:**
    ```bash
    npm run test -- ChangedComponent
    ```
 
-**Exit criteria:** All changed code has tests, all tests pass.
+5. **Fix failing tests:** If any tests fail, investigate and fix the cause. Re-run to confirm the fix.
 
-### Phase 3: Validate
-
-Run checks in order — stop and fix if any fail:
-
-```bash
-npm run typecheck
-npm run lint
-npm run test -- "path/to/changed/"
+**Phase 2 evidence:**
+```markdown
+### Test Coverage
+- component.spec.ts — created, 4 tests passing
+- utils.spec.ts — existing, 3 tests passing
+- SKIPPED: config.ts — no testable exports (reported to user)
 ```
 
-**Exit criteria:** All checks pass.
+**Exit criteria:** All changed code has tests (or gaps reported to user), all tests pass.
 
-### Phase 4: Review
+### Phase 3: Review
 
-Self-review before committing:
+Self-review before validation. Fixes made here will be validated in Phase 4.
 
 1. **Get the diff:**
    ```bash
@@ -98,7 +98,13 @@ Self-review before committing:
    - [ ] Tests have test plans
    - [ ] No `console.log` statements
 
-3. **Security checklist:**
+3. **`any` type handling:** If `any` types are found, fix them with proper types before proceeding. Common replacements:
+   - `any` -> `unknown` for truly unknown types (e.g., error handlers, generic middleware)
+   - `any` -> specific interface/type for known shapes (e.g., API responses, props)
+   - `any` -> generic type parameter (`<T>`) for reusable utilities
+   - If an `any` type genuinely cannot be replaced (rare — e.g., third-party library constraint), document it as a todo with `/add-todo` and add a `// TODO:` comment explaining why
+
+4. **Security checklist:**
    - [ ] No hardcoded secrets, API keys, or credentials
    - [ ] No `eval()`, `innerHTML`, or `dangerouslySetInnerHTML` with unsanitized input
    - [ ] No raw SQL with string interpolation
@@ -106,12 +112,46 @@ Self-review before committing:
    - [ ] Input validation present at system boundaries
    - [ ] No disabled security controls (`rejectUnauthorized: false`)
 
-4. **Note issues by severity:**
-   - Critical — must fix before commit
+5. **Note issues by severity:**
+   - Critical — must fix before commit (includes `any` types)
    - Warning — should fix, document if deferred
    - Suggestion — nice to have
 
+6. **Fix all critical issues** before proceeding to validation.
+
+**Phase 3 evidence:**
+```markdown
+### Review
+- Found 2 `any` types — fixed (UserProfile.tsx, formatUser.ts)
+- No security issues
+- No console.log statements
+- 0 critical issues remaining
+```
+
 **Exit criteria:** No critical issues. Warnings documented if deferred.
+
+### Phase 4: Validate
+
+Run checks in order — stop and fix if any fail. This phase runs AFTER review to ensure review fixes have not introduced new issues.
+
+```bash
+npm run typecheck
+npm run lint
+npm run test -- "path/to/changed/"
+```
+
+**Re-validation loop:** If any check fails, fix the issue and re-run all validation checks from the beginning. Maximum 3 iterations. If validation still fails after 3 iterations, report the remaining failures to the user and ask how to proceed.
+
+**Phase 4 evidence:**
+```markdown
+### Validation
+- Typecheck: PASSED (0 errors)
+- Lint: PASSED (0 warnings)
+- Scoped tests: 10/10 passing
+- Iterations: 1 (passed on first run)
+```
+
+**Exit criteria:** All checks pass.
 
 ### Phase 5: Docs (Optional)
 
@@ -187,15 +227,19 @@ Check for todos completed by the work in this session.
 - **Files changed:** 5
 
 ### Test Coverage
-- utility.spec.ts - created, 6 tests passing
-
-### Validation
-- Type checking - passed
-- Linting - passed
-- Scoped tests - 10/10 passing
+- utility.spec.ts — created, 6 tests passing
+- helper.spec.ts — existing, 3 tests passing
 
 ### Review
-- No critical issues
+- Found 1 `any` type — fixed (utility.ts: `any` -> `UtilityResult`)
+- No security issues
+- 0 critical issues remaining
+
+### Validation
+- Typecheck: PASSED
+- Lint: PASSED
+- Scoped tests: 10/10 passing
+- Iterations: 1
 
 ### Commit
 - Committed: `feat: add data export feature`

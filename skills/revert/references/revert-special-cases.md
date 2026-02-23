@@ -50,9 +50,17 @@ git revert [revert-commit-sha]
 ### Abort In-Progress Revert
 
 ```bash
-# If revert not committed yet
-git reset --hard HEAD
+# If revert has conflicts (mid-revert state)
+git revert --abort
+
+# If revert was staged with --no-commit (no conflicts)
+git checkout -- .
+git clean -fd
 ```
+
+> **Note:** Do not use `git reset --hard` to abort reverts on shared/pushed branches.
+> `git reset --hard` is only acceptable for local unpushed work with explicit user confirmation.
+> The main SKILL.md forbids `git reset --hard` — this reference must not contradict that constraint.
 
 ### View Reverted Content
 

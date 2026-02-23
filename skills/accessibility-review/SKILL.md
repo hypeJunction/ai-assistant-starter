@@ -30,7 +30,7 @@ triggers:
 - **No framework FUD** — Don't flag things the framework already handles (e.g., Next.js `<Image>` requires alt, React Native accessibility props)
 - **Evidence required** — Every finding must include the specific code AND explain which users are affected
 
-> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+> **Note:** Command examples below use generic placeholders. Use the project's package manager (detect from lockfile: `pnpm-lock.yaml` -> pnpm, `yarn.lock` -> yarn, `bun.lockb` -> bun, `package-lock.json` -> npm).
 
 ## When to Use
 
@@ -72,8 +72,18 @@ Skip these — they produce noise, not signal:
 - Storybook decorator wrappers (review the stories themselves, not decorators)
 - Server-only code with no rendered output
 - Components that are never rendered directly (abstract base components)
-- Framework-provided components with built-in accessibility (e.g., Radix UI, Headless UI)
+- Framework-provided components with built-in accessibility (e.g., Radix UI, Headless UI) — **unless** ARIA attributes or keyboard handlers have been overridden (see "Accessible Library Misuse Detection" below)
 - Decorative images that already have `alt=""`
+
+## Accessible Library Misuse Detection
+
+If the project uses accessible component libraries (Radix, Headless UI, Reach UI, Ark UI):
+
+1. **Check that ARIA attributes haven't been overridden or removed** — Look for props that replace or nullify the library's built-in `role`, `aria-*`, or `tabIndex` attributes
+2. **Check that keyboard handlers haven't been replaced** — Look for `onKeyDown`, `onKeyUp` overrides that prevent the library's default keyboard behavior
+3. **These libraries provide accessibility by default — misuse is worse than not using them** — A custom `onKeyDown` that swallows events or a removed `aria-expanded` breaks the accessibility the library provides, and developers may falsely assume the component is accessible because they are using an accessible library
+
+If no accessible component library is detected, note the absence and recommend one if custom interactive widgets (dropdowns, modals, tabs, etc.) are found in the codebase.
 
 ## Workflow
 
@@ -99,6 +109,12 @@ find . -type f \( -name "*.tsx" -o -name "*.jsx" -o -name "*.vue" -o -name "*.sv
 
 If scope is large (>30 components), present categories and ask user which to focus on.
 
+5. **Review at two levels:**
+   - **(a) Component level** — Individual ARIA roles/states, labels, alt text, contrast, keyboard handlers within each component
+   - **(b) Layout level** — Focus order across the page, skip-to-content navigation, landmark regions (`<main>`, `<nav>`, `<aside>`, `<header>`, `<footer>`), heading hierarchy spanning the entire page (not just within one component), and modal/dialog focus management in context of the full page
+
+Both levels are required. Component-level issues (e.g., missing ARIA on a dropdown) and layout-level issues (e.g., no skip link, broken focus order between components, missing landmarks) are equally important.
+
 ### Phase 2: Automated Scan
 
 Review code for common violations (see `references/wcag-checklist.md` for full WCAG criterion reference, `references/a11y-remediation-patterns.md` for fix patterns by component type):
@@ -106,7 +122,7 @@ Review code for common violations (see `references/wcag-checklist.md` for full W
 **Critical checks (P0 candidates):**
 - Interactive elements not reachable by keyboard (`div` with `onClick` but no `role`/`tabIndex`)
 - Form inputs without associated labels (`<label>` or `aria-label`/`aria-labelledby`)
-- Images without `alt` attributes
+- Images without `alt` attributes or with non-descriptive alt text (generic values like `"image"`, `"photo"`, `"icon"`, `"picture"`, `"img"`, or the filename — these fail WCAG 1.1.1 because they do not convey the content or purpose)
 - Missing `lang` attribute on `<html>`
 
 **High-priority checks (P1 candidates):**
@@ -131,15 +147,32 @@ Review code for common violations (see `references/wcag-checklist.md` for full W
 If a11y testing tools are configured, suggest running them:
 
 ```bash
-# If jest-axe is available
-npm run test -- --grep "a11y\|accessibility\|axe"
+# If jest-axe is available (use project's package manager)
+<pkg-manager> run test -- --grep "a11y\|accessibility\|axe"
 
 # If Playwright with axe is available
-npx playwright test --grep "a11y"
+<pkg-runner> playwright test --grep "a11y"
 
 # If eslint-plugin-jsx-a11y is configured
-npx eslint --rule '{"jsx-a11y/*": "error"}' src/
+<pkg-runner> eslint --rule '{"jsx-a11y/*": "error"}' src/
 ```
+
+> Detect the project's package manager from lockfile: `pnpm-lock.yaml` -> `pnpm`/`pnpm exec`, `yarn.lock` -> `yarn`/`yarn`, `bun.lockb` -> `bun`/`bunx`, `package-lock.json` -> `npm`/`npx`.
+
+#### Tooling Recommendations
+
+If a11y tooling is NOT already configured, recommend adding it based on the project's stack:
+
+| Tool | When to Recommend | What It Catches |
+|------|-------------------|-----------------|
+| `eslint-plugin-jsx-a11y` | React/JSX projects | Missing alt, missing labels, invalid ARIA attributes (static analysis) |
+| `eslint-plugin-vuejs-accessibility` | Vue projects | Same as above for Vue templates |
+| `axe-core` / `@axe-core/react` | Any web project | Runtime accessibility violations (rendered DOM analysis) |
+| `jest-axe` | Projects using Jest | Accessibility assertions in unit tests |
+| `@axe-core/playwright` | Projects using Playwright | Accessibility checks in E2E tests |
+| Lighthouse accessibility audit | Any web project | Chrome DevTools audit for deployed/running pages |
+
+**Important:** Automated tools catch ~30-40% of accessibility issues. They are excellent at detecting missing attributes, invalid ARIA, and contrast violations, but they cannot verify focus order, keyboard usability, screen reader announcements, or meaningful alt text. Manual review is still essential for full WCAG compliance.
 
 ### Phase 3: Manual Review
 
@@ -156,7 +189,7 @@ npx eslint --rule '{"jsx-a11y/*": "error"}' src/
 #### Screen Reader Checklist (see `references/screen-reader-testing.md` for platform-specific commands and detailed testing methodology)
 
 - [ ] Are headings used hierarchically (h1 > h2 > h3, no skipped levels)?
-- [ ] Do informational images have descriptive `alt` text?
+- [ ] Do informational images have descriptive `alt` text? (not generic like "image", "photo", "icon", or the filename)
 - [ ] Do decorative images have empty `alt=""` (or `role="presentation"`)?
 - [ ] Are ARIA labels meaningful and non-redundant?
 - [ ] Do dynamic updates use `aria-live` regions (polite for non-urgent, assertive for urgent)?
@@ -276,6 +309,18 @@ After presenting the report:
 3. **Fix in priority order** — P0 first, then P1
 4. **Add a11y tests for fixed issues** — If jest-axe or similar is available, add regression tests
 5. **Run verification** — Confirm fixes don't break existing tests
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| A11-T1 | Positive | "Check accessibility of the login form" | Skill triggers |
+| A11-T2 | Positive | "WCAG audit before release" | Skill triggers |
+| A11-T3 | Positive | "Screen reader compatibility check" | Skill triggers |
+| A11-T4 | Negative | "Fix the broken button" | Does NOT trigger (-> /debug) |
+| A11-T5 | Negative | "Review code quality" | Does NOT trigger (-> /review) |
+| A11-T6 | Negative | "Check for security vulnerabilities" | Does NOT trigger (-> /security-review) |
+| A11-T7 | Boundary | "Review this component for accessibility and usability" | Triggers for accessibility phase only |
 
 ## Quick Reference
 

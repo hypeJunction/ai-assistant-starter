@@ -32,28 +32,41 @@ triggers:
 - Use conventional commit format for release commit
 - Include breaking change migration notes for major releases
 
-> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+> **Note:** Detect the project's package manager from lockfile presence before running any commands:
+> - `package-lock.json` → npm
+> - `pnpm-lock.yaml` → pnpm
+> - `yarn.lock` → yarn
+>
+> Use the detected package manager for all commands (version bump, install, run scripts, audit). All command examples below use `<pm>` as a placeholder for the detected package manager.
 
 ## Scope Flags
 
 | Flag | Description |
 |------|-------------|
+| `--type=<patch\|minor\|major>` | Specify the release type for version bump |
 | `--dry-run` | Preview changes without committing or tagging |
 | `--no-tag` | Skip git tag creation |
 | `--no-push` | Create tag locally but don't push |
 | `--prerelease=<id>` | Create prerelease (alpha, beta, rc) |
 
-**Version argument:**
-- `major` - Breaking changes (1.0.0 -> 2.0.0)
-- `minor` - New features (1.0.0 -> 1.1.0)
-- `patch` - Bug fixes (1.0.0 -> 1.0.1)
-- `X.Y.Z` - Explicit version number
+**Release type resolution:**
+Based on the `--type` flag or version argument:
+- `--type=patch` or `patch` → patch bump (x.y.Z), e.g. 1.0.0 -> 1.0.1
+- `--type=minor` or `minor` → minor bump (x.Y.0), e.g. 1.0.0 -> 1.1.0
+- `--type=major` or `major` → major bump (X.0.0), e.g. 1.0.0 -> 2.0.0
+- `X.Y.Z` → explicit version number
+
+If no type is specified, analyze commits since the last tag to suggest the appropriate type based on conventional commits:
+- `BREAKING CHANGE` or `!` suffix → suggest major
+- `feat` commits present → suggest minor
+- Only `fix`/`chore`/`docs` commits → suggest patch
 
 **Examples:**
 ```bash
 /release patch                    # Bug fix release
 /release minor                    # Feature release
 /release major                    # Breaking change release
+/release --type=minor             # Same as /release minor
 /release 2.0.0-beta.1            # Explicit prerelease
 /release --dry-run minor         # Preview minor release
 /release --prerelease=rc minor   # Release candidate
@@ -77,6 +90,10 @@ git describe --tags --abbrev=0 2>/dev/null || echo "No tags found"
 
 Display release status table and warn if not on main branch. See [references/release-display-templates.md](references/release-display-templates.md) for status and warning templates. Wait if on wrong branch.
 
+**If uncommitted changes exist:** Report "Cannot release with uncommitted changes — commit or stash first" and exit.
+
+**If no commits since last tag:** Report "Nothing to release — no new commits since last release" and exit.
+
 #### Step 1.2: Gather Changes Since Last Release
 
 ```bash
@@ -88,7 +105,7 @@ else
 fi
 ```
 
-Categorize changes into Breaking Changes, Features, Bug Fixes, Other. Suggest version bump. See [references/release-display-templates.md](references/release-display-templates.md) for categorization template.
+Categorize changes into Breaking Changes, Features, Bug Fixes, Other. If a `--type` flag or version argument was provided, use it directly. Otherwise, suggest a version bump based on conventional commit analysis (see Release type resolution above). See [references/release-display-templates.md](references/release-display-templates.md) for categorization template.
 
 #### Step 1.3: Confirm Release Scope
 
@@ -104,25 +121,52 @@ Present release confirmation with current version, requested bump, new version, 
 
 #### Step 2.1: Bump Version
 
+Detect the package manager from lockfile presence (see Note above), then bump:
+
 ```bash
+# npm (detected from package-lock.json)
 npm version [major|minor|patch] --no-git-tag-version
+
+# pnpm (detected from pnpm-lock.yaml)
+pnpm version [major|minor|patch] --no-git-tag-version
+
+# yarn (detected from yarn.lock)
+yarn version --new-version [major|minor|patch] --no-git-tag-version
 ```
 
-Or manually edit if npm version not appropriate.
+Or manually edit `package.json` if the version command is not appropriate for the project.
 
-#### Step 2.2: Update Changelog
+#### Step 2.2: Regenerate Lockfile
+
+If the project has a lockfile (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`), regenerate it after the version bump so it reflects the new version:
+
+```bash
+# npm
+npm install
+
+# pnpm
+pnpm install
+
+# yarn
+yarn install
+```
+
+Stage the updated lockfile alongside `package.json` for the release commit.
+
+#### Step 2.3: Update Changelog
 
 If `CHANGELOG.md` exists, update it. See [references/changelog-format.md](references/changelog-format.md) for the changelog entry format.
 
 If no `CHANGELOG.md` exists, release notes will be generated from commits.
 
-#### Step 2.3: Review Version Changes
+#### Step 2.4: Review Version Changes
 
 ```markdown
 ## Version Changes
 
 **Files modified:**
 - `package.json` - version bumped to `X.Y.Z`
+- `[lockfile]` - regenerated with new version (if applicable)
 - `CHANGELOG.md` - added release entry (if exists)
 
 **Approve version changes?** (yes / edit / abort)
@@ -200,7 +244,7 @@ Wait for user response. If `skip`, proceed to tag.
 
 Present files to commit and proposed message. Wait for confirmation.
 
-**STOP HERE. Wait for confirmation.**
+**GATE: User must approve before committing.**
 
 ```bash
 git add package.json package-lock.json CHANGELOG.md
@@ -254,6 +298,18 @@ gh release create vX.Y.Z \
 ## Release Complete
 
 Present release summary. See [references/release-display-templates.md](references/release-display-templates.md) for summary template.
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| REL-T1 | Positive | "Ship a new version" | Skill triggers |
+| REL-T2 | Positive | "Bump the version and tag" | Skill triggers |
+| REL-T3 | Positive | "Create a release" | Skill triggers |
+| REL-T4 | Negative | "Deploy to production" | Does NOT trigger (deployment, not release) |
+| REL-T5 | Negative | "Update the changelog" | Does NOT trigger (-> direct edit or /docs) |
+| REL-T6 | Boundary | "Release a patch for the bug fix" | Triggers with --type=patch |
+| REL-T7 | Early-exit | No commits since last tag | Reports "Nothing to release" and exits |
 
 ## References
 

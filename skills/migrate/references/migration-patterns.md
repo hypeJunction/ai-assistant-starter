@@ -210,7 +210,7 @@ Step 5: ALTER TABLE users DROP COLUMN username;
 |-----------|--------|---------|------|---------|
 | Generate migration | `npx prisma migrate dev --name <n> --create-only` | `npx drizzle-kit generate` | `npx knex migrate:make <n>` | `npx typeorm migration:generate src/migrations/<N>` |
 | Apply migration | `npx prisma migrate dev` | `npx drizzle-kit migrate` | `npx knex migrate:latest` | `npx typeorm migration:run` |
-| Rollback migration | `npx prisma migrate reset` | Manual (no built-in rollback) | `npx knex migrate:rollback` | `npx typeorm migration:revert` |
+| Rollback migration | Write reverse SQL + `npx prisma db execute --file` + `npx prisma migrate resolve --rolled-back <name>` | Manual (no built-in rollback) | `npx knex migrate:rollback` | `npx typeorm migration:revert` |
 | View status | `npx prisma migrate status` | `npx drizzle-kit check` | `npx knex migrate:status` | `npx typeorm migration:show` |
 | Pull current schema | `npx prisma db pull` | N/A (code-first) | N/A | `npx typeorm schema:log` |
 | Push schema (no file) | `npx prisma db push` | `npx drizzle-kit push` | N/A | `npx typeorm schema:sync` |

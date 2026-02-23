@@ -76,6 +76,10 @@ git branch --show-current
 git log --oneline -10
 ```
 
+**If the target commit does not exist:** Report "Target commit not found — verify the SHA or reference" and exit.
+
+**If the target commit has already been reverted** (a "Revert [message]" commit exists for it): Report "This commit appears to have already been reverted" and exit.
+
 **Parse target from input:**
 
 ```markdown
@@ -125,7 +129,40 @@ git diff [sha]^..[sha]
 
 **Goal:** Evaluate impact and conflict risk
 
-#### Step 2.1: Check for Dependent Changes
+#### Step 2.1: Check if Target is a Merge Commit
+
+```bash
+# Inspect the commit object to count parent lines
+git cat-file -p [sha]
+```
+
+**If the output contains 2 or more `parent` lines, this is a merge commit.**
+
+When a merge commit is detected:
+
+1. **Explain the parent options:**
+
+```markdown
+> **ACTION REQUIRED:**
+> This is a merge commit. Which parent should be the mainline?
+>
+> - `1` - Keep changes from main branch (revert the merged feature)
+> - `2` - Keep changes from feature branch (revert main-side changes)
+>
+> Parent 1: `[parent-1-sha]` ([branch name if identifiable])
+> Parent 2: `[parent-2-sha]` ([branch name if identifiable])
+>
+> **Usually you want option 1 to revert a merged feature.**
+>
+> **Which parent?**
+```
+
+2. **Wait for user selection** before proceeding.
+3. **Use `git revert -m <parent-number> [sha]`** in Phase 3 instead of plain `git revert [sha]`.
+
+**GATE: If merge commit, user must select parent before continuing.**
+
+#### Step 2.2: Check for Dependent Changes
 
 ```bash
 # Check if any commits after target depend on it
@@ -378,6 +415,19 @@ This reverts commit [sha].
 **Note:** Original commit `[sha]` remains in history.
 To undo this revert: `git revert [new-sha]`
 ```
+
+## Acceptance Tests
+
+| ID | Type | Prompt / Condition | Expected |
+|----|------|--------------------|----------|
+| RVT-T1 | Positive | "Undo the last commit" | Skill triggers |
+| RVT-T2 | Positive | "Rollback the changes from PR #456" | Skill triggers |
+| RVT-T3 | Positive | "Revert commit abc123" | Skill triggers |
+| RVT-T4 | Negative | "Fix the bug that was introduced" | Does NOT trigger (-> /debug) |
+| RVT-T5 | Negative | "Undo my uncommitted changes" | Does NOT trigger (git checkout/restore) |
+| RVT-T6 | Negative | "Reset the branch to main" | Does NOT trigger (git reset, not revert) |
+| RVT-T7 | Boundary | "Undo the last 3 commits" | Triggers with HEAD~3 target |
+| RVT-T8 | Early-exit | Target commit does not exist | Reports "Target commit not found" and exits |
 
 ## Additional References
 
