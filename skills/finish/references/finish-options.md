@@ -90,6 +90,26 @@ git checkout -- .
 git clean -fd  # Only if untracked files need removal — confirm first
 ```
 
+## Worktree Cleanup
+
+If working in a git worktree, clean up after completing the work:
+
+```bash
+# Check if in a worktree
+git worktree list | grep "$(pwd)"
+```
+
+**When to clean up worktrees:**
+- After merging locally (Option 1 equivalent) — remove the worktree
+- After pushing & creating PR — keep the worktree (may need fixes)
+- After discarding work — remove the worktree
+- After "keep local" — keep the worktree
+
+```bash
+# Remove worktree (from main working directory)
+git worktree remove <worktree-path>
+```
+
 ## Stash for Later
 
 If the user wants to pause and switch tasks:

@@ -109,6 +109,19 @@ Proceed with fixes?
 
 **Resolution order:** Merge conflicts first, then CI failures, then review comments.
 
+**Clarify before implementing:** If ANY review comment is unclear, stop and ask for clarification on ALL unclear items before implementing any fixes. Items may be related — partial understanding leads to wrong implementations.
+
+**YAGNI check for suggested features:** If a reviewer suggests "implementing properly" or adding features, check actual usage in the codebase first. If the code is unused, push back: "This isn't called anywhere — remove it (YAGNI)?" Only implement if it's actually used.
+
+**When to push back on feedback:**
+- Suggestion breaks existing functionality — reference working tests
+- Reviewer lacks full context — provide the missing context
+- Violates YAGNI — show grep results proving non-usage
+- Technically incorrect for this stack — explain with specifics
+- Conflicts with existing architectural decisions — flag to the user
+
+Push back with technical reasoning, not defensiveness. Ask specific questions. If uncertain, involve the user.
+
 **Merge Conflicts (resolve first):**
 1. Fetch and rebase or merge the latest base branch: `git fetch origin && git merge origin/[base-branch]`
 2. Resolve conflicts in each file

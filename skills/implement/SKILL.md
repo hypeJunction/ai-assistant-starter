@@ -62,14 +62,15 @@ Classify the task early to scale the workflow appropriately:
 | **nano** | 1-2 lines, config tweak | Skip Plan phase. Edit → validate → commit |
 | **small** | 1-2 files, clear approach | Lightweight plan (bullet list). Skip Self-Review |
 | **medium** | 3-5 files | Full workflow (default) |
-| **large** | 6+ files | Full workflow + suggest feature branch + PR |
+| **large** | 6+ files | Full workflow + batch execution + suggest feature branch + PR |
 
 **Auto-classification:** Estimate tier from the request. If `--todo` is provided, use the todo's `estimated_effort` field. The user can override at any time ("treat this as nano").
 
 **Tier shortcuts:**
 - **nano:** Phase 1 (quick scope) → Phase 3 (edit) → Phase 6 (validate) → Phase 7 (commit)
 - **small:** Phase 1 → Phase 2 (brief plan) → Phase 3 → Phase 5 (test) → Phase 6 → Phase 7
-- **medium/large:** All phases
+- **medium:** All phases
+- **large:** All phases with batch execution (see Phase 3 — Batch Execution)
 
 ---
 
@@ -192,6 +193,18 @@ For each file in plan, follow the micro-step pattern (see `references/task-decom
 If typecheck fails after a change, fix it before moving to the next file.
 
 When creating a new file: (a) Check if an existing file should be extended instead, (b) Follow the project's file naming conventions, (c) Mirror the structure of similar existing files, (d) Ensure the new file is properly imported/registered where needed (e.g., route registration, barrel exports).
+
+### Batch Execution (Large Tier)
+
+For large-tier tasks (6+ files), execute plan steps in batches with review checkpoints:
+
+1. **Review plan critically** before starting — raise concerns about gaps or unclear instructions
+2. **Execute in batches of 3 steps** — complete each step fully (edit, typecheck, verify)
+3. **Pause between batches** — report what was implemented, show verification output, say "Ready for feedback"
+4. **Apply feedback** if any, then execute the next batch
+5. **Stop immediately** on blockers — don't guess through unclear instructions or repeated failures
+
+This prevents large implementations from going off-track. The user can course-correct every 3 steps.
 
 ### Step 3.3: Handle Surprises
 

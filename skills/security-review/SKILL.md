@@ -30,6 +30,9 @@ triggers:
 - Periodic security review of critical modules
 - After adding authentication, authorization, or payment code
 - When handling user input, file uploads, or external data
+- Compliance audits (SOC2, GDPR, PCI-DSS)
+- Penetration test preparation
+- Incident response analysis
 
 ## When NOT to Use
 
@@ -241,12 +244,14 @@ Adjust confidence:
 
 #### Finding 1: [Vulnerability Type]
 - **Severity:** Critical / High
+- **CVSS:** [score] ([vector string, e.g. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N])
+- **CWE:** [CWE-ID] [Name, e.g. CWE-89 SQL Injection]
 - **Location:** `file.ts:line`
 - **Vulnerable code:**
   ```typescript
   [the actual code]
   ```
-- **Attack vector:** [How an attacker exploits this]
+- **Proof of concept:** [Concrete exploitation steps — what an attacker sends and what happens]
 - **Evidence:** [Why no mitigation exists — what was checked]
 - **Recommended fix:** [Specific remediation]
 

@@ -21,6 +21,7 @@ triggers:
 1. **NEVER SKIP TYPE CHECK** — Type check is the first gate. If it fails, nothing else matters. Fix types before running lint or tests.
 2. **REPORT WHAT THE OUTPUT SAYS** — Never summarize or interpret validation output. Show the actual errors with file paths and line numbers.
 3. **FAILURES ARE NOT SUGGESTIONS** — A failing validation means the code is not ready. Do not proceed past a failing check.
+4. **NO CLAIMS WITHOUT FRESH EVIDENCE** — Never report a check as passing without showing the actual command output from this session. Words like "should pass," "probably works," or "looks correct" are not verification. Run the command, read the output, then state the result.
 
 ## When to Use
 
@@ -245,6 +246,33 @@ In CI mode (`--mode=ci`):
 - Use non-interactive output (no fix offers)
 - Exit with non-zero code on any failure
 - Output results in a format parseable by CI systems (structured JSON or standard exit codes)
+
+---
+
+## Verification Patterns
+
+### Regression Test Verification
+
+When validating a bug fix with a regression test, verify the test actually catches the bug:
+
+```
+1. Write the regression test
+2. Run it → MUST PASS (with the fix in place)
+3. Revert the fix
+4. Run it → MUST FAIL (proves the test catches the bug)
+5. Restore the fix
+6. Run it → MUST PASS (confirms fix works)
+```
+
+A regression test that passes both with and without the fix proves nothing. Skip the red-green cycle only for tests that verify new behavior (not bug fixes).
+
+### Agent Delegation Verification
+
+When a subagent reports task completion, verify independently:
+
+1. Check the VCS diff — does it show the expected changes?
+2. Run validation commands yourself — don't trust "all tests pass" claims from agents
+3. Report the actual state based on your own verification
 
 ---
 

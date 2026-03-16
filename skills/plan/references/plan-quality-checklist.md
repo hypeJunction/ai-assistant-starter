@@ -174,6 +174,8 @@ Step 3: Implement complete token validation with all edge cases and error handli
 
 **Splitting heuristic:** If a step description uses "and" or contains multiple verbs, split it.
 
+**TDD granularity:** Each TDD micro-step is its own plan step — "write the failing test" is one step, "run it to verify it fails" is another, "implement the minimal code" is another, "run tests to verify they pass" is another, "commit" is another. Don't collapse these into a single "implement and test" step.
+
 ## Complexity-Specific Guidance
 
 ### Trivial Plans (1-2 files)
