@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `/research` skill — ethical web research with attribution tracking, license detection, citation-based output, and compliance checklist references
 - `THIRD_PARTY_NOTICES.md` — centralized third-party content attribution for CC-BY (WCAG 2.1, Conventional Commits) and CC-BY-SA (OWASP Top 10, OWASP API Top 10) derived content
-- `category:` field in YAML frontmatter for all 51 skills — taxonomy: `process` (22), `meta` (7), `guideline` (16), `protocol` (4), `enforcement` (2)
+- `category:` field in YAML frontmatter for all 52 skills — taxonomy: `process` (23), `meta` (7), `guideline` (16), `protocol` (4), `enforcement` (2)
 - Acceptance test tables on 10 key workflow skills (implement, debug, commit, review, plan, explore, refactor, validate, tdd, finish) — positive/negative/boundary trigger tests for skill routing validation
 - `branch-protection` enforcement skill — runtime PreToolUse hook that blocks force-push, hard reset, and branch deletion on protected branches; includes `references/hook.js`
 - `destructive-command-protection` enforcement skill — runtime PreToolUse hook that blocks rm -rf on critical paths, DROP DATABASE, disk formatting, fork bombs, and other destructive commands; includes `references/hook.js`
