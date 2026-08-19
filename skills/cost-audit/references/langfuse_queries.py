@@ -20,6 +20,7 @@ Usage:
     python3 langfuse_queries.py error_pct
     python3 langfuse_queries.py cache_read_pct
     python3 langfuse_queries.py drill --trace <id> --tool <name> --limit 5
+    python3 langfuse_queries.py session_sequences --growth-factor 2.0
     python3 langfuse_queries.py all --out-dir ./cost_audit_out
 """
 
@@ -376,6 +377,136 @@ def cmd_trace_outliers(base_url, headers, from_ts, to_ts, factor=3.0, **_):
     return cmd_combined_metrics(base_url, headers, from_ts, to_ts, factor=factor)["trace_outliers"]
 
 
+# Rough cost-tier ordering for escalation detection — only used to tell "moved to a
+# pricier model after a failure" from "moved to a cheaper one." Not a pricing source.
+MODEL_TIER = {"haiku": 0, "sonnet": 1, "opus": 2, "fable": 3}
+
+
+def _model_tier(model_names):
+    tiers = [MODEL_TIER[t] for name in model_names for t in MODEL_TIER if name and t in name.lower()]
+    return max(tiers) if tiers else None
+
+
+def cmd_session_sequences(base_url, headers, from_ts, to_ts, growth_factor=2.0, **_):
+    """Group traces by session, ordered chronologically, and flag waste patterns that
+    only show up when comparing across traces in the same session — invisible to
+    trace_outliers/duplicate_tool_calls, which each treat a trace in isolation.
+
+    Three cross-trace patterns are flagged directly (the agent still root-causes with
+    `drill` before proposing a fix — this is Step 1 classification input, not a verdict):
+
+    - cross_trace_duplicate: the same (tool, input) signature appears in 2+ traces
+      within one session — a later trace re-did work an earlier trace in the same
+      session already did (re-reading a file, re-running the same search).
+    - context_growth: input_tokens jumps by more than `growth_factor`x from one trace
+      to the next in the same session while tool_call_count does NOT grow proportionally
+      — cost growth from accumulating context/history rather than new work.
+    - escalation_after_failure: a trace with an ERROR-level observation is immediately
+      followed (same session) by a trace using a higher-cost-tier model — a retry that
+      escalated model tier instead of fixing the root cause.
+
+    Ignored-correction patterns (a user correction in trace N not followed in trace N+M)
+    are NOT computed here — Langfuse's OTel export doesn't reliably carry the user's verbatim
+    wording across all span types. Flag a session as a candidate here (e.g. via
+    cross_trace_duplicate on a "should have learned this" tool call) and confirm by reading
+    the local transcript, same as the existing Skill-name-decomposition step.
+    """
+    by_trace = collections.defaultdict(
+        lambda: {"sessionId": None, "cost": 0.0, "tool_calls": 0, "input_tokens": 0, "output_tokens": 0,
+                 "start": None, "models": set(), "error_count": 0, "tool_inputs": set()}
+    )
+    for obs in pull_observations(base_url, headers, "core,basic,usage,model,io", from_ts, to_ts):
+        tid = obs.get("traceId") or "(no trace)"
+        entry = by_trace[tid]
+        entry["sessionId"] = entry["sessionId"] or obs.get("sessionId")
+        entry["cost"] += obs.get("totalCost") or 0
+        st = obs.get("startTime")
+        if st and (entry["start"] is None or st < entry["start"]):
+            entry["start"] = st
+        if obs.get("level") == "ERROR":
+            entry["error_count"] += 1
+        name = obs.get("name")
+        if obs.get("type") == "TOOL" and name not in NO_INPUT_TOOL_SPAN_NAMES:
+            entry["tool_calls"] += 1
+            entry["tool_inputs"].add((name, json.dumps(obs.get("input"), sort_keys=True)))
+        entry["models"].add(obs.get("model"))
+        details = obs.get("usageDetails") or {}
+        entry["input_tokens"] += details.get("input", 0) or 0
+        entry["output_tokens"] += details.get("output", 0) or 0
+
+    by_session = collections.defaultdict(list)
+    for tid, data in by_trace.items():
+        if not data["sessionId"] or not data["start"]:
+            continue
+        by_session[data["sessionId"]].append({
+            "traceId": tid,
+            "start": data["start"],
+            "cost": data["cost"],
+            "tool_call_count": data["tool_calls"],
+            "input_tokens": data["input_tokens"],
+            "output_tokens": data["output_tokens"],
+            "error_count": data["error_count"],
+            "models": sorted(m for m in data["models"] if m),
+            "tool_inputs": data["tool_inputs"],
+        })
+
+    sessions_out = []
+    for sid, traces in by_session.items():
+        if len(traces) < 2:
+            continue  # cross-trace patterns need at least 2 traces to compare
+        traces.sort(key=lambda t: t["start"])
+
+        cross_trace_duplicates = []
+        seen_sig_traces = collections.defaultdict(set)
+        for t in traces:
+            for sig in t["tool_inputs"]:
+                seen_sig_traces[sig].add(t["traceId"])
+        for (tool, inp), trace_ids in seen_sig_traces.items():
+            if len(trace_ids) > 1:
+                cross_trace_duplicates.append(
+                    {"tool": tool, "input": json.loads(inp) if inp != "null" else None,
+                     "trace_ids": sorted(trace_ids), "trace_count": len(trace_ids)}
+                )
+        cross_trace_duplicates.sort(key=lambda d: -d["trace_count"])
+
+        context_growth = []
+        escalation_after_failure = []
+        for prev, nxt in zip(traces, traces[1:]):
+            if prev["input_tokens"] > 0:
+                ratio = nxt["input_tokens"] / prev["input_tokens"]
+                tool_ratio = (nxt["tool_call_count"] / prev["tool_call_count"]) if prev["tool_call_count"] > 0 else float("inf")
+                if ratio > growth_factor and tool_ratio < ratio / 2:
+                    context_growth.append({
+                        "from_trace": prev["traceId"], "to_trace": nxt["traceId"],
+                        "input_tokens_ratio": round(ratio, 2),
+                        "tool_call_ratio": round(tool_ratio, 2) if tool_ratio != float("inf") else None,
+                    })
+            if prev["error_count"] > 0:
+                prev_tier, next_tier = _model_tier(prev["models"]), _model_tier(nxt["models"])
+                if prev_tier is not None and next_tier is not None and next_tier > prev_tier:
+                    escalation_after_failure.append({
+                        "from_trace": prev["traceId"], "to_trace": nxt["traceId"],
+                        "from_models": prev["models"], "to_models": nxt["models"],
+                        "prev_error_count": prev["error_count"],
+                    })
+
+        if not (cross_trace_duplicates or context_growth or escalation_after_failure):
+            continue
+
+        sessions_out.append({
+            "sessionId": sid,
+            "trace_count": len(traces),
+            "total_cost": round(sum(t["cost"] for t in traces), 6),
+            "trace_order": [t["traceId"] for t in traces],
+            "cross_trace_duplicates": cross_trace_duplicates,
+            "context_growth": context_growth,
+            "escalation_after_failure": escalation_after_failure,
+        })
+
+    sessions_out.sort(key=lambda s: -s["total_cost"])
+    return sessions_out
+
+
 COMMANDS = {
     "cost_per_session": cmd_cost_per_session,
     "trace_outliers": cmd_trace_outliers,
@@ -384,6 +515,7 @@ COMMANDS = {
     "error_pct": cmd_error_pct,
     "cache_read_pct": cmd_cache_read_pct,
     "drill": cmd_drill,
+    "session_sequences": cmd_session_sequences,
 }
 
 
@@ -396,6 +528,10 @@ def main():
     parser.add_argument("--limit", type=int, default=5, help="max rows for `drill` (default 5)")
     parser.add_argument(
         "--factor", type=float, default=3.0, help="outlier threshold as a multiple of the median, for `trace_outliers`"
+    )
+    parser.add_argument(
+        "--growth-factor", type=float, default=2.0,
+        help="input_tokens jump threshold between consecutive traces in a session, for `session_sequences`"
     )
     parser.add_argument("--out-dir", default="./cost_audit_out", help="output dir for `all`")
     args = parser.parse_args()
@@ -434,6 +570,12 @@ def main():
         with open(out_path, "w") as f:
             json.dump(result, f, indent=2)
         print(f"wrote {out_path}")
+
+        result = cmd_session_sequences(base_url, headers, from_ts, to_ts)
+        out_path = os.path.join(args.out_dir, "session_sequences.json")
+        with open(out_path, "w") as f:
+            json.dump(result, f, indent=2)
+        print(f"wrote {out_path}")
         return
 
     fn = COMMANDS[args.command]
@@ -447,6 +589,7 @@ def main():
         tool=args.tool,
         limit=args.limit,
         factor=args.factor,
+        growth_factor=args.growth_factor,
     )
     print(json.dumps(result, indent=2))
 
