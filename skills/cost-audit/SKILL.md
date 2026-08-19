@@ -22,7 +22,9 @@ triggers:
 - **Classify before you rank, rank before you fix** — a high duplicate-call rate is a symptom, not a diagnosis. Pull the actual observation inputs for the top offending trace/tool pair, label the pattern, and confirm it's actually driving cost or a runaway loop before proposing a fix — never jump straight from a count to a policy line.
 - **Gate before writing** — present findings and proposed diffs; do not edit CLAUDE.md or any skill file until the user approves.
 - **Close the loop** — every audit that results in an approved edit gets a follow-up re-run logged, so the next audit can report whether the targeted pattern's rate actually dropped.
-- **Don't touch what isn't broken** — if cache-read percentage is already high (>95%) and input:output ratio is high only because of that caching, say so explicitly and leave it alone. This audit targets waste (duplication, loops, errors), not the inherent shape of agentic token usage.
+- **A high cache-read share is the cost structure, not a clean bill of health** — context re-transmission (cache read + cache write) is typically ~85-90% of spend, so "cache-read % is high" describes where the money goes, not that it is well spent. Read `cost_shares` in `token_economics.json` and act on the largest share. Never treat a high cache-read percentage, or a high input:output ratio, as a reason to stop looking.
+- **Distinguish big from wasteful** — cost, token counts and tool-call counts are totals: they scale with how long a trace ran, so a long legitimate trace trips them and a short pathological one does not. `context_depth_per_call` (mean tokens transmitted per model call) is the normalised metric that separates the two. Two traces at the same `tool_calls_per_call` doing the same kind of work can differ many-fold on depth, and that entire difference is re-transmission. Rank by `recoverable_cost` — what the trace would have cost at the window's median depth.
+- **Don't touch what isn't broken** — duplication, loops and errors are frequently NOT the driver. Reference benchmark, measured 2026-08-19 over a 30-day Langfuse window (32 sessions, 30,678 observations, $288.92, single seat running mixed audit/coding/research work): duplicate tool calls **0.55%** of all tool calls (35 excess calls of 6,342, max repeat 4), error rate **1.06%** of cost-bearing observations (192 errors; 0.63% if wrapper spans are left in the denominator) — while **71%** of context tokens (409M of 578M) and **71%** of spend ($204 of $289) were context depth above the window median of 17k tokens/call. Treat these as the current baseline to compare a fresh window against, re-measure rather than assume them, and when the duplication/loop/error checks come back negative move on to depth instead of concluding "no waste found".
 
 ## Prerequisites
 
@@ -50,24 +52,39 @@ Three steps: **classify** every trace worth looking at, **identify** which class
 python3 references/langfuse_queries.py all --out-dir ./cost_audit_out
 ```
 
-This writes `trace_outliers.json`, `duplicate_tool_calls.json`, `tool_usage.json`, `error_pct.json`, and `cache_read_pct.json`:
+This writes `summary.json` (**read this one first**), `trace_outliers.json`, `duplicate_tool_calls.json`, `tool_usage.json`, `error_pct.json`, `token_economics.json`, `exporter_health.json`, `payload_profile.json`, `underuse_profile.json`, and `reconcile.json`:
 
-1. `trace_outliers` — every **trace** (not session) that exceeds 2x the window's median on at least one of: cost, tool-call count, input tokens, output tokens. Each entry lists which metric(s) tripped and by what ratio. This is trace-first rather than session-first on purpose: a session aggregates many turns, so ranking by session cost buries a single runaway trace inside an otherwise-cheap session, and misses a trace that's a tool-call/token outlier without yet being a cost outlier.
+0. `summary` — cost shares by token class, the churn ratio, the exporter warning, the top 10 traces by `recoverable_cost`, and the window's total recoverable cost. Small on purpose: it answers "where did the money go" without loading the detail files into context. Open the others only to substantiate what this one points at.
+1. `trace_outliers` — every **trace** (not session) that exceeds 3x the window's median (the `--factor` default) on at least one of: cost, tool-call count, input tokens, output tokens, **`context_depth_per_call`**. Each entry lists which metric(s) tripped and by what ratio. This is trace-first rather than session-first on purpose: a session aggregates many turns, so ranking by session cost buries a single runaway trace inside an otherwise-cheap session, and misses a trace that's a tool-call/token outlier without yet being a cost outlier.
+   - The first four metrics are **totals** and therefore measure how *big* a trace was. `context_depth_per_call` — mean tokens transmitted per model call — measures how *wasteful* it was, and the two routinely disagree. Also read `tool_calls_per_call`: when that ratio is near-constant across traces but depth varies many-fold, the extra spend is re-transmission, not extra work, and "legitimate heavy work" does not explain it.
+   - Ranking is by **`recoverable_cost`** (`cost` − `cost_at_median_depth`), not by ratio-to-median, because a median-multiple rule on a heavy-tailed distribution flags the tail by construction and says nothing about how many dollars are actually on the table.
 2. `duplicate_tool_calls` — groups of `[traceId, tool, input]` where the exact same call happened more than once within one trace (a trace is the natural boundary for one turn/loop, tighter than grouping by the whole session)
 3. `tool_usage` — histogram of every dispatched tool (`Bash`, `Edit`, `Skill`, `Agent`, `Workflow`, MCP tools, ...) by invocation count, share of total calls, trace count, and average duration. This is the entry point for tool/skill-churn questions ("what's actually being invoked, and how often") as distinct from `duplicate_tool_calls`, which only catches exact repeats. It carries no cost/token column on purpose: this histogram is read off Claude Code's own native `claude_code.tool` OTel span, which never attaches `totalCost` — that number only exists on the separate cost-bearing spans (`LLM Call`, `Tool: X`) emitted by the langfuse-observability plugin's hook. If both exporters are pointed at the same Langfuse project (compare `OTEL_EXPORTER_OTLP_ENDPOINT` in `settings.json` against the plugin's own endpoint config), every tool call is being traced twice — that duplication is itself worth surfacing as a finding, separately from any cost analysis. For cost impact, use `trace_outliers`/`duplicate_tool_calls`, which are built from the cost-bearing spans.
-4. `error_pct` — error rate across observations
-5. `cache_read_pct` — baseline caching health (context only; io_ratio can be derived from the same file's input/output token sums if needed)
+4. `error_pct` — error rate across observations. Use **`error_pct_of_cost_bearing`**: wrapper spans can be ~40% of all observations and cannot fail in a way that costs anything, so including them understates the real rate (1.7x on the reference window).
+5. `token_economics` — window token accounting split into the four billed classes (fresh input, cache read, cache write, output), plus `cost_shares` in rate-invariant base-input-equivalents, `cache_churn_ratio`, and `input_output_ratio`. **This replaces `cache_read_pct`**, which divided cache reads by (fresh input + cache reads); because `input` is fresh input only, that ratio pins at ~99.99% on any window where caching works at all and cannot distinguish a well-run window from a badly-run one. `cache_read_pct` remains as a command alias.
+6. `exporter_health` — whether Claude Code's native OTel exporter and the langfuse-observability plugin are both pointed at the same project. If so every tool call is traced twice, the native wrapper spans carry no cost, and they inflate the denominator of every count-based rate. Read `cost_bearing_tool_coverage_pct` to see how much tool activity the cost-bearing spans actually saw.
+7. `payload_profile` — tool-result sizes by tool, with an image/text/other split and the oversized payloads listed. This is the direct evidence for *what* is filling context. The image/text split decides the remedy and getting it backwards produces the wrong recommendation: images cannot be grepped or paginated, so an image-dominated problem needs fewer or smaller screenshots, whereas oversized text yields to a bounded search or `limit`/`offset`.
+8. `underuse_profile` — cheaper paths that were available and **not** taken: Bash search/dump calls against Grep/Glob usage, and delegation (`Agent`/`Task`/`Workflow`) share of tool calls. Every other query looks for something happening too much; the two largest depth drivers are something happening too little, which no frequency histogram can show.
+9. `reconcile` — recorded `totalCost` against tokens × published rates, per model. Catches a null `model`, observations carrying tokens but no cost, and a stale rate table. Do not quote a dollar figure until this reconciles within 5%. Note the rates in `RATES`: Opus 4.8 / Opus 5 are **$5/$25 per MTok, not $15/$75**, and the 1M window carries no long-context premium.
 
 **Skill-name limitation**: the OTel exporter records `Skill` as one generic tool name — it does not expose *which* skill was invoked (that argument lives only in the assistant's tool-call input, which this exporter drops). If `tool_usage` shows `Skill` at meaningful volume, cross-reference with local session transcripts (`~/.claude/projects/<project-slug>/*.jsonl`, one file per session) to break it down by name: grep each transcript for `"name":"Skill"` tool_use blocks and read the `input.skill` value. Do this only when `Skill` invocation count is itself high enough to be worth decomposing — otherwise note the limitation and move on.
 
-**If `trace_outliers` is empty and no trace has a duplicate-call rate above 10% of its observations:** report "No significant waste patterns found" and stop — do not manufacture findings to justify the audit.
+**Stop condition.** Report "No significant waste patterns found" and stop only when **all** of these hold — do not manufacture findings to justify the audit, but do not stop early either:
+
+1. `trace_outliers` is empty, **and**
+2. `summary.total_recoverable_cost` is a negligible share of window spend (rule of thumb: under 10%), **and**
+3. no trace has a duplicate-call rate above 15% of its **cost-bearing** observations (the same threshold used to shortlist in 1b — see `exporter_health.wrapper_pct_of_observations`, since wrapper spans deflate this rate), **and**
+4. `underuse_profile.findings` is empty.
+
+Condition 2 is the one that matters most often: duplication and errors can be genuinely clean while most of the window's tokens are depth. On the 2026-08-19 reference window, conditions 1, 3 and 4 would all have read "clean" on the duplication/error side while 71% of spend was recoverable depth.
 
 **1b. Shortlist candidates** (max 5) from that output, prioritized by:
 
-1. Traces flagged on 2+ metrics in `trace_outliers` (e.g. both tool-call count and output tokens) — these are the least ambiguous offenders
-2. Traces where duplicate-call count / trace observation count > 15%
-3. Remaining traces in `trace_outliers`, ranked by highest ratio-to-median on any single metric, with excess absolute cost as the tiebreak
-4. From `tool_usage`, any tool whose `pct_of_calls` is disproportionate to what it should cost per call (e.g. `Bash`/`Edit`/`Read` dominating overall volume is normal agentic shape and not itself a finding, but a heavy `Agent`/`Workflow`/`Skill` dispatch *rate* relative to session count points at process-level churn — skills or subagents re-triggering — rather than a single stuck trace). Cross-reference the trace IDs in `trace_count` against `trace_outliers` before shortlisting; a high invocation count alone isn't evidence of cost impact for this metric (see the cost-attribution caveat above)
+1. Highest `recoverable_cost` in `trace_outliers` — the dollars actually on the table. Cross-check `depth_ratio` and `tool_calls_per_call`: a high depth ratio at an unremarkable tool ratio is the clearest possible signal, because it means the same shape of work was done while carrying more context per call.
+2. Traces flagged on 2+ metrics in `trace_outliers` (e.g. both tool-call count and output tokens) — the least ambiguous offenders on the loop/pathology side
+3. Traces where duplicate-call count / trace **cost-bearing** observation count > 15%, ranked by `wasted_output_bytes` rather than `repeat_count` — one repeated 500KB read costs far more than fifty repeated `git status` calls
+4. Remaining traces in `trace_outliers`, ranked by highest ratio-to-median on any single metric, with excess absolute cost as the tiebreak
+5. From `tool_usage`, any tool whose `pct_of_calls` is disproportionate to what it should cost per call (e.g. `Bash`/`Edit`/`Read` dominating overall volume is normal agentic shape and not itself a finding, but a heavy `Agent`/`Workflow`/`Skill` dispatch *rate* relative to session count points at process-level churn — skills or subagents re-triggering — rather than a single stuck trace). Cross-reference the trace IDs in `trace_count` against `trace_outliers` before shortlisting; a high invocation count alone isn't evidence of cost impact for this metric (see the cost-attribution caveat above)
 
 `error_pct.json` is a window-wide aggregate only (total observations, error count, breakdown by level) — it has no per-trace or per-timestamp detail, so "traces with an error cluster" is not a criterion this data can support. Don't shortlist on it; if a shortlisted trace's `drill` output happens to show ERROR-level observations clustered in time, that's part of Step 1c's classification (Retry-after-error), not a Step 1b filter.
 
@@ -83,6 +100,10 @@ This returns the input, an output preview, and the timestamp of each matching ca
 
 | Pattern | Signature |
 |---|---|
+| **No context ceiling** | `context_depth_per_call` many-fold above the window median while `tool_calls_per_call` sits in the normal band. Same work, more context carried per call. Usually a long single-context session: cost grows with the square of turn count because every earlier token is re-sent on every later call. Remedy is a ceiling — checkpoint to a handoff file and `/clear` — not a behavioural rule. |
+| **Unbounded search payload** | `underuse_profile` shows Bash search/dump calls with zero or near-zero Grep/Glob, and `payload_profile` shows large `Bash` text results. `grep`/`find`/`cat` return unbounded output into context; Grep/Glob answer the same question with bounded results. |
+| **Undelegated wide read** | `payload_profile` shows oversized results in the parent trace and `underuse_profile.delegation_pct_of_tool_calls` is ~0. A payload of P tokens admitted at call *i* of *n* is re-sent (n−i) times; a subagent returns a summary instead. |
+| **Image payload churn** | `payload_profile.oversized_image_share_pct` is high — screenshots or PDFs entering context via `Read` during verification work. These cannot be grepped or paginated, so the only remedy is fewer/smaller captures or asserting via DOM/console instead. |
 | Stuck poll / runaway loop | Same tool + same input repeated dozens to thousands of times with no error in between |
 | Re-verification read | Same `Read` on a file immediately after an `Edit`/`Write` to that same file |
 | Retry-after-error | Duplicate calls clustered around ERROR-level observations |
@@ -100,7 +121,7 @@ Not every classified pattern matters equally. For each labeled trace from Step 1
 - **Loop severity**: is the repeat count large enough to indicate a runaway condition (hundreds to thousands) versus a handful of understandable retries?
 - **Recurrence**: does the same pattern show up in more than one trace (or across traces in the same session), indicating a systemic behavior rather than a one-off?
 
-Rank the labeled traces by this combined impact and keep only the ones worth fixing — a pattern with a low repeat count and a low outlier ratio on every metric doesn't need a policy change. State explicitly which healthy metrics (e.g., a high cache-read %) are NOT drivers and are being left alone.
+Rank the labeled traces by `recoverable_cost` and keep only the ones worth fixing — a pattern with a low repeat count, a low outlier ratio on every metric, and no recoverable depth doesn't need a policy change. State explicitly which checks came back negative (duplication, loops, errors) and are NOT drivers, but never report a negative on those as "no waste found" while recoverable depth is material.
 
 ### Step 3: Propose Concrete Improvements
 
@@ -129,15 +150,22 @@ Rank the labeled traces by this combined impact and keep only the ones worth fix
 
 ## Summary
 - **Traces analyzed**: [N] (across [M] sessions)
-- **Total cost in window**: $[X]
-- **Baseline health**: cache-read [X]%, error rate [X]%, io_ratio [X]:1 (context only — not itself a finding)
+- **Total cost in window**: $[X] — reconciles to tokens x rates within [X]% ([model(s)])
+- **Where the money went**: context re-transmission [X]%, output [X]%, fresh input [X]% (from `token_economics.cost_shares`)
+- **Recoverable**: $[X] of $[X] ([X]%) is context depth above the window median of [X]k tokens/call
+- **Median context depth**: [X]k tokens/call | **tool calls per call**: [X] (band across traces: [X]-[X])
+- **Negative checks**: duplicate calls [X]% of tool calls, error rate [X]% of cost-bearing observations, max repeat [N] — [state plainly that these are NOT the driver, if so]
+- **Instrumentation**: [exporter_health warning, or "single exporter, clean"]
 
 ## Offenders
 
-### [trace-id] (session [session-id]) — outlier on [metric(s)]: [value] vs median [value] ([X]x)
+### [trace-id] (session [session-id]) — $[recoverable_cost] recoverable of $[cost]
+- **Depth**: [X]k tokens/call vs median [X]k ([X]x) | **tool calls per call**: [X] (median [X])
+- **Also outlier on**: [other metric(s)]: [value] vs median [value] ([X]x)
 - **Pattern**: [classification from the Step 1c table]
-- **Evidence**: [tool name] called [N] times with identical input [describe input briefly]
+- **Evidence**: [payload sizes from `payload_profile`, image/text split, duplicate `wasted_output_bytes`, or the tool/input from `drill`]
 - **Root cause**: [what was actually happening]
+- **Counterfactual**: at median depth this trace costs $[cost_at_median_depth]
 
 [repeat per offender, max 5]
 
@@ -165,7 +193,8 @@ Rank the labeled traces by this combined impact and keep only the ones worth fix
 - Classify (Step 1) and confirm impact (Step 2) before proposing any fix — never skip straight from "duplicate count is high" to a policy line
 - Present the full report and get per-diff approval before writing any file
 - Record a baseline so a future audit can verify the fix worked
-- Explicitly state when caching/io_ratio numbers are healthy and out of scope, rather than flagging them as problems
+- Report the negative checks (duplication, loops, errors) plainly when they are clean, without treating a clean result on them as a clean result overall
+- Quote no dollar figure until `reconcile` matches within 5%, and name the assumed cache-write TTL whenever citing `cost_shares`
 
 ### Recommended
 - Run after a noticeable cost spike, not just on a fixed schedule

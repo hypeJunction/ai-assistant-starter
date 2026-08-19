@@ -18,9 +18,18 @@ Usage:
     python3 langfuse_queries.py duplicate_tool_calls
     python3 langfuse_queries.py tool_usage
     python3 langfuse_queries.py error_pct
-    python3 langfuse_queries.py cache_read_pct
+    python3 langfuse_queries.py token_economics     # supersedes cache_read_pct
+    python3 langfuse_queries.py payload_profile     # tool-result sizes, image vs text
+    python3 langfuse_queries.py underuse_profile    # cheaper paths NOT taken
+    python3 langfuse_queries.py reconcile           # recorded cost vs tokens x rates
     python3 langfuse_queries.py drill --trace <id> --tool <name> --limit 5
     python3 langfuse_queries.py all --out-dir ./cost_audit_out
+
+Reading the output: start with `summary.json`. Cost concentrates in context
+re-transmission (cache read + cache write), which is typically ~85-90% of spend, so
+`context_depth_per_call` and `recoverable_cost` in `trace_outliers.json` are the fields
+that decide where to act. Totals (cost, token counts, tool-call counts) measure how BIG a
+trace was; depth measures how WASTEFUL it was, and the two routinely disagree.
 """
 
 import argparse
@@ -44,6 +53,141 @@ PAGE_LIMIT = 1000
 # carry actual arguments. Exclude them from duplicate-call detection so it
 # reflects genuine repeated calls instead of one bucket per generic span.
 NO_INPUT_TOOL_SPAN_NAMES = {"claude_code.tool", "claude_code.tool.execution"}
+
+# Langfuse `usageDetails` keys for the four billed token classes. They are billed at
+# very different rates, so an audit that sums them together cannot tell an expensive
+# trace that *generated* a lot from one that merely *re-read* a lot.
+USAGE_FRESH_INPUT = "input"
+USAGE_OUTPUT = "output"
+USAGE_CACHE_READ = "cache_read_input_tokens"
+USAGE_CACHE_WRITE = "cache_creation_input_tokens"
+
+# Every Anthropic rate is a fixed multiple of that model's base input rate:
+#   fresh input 1x | 5-min cache write 1.25x | 1-hour cache write 2x
+#   cache read 0.1x | output 5x
+# Expressing cost in "base-input-equivalents" (BIE) therefore gives token-class cost
+# SHARES that are identical for every model and survive any price change — which
+# matters because `model` is null on a lot of instrumentation. Absolute dollars still
+# need RATES below; shares do not.
+BIE_MULTIPLIER = {
+    USAGE_FRESH_INPUT: 1.0,
+    USAGE_CACHE_WRITE: 1.25,  # assumes the 5-minute TTL; use 2.0 for the 1-hour TTL
+    USAGE_CACHE_READ: 0.1,
+    USAGE_OUTPUT: 5.0,
+}
+
+# Published USD per million tokens (base input, output). Used only by `reconcile`, to
+# assert that Langfuse's recorded `totalCost` actually matches the token counts.
+# NOTE: Opus 4.8 / Opus 5 are $5/$25 — NOT the older $15/$75. Assuming the old rates
+# inflates an estimate 3x. There is also no long-context premium: the 1M window is
+# served at standard rates.
+RATES = {
+    "claude-opus-5": (5.0, 25.0),
+    "claude-opus-4-8": (5.0, 25.0),
+    "claude-sonnet-5": (3.0, 15.0),
+    "claude-sonnet-4-5": (3.0, 15.0),
+    "claude-haiku-4-5": (1.0, 5.0),
+}
+
+IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".pdf")
+
+# A tool result at or above this size dominates the context it lands in and is re-sent on
+# every later call in the session. 100KB is roughly 25k tokens of text.
+OVERSIZED_PAYLOAD_BYTES = 100_000
+
+# Bash invocations that are really searches/dumps. These return UNBOUNDED output
+# straight into context, where it is then re-sent on every later call in the session.
+# Grep/Glob return bounded results for the same questions, so a high ratio here with
+# zero Grep/Glob use is a context-depth driver, not a style preference.
+BASH_SEARCH_PATTERNS = ("grep", "rg ", "find ", "cat ", "ls -", "head -", "tail -", "awk ", "sed -n")
+
+# Tools that keep a large payload OUT of the parent context by design.
+DELEGATION_TOOLS = {"Agent", "Task", "Workflow"}
+BOUNDED_SEARCH_TOOLS = {"Grep", "Glob"}
+
+
+def _usage_of(obs):
+    """Return the four billed token classes for one observation, defaulting to 0.
+
+    `usageDetails.input` is the FRESH (uncached) input only — cache reads and cache
+    writes are reported in their own keys. Summing `input` alone therefore misses
+    >98% of the input tokens actually transmitted.
+    """
+    details = obs.get("usageDetails") or {}
+    return {
+        key: details.get(key, 0) or 0
+        for key in (USAGE_FRESH_INPUT, USAGE_OUTPUT, USAGE_CACHE_READ, USAGE_CACHE_WRITE)
+    }
+
+
+def _context_tokens(usage):
+    """Tokens transmitted TO the model on a call: fresh input + cache read + cache write.
+
+    This — not `input` — is the quantity that grows as a session accumulates context and
+    is re-sent on every subsequent call.
+    """
+    return usage[USAGE_FRESH_INPUT] + usage[USAGE_CACHE_READ] + usage[USAGE_CACHE_WRITE]
+
+
+def _cost_shares_bie(totals, cache_write_multiplier=None):
+    """Rate-invariant cost share per token class, in base-input-equivalents.
+
+    Answers the question that decides where optimisation effort goes: is this window
+    expensive because of context re-transmission, or because of generated output?
+    """
+    multipliers = dict(BIE_MULTIPLIER)
+    if cache_write_multiplier is not None:
+        multipliers[USAGE_CACHE_WRITE] = cache_write_multiplier
+    weighted = {key: totals.get(key, 0) * mult for key, mult in multipliers.items()}
+    total = sum(weighted.values())
+    if not total:
+        return {"note": "no usage data in window", "shares_pct": {}}
+    shares = {key: round(value / total * 100, 3) for key, value in weighted.items()}
+    return {
+        "cache_write_multiplier": multipliers[USAGE_CACHE_WRITE],
+        "shares_pct": shares,
+        "context_retransmission_pct": round(shares[USAGE_CACHE_READ] + shares[USAGE_CACHE_WRITE], 2),
+        "output_pct": shares[USAGE_OUTPUT],
+        "fresh_input_pct": shares[USAGE_FRESH_INPUT],
+    }
+
+
+def _classify_payload(name, input_json, output):
+    """Label a tool result image / text / other.
+
+    Images cannot be grepped or paginated — `Read` is the only way to view one — so an
+    image-dominated payload problem needs fewer/smaller screenshots, whereas a
+    text-dominated one needs `limit`/`offset` or a bounded search. Getting this
+    backwards produces the wrong recommendation, so classify before concluding.
+    """
+    blob = json.dumps(input_json) if input_json is not None else ""
+    lowered = blob.lower()
+    if any(ext in lowered for ext in IMAGE_EXTENSIONS):
+        return "image"
+    text = output if isinstance(output, str) else json.dumps(output) if output is not None else ""
+    if "data:image" in text[:2000] or '"type": "image"' in text[:2000] or '"type":"image"' in text[:2000]:
+        return "image"
+    return "text" if text else "other"
+
+
+def _payload_bytes(value):
+    if value is None:
+        return 0
+    return len(value if isinstance(value, str) else json.dumps(value))
+
+
+def _normalize_input(name, input_json):
+    """Drop arguments that do not change WHAT was fetched, so near-duplicates group.
+
+    Exact-match dedup misses the common real cases: the same file re-read at a
+    different offset, or the same search re-run with a tweaked limit. Those are the
+    same retrieval and should be counted as repeats.
+    """
+    if not isinstance(input_json, dict):
+        return json.dumps(input_json, sort_keys=True)
+    ignored = {"offset", "limit", "head_limit", "timeout", "description", "run_in_background"}
+    reduced = {k: v for k, v in input_json.items() if k not in ignored}
+    return json.dumps(reduced, sort_keys=True)
 
 
 def _env(name, default=None, required=False):
@@ -117,7 +261,23 @@ def cmd_cost_per_session(base_url, headers, from_ts, to_ts, **_):
     return result
 
 
-OUTLIER_METRICS = ("cost", "tool_call_count", "input_tokens", "output_tokens")
+# `cost`, `tool_call_count`, `input_tokens` and `output_tokens` are all TOTALS, so they
+# scale with how long a trace ran: a long legitimate trace trips them and a short
+# pathological one does not. They measure size, not waste.
+#
+# `context_depth_per_call` is the normalised metric that separates the two — mean tokens
+# transmitted per model call. Two traces doing identical work at identical tool/turn
+# ratios can differ 19x on this one, and that difference is pure re-transmission.
+OUTLIER_METRICS = (
+    "cost",
+    "tool_call_count",
+    "input_tokens",
+    "output_tokens",
+    "context_depth_per_call",
+)
+
+# The metric whose excess is actually recoverable, as opposed to merely large.
+DEPTH_METRIC = "context_depth_per_call"
 
 
 def _flag_outlier_traces(traces, factor=3.0):
@@ -132,12 +292,18 @@ def _flag_outlier_traces(traces, factor=3.0):
     factor=2.0 flagged 36 of 117 traces (31%) — not an outlier set, just "above
     average." 3.0 is still a starting point, not a tuned constant; adjust per
     instance if it over- or under-flags.
+
+    Ranking is by `recoverable_cost`, not by ratio-to-median. A median-multiple rule on
+    a heavy-tailed cost distribution flags the tail by construction and says nothing
+    about how much money is actually on the table; `recoverable_cost` answers the
+    question the audit exists to answer.
     """
     medians = {}
     for metric in OUTLIER_METRICS:
         values = sorted(t[metric] for t in traces if t[metric] > 0)
         medians[metric] = statistics.median(values) if values else 0
 
+    median_depth = medians.get(DEPTH_METRIC, 0)
     for t in traces:
         reasons = []
         for metric in OUTLIER_METRICS:
@@ -148,14 +314,24 @@ def _flag_outlier_traces(traces, factor=3.0):
                     {"metric": metric, "value": value, "median": median, "ratio": round(value / median, 2)}
                 )
         t["outlier_reasons"] = reasons
-        # Excess absolute cost over the cost median — used as the ranking tiebreak so a
-        # trace tripping several cheap metrics doesn't outrank one genuinely expensive trace.
+        # Excess absolute cost over the cost median — kept as a secondary tiebreak.
         t["excess_cost"] = max(0.0, t["cost"] - medians.get("cost", 0))
+        # Counterfactual: what this trace would have cost had it run at the window's
+        # median context depth, doing the same number of calls. The gap is the part
+        # attributable to carrying more context per call, which is the part a context
+        # ceiling / delegation / bounded search can actually recover.
+        depth = t.get(DEPTH_METRIC) or 0
+        if median_depth > 0 and depth > median_depth and t["cost"] > 0:
+            t["cost_at_median_depth"] = round(t["cost"] * median_depth / depth, 4)
+            t["recoverable_cost"] = round(t["cost"] - t["cost_at_median_depth"], 4)
+            t["depth_ratio"] = round(depth / median_depth, 2)
+        else:
+            t["cost_at_median_depth"] = round(t["cost"], 4)
+            t["recoverable_cost"] = 0.0
+            t["depth_ratio"] = round(depth / median_depth, 2) if median_depth else None
 
     outliers = [t for t in traces if t["outlier_reasons"]]
-    outliers.sort(
-        key=lambda t: (-len(t["outlier_reasons"]), -max(r["ratio"] for r in t["outlier_reasons"]), -t["excess_cost"])
-    )
+    outliers.sort(key=lambda t: (-t["recoverable_cost"], -t["excess_cost"], -len(t["outlier_reasons"])))
     return outliers
 
 
@@ -168,12 +344,14 @@ def cmd_combined_metrics(base_url, headers, from_ts, to_ts, factor=3.0, cache_ke
     single-metric commands remain available for one-off queries.
     """
     by_trace = collections.defaultdict(
-        lambda: {"sessionId": None, "cost": 0.0, "count": 0, "tool_calls": 0, "input_tokens": 0,
-                 "output_tokens": 0, "models": set()}
+        lambda: {"sessionId": None, "cost": 0.0, "count": 0, "tool_calls": 0, "generations": 0,
+                 "context_tokens": 0, "models": set(),
+                 "usage": collections.Counter()}
     )
     by_level = collections.Counter()
-    total_input_tokens = 0
-    cache_tokens = 0
+    window_usage = collections.Counter()
+    span_names = collections.Counter()
+    cost_bearing_observations = 0
 
     for obs in pull_observations(base_url, headers, "core,basic,usage,model", from_ts, to_ts):
         tid = obs.get("traceId") or "(no trace)"
@@ -181,53 +359,146 @@ def cmd_combined_metrics(base_url, headers, from_ts, to_ts, factor=3.0, cache_ke
         entry["sessionId"] = entry["sessionId"] or obs.get("sessionId")
         entry["cost"] += obs.get("totalCost") or 0
         entry["count"] += 1
-        if obs.get("type") == "TOOL" and obs.get("name") not in NO_INPUT_TOOL_SPAN_NAMES:
+        name = obs.get("name")
+        is_wrapper = name in NO_INPUT_TOOL_SPAN_NAMES
+        if obs.get("type") == "TOOL" and not is_wrapper:
             entry["tool_calls"] += 1
         entry["models"].add(obs.get("model"))
 
         by_level[obs.get("level") or "UNKNOWN"] += 1
+        span_names[name or "(unnamed)"] += 1
+        if not is_wrapper:
+            cost_bearing_observations += 1
 
-        details = obs.get("usageDetails") or {}
-        entry["input_tokens"] += details.get("input", 0) or 0
-        entry["output_tokens"] += details.get("output", 0) or 0
-        total_input_tokens += details.get("input", 0) or 0
-        cache_tokens += details.get(cache_key, 0) or 0
+        usage = _usage_of(obs)
+        context = _context_tokens(usage)
+        # A "model call" is any observation that actually transmitted context. Counting
+        # GENERATION-typed spans alone misses instrumentations that type them differently;
+        # counting all observations would divide by tool spans that transmit nothing and
+        # deflate depth toward zero.
+        if context > 0 or usage[USAGE_OUTPUT] > 0:
+            entry["generations"] += 1
+        entry["context_tokens"] += context
+        for key, value in usage.items():
+            entry["usage"][key] += value
+            window_usage[key] += value
 
-    traces = [
-        {
-            "traceId": tid,
-            "sessionId": data["sessionId"],
-            "cost": data["cost"],
-            "observation_count": data["count"],
-            "tool_call_count": data["tool_calls"],
-            "input_tokens": data["input_tokens"],
-            "output_tokens": data["output_tokens"],
-            "models": sorted(m for m in data["models"] if m),
-        }
-        for tid, data in by_trace.items()
-    ]
+    traces = []
+    for tid, data in by_trace.items():
+        generations = data["generations"]
+        traces.append(
+            {
+                "traceId": tid,
+                "sessionId": data["sessionId"],
+                "cost": data["cost"],
+                "observation_count": data["count"],
+                "tool_call_count": data["tool_calls"],
+                "generation_count": generations,
+                # Retained under the original names so existing report templates keep working.
+                "input_tokens": data["usage"][USAGE_FRESH_INPUT],
+                "output_tokens": data["usage"][USAGE_OUTPUT],
+                "cache_read_tokens": data["usage"][USAGE_CACHE_READ],
+                "cache_write_tokens": data["usage"][USAGE_CACHE_WRITE],
+                "context_tokens": data["context_tokens"],
+                "context_depth_per_call": round(data["context_tokens"] / generations) if generations else 0,
+                # Tool calls per model call. Near-constant across sessions doing the same
+                # kind of work, so a big depth spread at a flat ratio here is proof the
+                # extra cost is context, not extra work.
+                "tool_calls_per_call": round(data["tool_calls"] / generations, 3) if generations else 0,
+                "models": sorted(m for m in data["models"] if m),
+            }
+        )
     trace_outliers = _flag_outlier_traces(traces, factor=factor)
 
     total = sum(by_level.values())
     errors = by_level.get("ERROR", 0)
     error_pct = {
         "total_observations": total,
+        "cost_bearing_observations": cost_bearing_observations,
         "error_count": errors,
         "error_pct": (errors / total * 100) if total else 0,
+        # The honest rate. Wrapper spans can be ~40% of all observations, and they cannot
+        # fail in a way that costs anything, so including them in the denominator
+        # understates the real error rate — by 1.7x on a measured window.
+        "error_pct_of_cost_bearing": (errors / cost_bearing_observations * 100) if cost_bearing_observations else 0,
         "by_level": dict(by_level),
-    }
-
-    denom = total_input_tokens + cache_tokens
-    cache_read_pct = {
-        "input_tokens": total_input_tokens,
-        "cache_read_tokens": cache_tokens,
-        "cache_read_pct": (cache_tokens / denom * 100) if denom else 0,
     }
 
     return {
         "trace_outliers": trace_outliers,
         "error_pct": error_pct,
-        "cache_read_pct": cache_read_pct,
+        "token_economics": _token_economics(window_usage, cache_key=cache_key),
+        "exporter_health": _exporter_health(span_names),
+    }
+
+
+def _token_economics(window_usage, cache_key=USAGE_CACHE_READ):
+    """Window-level token accounting and the cost decomposition that drives triage.
+
+    Replaces the old `cache_read_pct`, which divided cache reads by
+    (fresh_input + cache_reads). Because `input` is fresh input only — often a few
+    thousand tokens against hundreds of millions of cache reads — that ratio pins at
+    ~99.99% on any window where caching works at all. It therefore cannot distinguish a
+    well-run window from a badly-run one, while reading as a clean bill of health.
+
+    A high cache-read share is not health; it IS the cost structure. What varies between
+    a cheap window and an expensive one is `context_depth_per_call` (see
+    `trace_outliers`) and `cache_churn_ratio` below.
+    """
+    fresh = window_usage.get(USAGE_FRESH_INPUT, 0)
+    read = window_usage.get(cache_key, 0)
+    write = window_usage.get(USAGE_CACHE_WRITE, 0)
+    output = window_usage.get(USAGE_OUTPUT, 0)
+    total_input = fresh + read + write
+    return {
+        "fresh_input_tokens": fresh,
+        "cache_read_tokens": read,
+        "cache_write_tokens": write,
+        "output_tokens": output,
+        "total_input_tokens": total_input,
+        # Correct denominator: all input actually transmitted, cache included.
+        "cache_read_pct_of_input": round(read / total_input * 100, 4) if total_input else 0,
+        "cache_write_pct_of_input": round(write / total_input * 100, 4) if total_input else 0,
+        # Prefix churn: how much was re-written versus re-read. Rising churn means the
+        # cached prefix keeps being invalidated — edits landing above the cache breakpoint,
+        # or a context that never stabilises.
+        "cache_churn_ratio": round(write / read, 5) if read else None,
+        "input_output_ratio": round(total_input / output, 1) if output else None,
+        "cost_shares": _cost_shares_bie(window_usage),
+        "cost_shares_1h_cache": _cost_shares_bie(window_usage, cache_write_multiplier=2.0),
+    }
+
+
+def _exporter_health(span_names):
+    """Detect the double-export condition the skill documents but never measured.
+
+    If Claude Code's native OTel exporter and the langfuse-observability plugin are both
+    pointed at the same project, every tool call is traced twice and the native spans
+    carry no cost. Those wrapper spans then inflate the denominator of every
+    count-based metric (error rate, duplicate rate) while contributing no spend.
+    """
+    wrapper = sum(count for name, count in span_names.items() if name in NO_INPUT_TOOL_SPAN_NAMES)
+    named_tools = sum(count for name, count in span_names.items() if str(name).startswith("Tool: "))
+    total = sum(span_names.values())
+    both_active = wrapper > 0 and named_tools > 0
+    return {
+        "wrapper_span_count": wrapper,
+        "named_tool_span_count": named_tools,
+        "total_observations": total,
+        "wrapper_pct_of_observations": round(wrapper / total * 100, 2) if total else 0,
+        "both_exporters_active": both_active,
+        # The plugin emits the cost-bearing spans. If it saw fewer tool calls than the
+        # native exporter did, cost/duplicate analysis is blind to the difference.
+        "cost_bearing_tool_coverage_pct": (
+            round(named_tools / (wrapper / 2) * 100, 1) if wrapper >= 2 else None
+        ),
+        "warning": (
+            "Both exporters are active: every tool call is traced twice. Wrapper spans carry no "
+            "cost, so treat `cost_bearing_observations` as the denominator for every rate, and "
+            "expect duplicate-rate-per-observation to understate by roughly this factor."
+            if both_active
+            else None
+        ),
     }
 
 
@@ -241,24 +512,233 @@ def cmd_duplicate_tool_calls(base_url, headers, from_ts, to_ts, **_):
         name = obs.get("name")
         if name in NO_INPUT_TOOL_SPAN_NAMES:
             continue
-        key = (obs.get("traceId"), name, json.dumps(obs.get("input"), sort_keys=True))
-        groups[key].append({"id": obs.get("id"), "sessionId": obs.get("sessionId")})
+        # Normalised rather than exact: the same file re-read at a different offset is the
+        # same retrieval and should count as a repeat.
+        key = (obs.get("traceId"), name, _normalize_input(name, obs.get("input")))
+        groups[key].append(
+            {
+                "id": obs.get("id"),
+                "sessionId": obs.get("sessionId"),
+                "output_bytes": _payload_bytes(obs.get("output")),
+                "kind": _classify_payload(name, obs.get("input"), obs.get("output")),
+            }
+        )
 
-    result = sorted(
-        (
+    result = []
+    for (tid, name, _input), ids in groups.items():
+        if len(ids) <= 1:
+            continue
+        # Cost of duplication is token-weighted, not count-weighted: one repeated 500KB
+        # read costs far more than fifty repeated `git status` calls. Rank on bytes.
+        sizes = sorted((i["output_bytes"] for i in ids), reverse=True)
+        wasted = sum(sizes[1:])
+        result.append(
             {
                 "traceId": tid,
                 "sessionId": ids[0]["sessionId"] if ids else None,
                 "tool": name,
                 "repeat_count": len(ids),
+                "payload_kind": ids[0]["kind"],
+                "wasted_output_bytes": wasted,
+                # Every duplicated payload is admitted to context once per repeat and then
+                # re-sent on every later call in the trace, so bytes here understate impact.
                 "observation_ids": [i["id"] for i in ids],
             }
-            for (tid, name, _input), ids in groups.items()
-            if len(ids) > 1
-        ),
-        key=lambda r: -r["repeat_count"],
-    )
+        )
+    result.sort(key=lambda r: (-r["wasted_output_bytes"], -r["repeat_count"]))
     return result
+
+
+def cmd_payload_profile(base_url, headers, from_ts, to_ts, **_):
+    """Tool-result payload sizes by tool and kind — the missing root-cause measurement.
+
+    Context depth is driven by what gets admitted to context, and the size of each tool
+    result is the only direct evidence of that. Splitting image vs text matters because
+    the remedies are opposite: images cannot be grepped or paginated (fewer/smaller
+    screenshots is the only fix), whereas oversized text yields to a bounded search or
+    `limit`/`offset`. Concluding without the split produces the wrong recommendation.
+    """
+    tool_filter = [{"type": "string", "column": "type", "operator": "=", "value": "TOOL"}]
+    by_tool = collections.defaultdict(lambda: {"calls": 0, "bytes": 0, "max_bytes": 0, "kinds": collections.Counter()})
+    oversized = []
+    for obs in pull_observations(base_url, headers, "core,basic,io", from_ts, to_ts, tool_filter):
+        name = obs.get("name")
+        if name in NO_INPUT_TOOL_SPAN_NAMES:
+            continue
+        size = _payload_bytes(obs.get("output"))
+        kind = _classify_payload(name, obs.get("input"), obs.get("output"))
+        entry = by_tool[name]
+        entry["calls"] += 1
+        entry["bytes"] += size
+        entry["max_bytes"] = max(entry["max_bytes"], size)
+        entry["kinds"][kind] += 1
+        if size >= OVERSIZED_PAYLOAD_BYTES:
+            oversized.append(
+                {
+                    "traceId": obs.get("traceId"),
+                    "sessionId": obs.get("sessionId"),
+                    "tool": name,
+                    "kind": kind,
+                    "output_bytes": size,
+                    "input": obs.get("input"),
+                }
+            )
+
+    oversized.sort(key=lambda r: -r["output_bytes"])
+    total_bytes = sum(d["bytes"] for d in by_tool.values()) or 1
+    image_bytes = sum(r["output_bytes"] for r in oversized if r["kind"] == "image")
+    text_bytes = sum(r["output_bytes"] for r in oversized if r["kind"] == "text")
+    return {
+        "by_tool": sorted(
+            (
+                {
+                    "tool": name,
+                    "calls": d["calls"],
+                    "total_output_bytes": d["bytes"],
+                    "pct_of_all_output_bytes": round(d["bytes"] / total_bytes * 100, 2),
+                    "mean_output_bytes": round(d["bytes"] / d["calls"]) if d["calls"] else 0,
+                    "max_output_bytes": d["max_bytes"],
+                    "kinds": dict(d["kinds"]),
+                }
+                for name, d in by_tool.items()
+            ),
+            key=lambda r: -r["total_output_bytes"],
+        ),
+        "oversized_payloads": oversized[:25],
+        "oversized_threshold_bytes": OVERSIZED_PAYLOAD_BYTES,
+        "oversized_image_bytes": image_bytes,
+        "oversized_text_bytes": text_bytes,
+        "oversized_image_share_pct": (
+            round(image_bytes / (image_bytes + text_bytes) * 100, 1) if (image_bytes + text_bytes) else None
+        ),
+    }
+
+
+def cmd_underuse_profile(base_url, headers, from_ts, to_ts, **_):
+    """Cheaper paths that were available and NOT taken.
+
+    Every other query in this file looks for something happening too much. The two
+    largest context-depth drivers are the opposite — something happening too little:
+    unbounded Bash search standing in for Grep/Glob, and wide reads kept in the parent
+    context instead of delegated to a subagent. Neither is visible in a frequency
+    histogram, so they need their own check.
+    """
+    tool_filter = [{"type": "string", "column": "type", "operator": "=", "value": "TOOL"}]
+    counts = collections.Counter()
+    bash_search = 0
+    bash_total = 0
+    search_examples = []
+    for obs in pull_observations(base_url, headers, "core,basic,io", from_ts, to_ts, tool_filter):
+        name = obs.get("name")
+        if name in NO_INPUT_TOOL_SPAN_NAMES:
+            continue
+        short = name[len("Tool: "):] if str(name).startswith("Tool: ") else name
+        counts[short] += 1
+        if short == "Bash":
+            bash_total += 1
+            command = ""
+            if isinstance(obs.get("input"), dict):
+                command = str(obs["input"].get("command") or "")
+            if any(pattern in command for pattern in BASH_SEARCH_PATTERNS):
+                bash_search += 1
+                if len(search_examples) < 15:
+                    search_examples.append(
+                        {"traceId": obs.get("traceId"), "command": command[:300],
+                         "output_bytes": _payload_bytes(obs.get("output"))}
+                    )
+
+    total_calls = sum(counts.values()) or 1
+    bounded = sum(counts.get(t, 0) for t in BOUNDED_SEARCH_TOOLS)
+    delegation = sum(counts.get(t, 0) for t in DELEGATION_TOOLS)
+    findings = []
+    if bash_search > 0 and bounded == 0:
+        findings.append(
+            f"{bash_search} Bash search/dump calls and ZERO Grep/Glob calls. Bash returns unbounded "
+            "output straight into context, which is then re-sent on every later call in the session. "
+            "Grep/Glob answer the same questions with bounded results."
+        )
+    if bash_total and bash_search / bash_total > 0.3:
+        findings.append(
+            f"{bash_search}/{bash_total} ({bash_search / bash_total * 100:.0f}%) of Bash calls are "
+            "searches or file dumps — route these to Grep/Glob/Read."
+        )
+    if delegation / total_calls < 0.01:
+        findings.append(
+            f"Delegation is {delegation}/{total_calls} ({delegation / total_calls * 100:.2f}%) of tool calls. "
+            "A payload of P tokens admitted at call i of n is re-sent (n-i) times; delegating a wide read "
+            "to a subagent leaves only its summary in the parent context."
+        )
+    return {
+        "tool_counts": dict(counts.most_common()),
+        "bounded_search_calls": bounded,
+        "bash_calls": bash_total,
+        "bash_search_calls": bash_search,
+        "bash_search_pct_of_bash": round(bash_search / bash_total * 100, 1) if bash_total else None,
+        "delegation_calls": delegation,
+        "delegation_pct_of_tool_calls": round(delegation / total_calls * 100, 3),
+        "bash_search_examples": search_examples,
+        "findings": findings,
+    }
+
+
+def cmd_reconcile(base_url, headers, from_ts, to_ts, **_):
+    """Assert Langfuse's recorded `totalCost` matches tokens x published rates.
+
+    Guards against three failure modes that all silently produce plausible wrong numbers:
+    a null `model` (so nothing can be priced), an instrumentation gap where observations
+    carry tokens but no cost, and a stale rate table.
+    """
+    by_model = collections.defaultdict(lambda: {"cost": 0.0, "usage": collections.Counter(), "count": 0,
+                                                "zero_cost_with_tokens": 0})
+    for obs in pull_observations(base_url, headers, "core,basic,usage,model", from_ts, to_ts):
+        usage = _usage_of(obs)
+        if not any(usage.values()):
+            continue
+        entry = by_model[obs.get("model") or "(null model)"]
+        entry["count"] += 1
+        entry["cost"] += obs.get("totalCost") or 0
+        for key, value in usage.items():
+            entry["usage"][key] += value
+        if not (obs.get("totalCost") or 0):
+            entry["zero_cost_with_tokens"] += 1
+
+    rows = []
+    for model, data in by_model.items():
+        rate = RATES.get(model)
+        computed = None
+        if rate:
+            base_in, out_rate = rate
+            usage = data["usage"]
+            computed = round(
+                usage[USAGE_FRESH_INPUT] / 1e6 * base_in
+                + usage[USAGE_CACHE_WRITE] / 1e6 * base_in * 1.25
+                + usage[USAGE_CACHE_READ] / 1e6 * base_in * 0.1
+                + usage[USAGE_OUTPUT] / 1e6 * out_rate,
+                4,
+            )
+        rows.append(
+            {
+                "model": model,
+                "observations_with_usage": data["count"],
+                "observations_with_tokens_but_no_cost": data["zero_cost_with_tokens"],
+                "recorded_cost": round(data["cost"], 4),
+                "computed_cost": computed,
+                "delta_pct": (
+                    round((data["cost"] - computed) / computed * 100, 1) if computed else None
+                ),
+                "usage": dict(data["usage"]),
+                "note": None if rate else f"no rate for {model} in RATES — add it or the model is unattributed",
+            }
+        )
+    rows.sort(key=lambda r: -r["recorded_cost"])
+    return {
+        "by_model": rows,
+        "reconciles": all(
+            r["delta_pct"] is not None and abs(r["delta_pct"]) <= 5 for r in rows if r["computed_cost"]
+        ),
+        "guidance": "Investigate any |delta_pct| > 5, any '(null model)' row, and any nonzero "
+                    "observations_with_tokens_but_no_cost before quoting a dollar figure.",
+    }
 
 
 def cmd_tool_usage(base_url, headers, from_ts, to_ts, **_):
@@ -325,20 +805,16 @@ def cmd_error_pct(base_url, headers, from_ts, to_ts, **_):
     }
 
 
-def cmd_cache_read_pct(base_url, headers, from_ts, to_ts, cache_key="cache_read_input_tokens", **_):
-    input_tokens = 0
-    cache_tokens = 0
-    for obs in pull_observations(base_url, headers, "core,basic,usage", from_ts, to_ts):
-        details = obs.get("usageDetails") or {}
-        input_tokens += details.get("input", 0) or 0
-        cache_tokens += details.get(cache_key, 0) or 0
+def cmd_token_economics(base_url, headers, from_ts, to_ts, cache_key=USAGE_CACHE_READ, **_):
+    """Window token accounting + rate-invariant cost decomposition.
 
-    denom = input_tokens + cache_tokens
-    return {
-        "input_tokens": input_tokens,
-        "cache_read_tokens": cache_tokens,
-        "cache_read_pct": (cache_tokens / denom * 100) if denom else 0,
-    }
+    Supersedes the old `cache_read_pct` command, which is kept as an alias.
+    """
+    window_usage = collections.Counter()
+    for obs in pull_observations(base_url, headers, "core,basic,usage", from_ts, to_ts):
+        for key, value in _usage_of(obs).items():
+            window_usage[key] += value
+    return _token_economics(window_usage, cache_key=cache_key)
 
 
 def cmd_drill(base_url, headers, from_ts, to_ts, session, tool, limit, trace=None, **_):
@@ -364,6 +840,12 @@ def cmd_drill(base_url, headers, from_ts, to_ts, session, tool, limit, trace=Non
                 "startTime": obs.get("startTime"),
                 "level": obs.get("level"),
                 "input": obs.get("input"),
+                # Sizes BEFORE the preview: payload size is the quantity that drives context
+                # depth, and a 300-char preview throws exactly that away. A 500KB screenshot
+                # and a 200-byte `git status` look identical once truncated.
+                "input_bytes": _payload_bytes(obs.get("input")),
+                "output_bytes": _payload_bytes(obs.get("output")),
+                "payload_kind": _classify_payload(obs.get("name"), obs.get("input"), obs.get("output")),
                 "output_preview": str(obs.get("output"))[:300],
             }
         )
@@ -382,7 +864,11 @@ COMMANDS = {
     "duplicate_tool_calls": cmd_duplicate_tool_calls,
     "tool_usage": cmd_tool_usage,
     "error_pct": cmd_error_pct,
-    "cache_read_pct": cmd_cache_read_pct,
+    "token_economics": cmd_token_economics,
+    "cache_read_pct": cmd_token_economics,  # backwards-compatible alias
+    "payload_profile": cmd_payload_profile,
+    "underuse_profile": cmd_underuse_profile,
+    "reconcile": cmd_reconcile,
     "drill": cmd_drill,
 }
 
@@ -417,23 +903,50 @@ def main():
         os.makedirs(args.out_dir, exist_ok=True)
 
         combined = cmd_combined_metrics(base_url, headers, from_ts, to_ts, factor=args.factor)
-        for name in ("trace_outliers", "error_pct", "cache_read_pct"):
+        for name in ("trace_outliers", "error_pct", "token_economics", "exporter_health"):
             out_path = os.path.join(args.out_dir, f"{name}.json")
             with open(out_path, "w") as f:
                 json.dump(combined[name], f, indent=2)
             print(f"wrote {out_path}")
 
-        result = cmd_duplicate_tool_calls(base_url, headers, from_ts, to_ts)
-        out_path = os.path.join(args.out_dir, "duplicate_tool_calls.json")
-        with open(out_path, "w") as f:
-            json.dump(result, f, indent=2)
-        print(f"wrote {out_path}")
+        for name, fn in (
+            ("duplicate_tool_calls", cmd_duplicate_tool_calls),
+            ("tool_usage", cmd_tool_usage),
+            ("payload_profile", cmd_payload_profile),
+            ("underuse_profile", cmd_underuse_profile),
+            ("reconcile", cmd_reconcile),
+        ):
+            result = fn(base_url, headers, from_ts, to_ts)
+            out_path = os.path.join(args.out_dir, f"{name}.json")
+            with open(out_path, "w") as f:
+                json.dump(result, f, indent=2)
+            print(f"wrote {out_path}")
 
-        result = cmd_tool_usage(base_url, headers, from_ts, to_ts)
-        out_path = os.path.join(args.out_dir, "tool_usage.json")
+        # Read this first: it is the one file that says where the money went, and it is
+        # small enough not to cost meaningful context to load.
+        summary = {
+            "cost_shares": combined["token_economics"]["cost_shares"],
+            "cache_churn_ratio": combined["token_economics"]["cache_churn_ratio"],
+            "error_pct_of_cost_bearing": combined["error_pct"]["error_pct_of_cost_bearing"],
+            "exporter_warning": combined["exporter_health"]["warning"],
+            "top_recoverable": [
+                {
+                    "traceId": t["traceId"],
+                    "sessionId": t["sessionId"],
+                    "cost": round(t["cost"], 4),
+                    "context_depth_per_call": t["context_depth_per_call"],
+                    "depth_ratio": t["depth_ratio"],
+                    "tool_calls_per_call": t["tool_calls_per_call"],
+                    "recoverable_cost": t["recoverable_cost"],
+                }
+                for t in combined["trace_outliers"][:10]
+            ],
+            "total_recoverable_cost": round(sum(t["recoverable_cost"] for t in combined["trace_outliers"]), 4),
+        }
+        out_path = os.path.join(args.out_dir, "summary.json")
         with open(out_path, "w") as f:
-            json.dump(result, f, indent=2)
-        print(f"wrote {out_path}")
+            json.dump(summary, f, indent=2)
+        print(f"wrote {out_path}  <- read this one first")
         return
 
     fn = COMMANDS[args.command]
