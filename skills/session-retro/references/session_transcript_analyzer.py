@@ -113,6 +113,16 @@ def analyze(path):
     tool_result_sizes = []  # list of dicts: tool_use_id, size, ts — matched to a tool name below
     message_count = 0
     all_ts = []
+    # One assistant message spans MULTIPLE transcript lines — one per content block — and
+    # every line repeats the same `usage` object. Summing per line therefore counts the
+    # same tokens once per block: the factor is workload-dependent (measured between 1x
+    # and 14x on real sessions) so there is no fixed correction, and the resulting figures
+    # are plausible but wrong — large enough to imply more output tokens than the window
+    # physically contains. Deduplicate on `message.id`, which is stable across the lines
+    # of one message.
+    counted_message_ids = set()
+    usage_lines_seen = 0
+    usage_lines_counted = 0
 
     for event in load_events(path):
         ts = event.get("timestamp")
@@ -136,15 +146,25 @@ def analyze(path):
                 subagent_tool_calls.extend(calls_for_this_event)
                 continue
 
-            message_count += 1
             usage = message.get("usage") or {}
-            usage_totals["input_tokens"] += usage.get("input_tokens", 0) or 0
-            usage_totals["output_tokens"] += usage.get("output_tokens", 0) or 0
-            cache_read = usage.get("cache_read_input_tokens", 0) or 0
-            usage_totals["cache_read_input_tokens"] += cache_read
-            usage_totals["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0) or 0
-            if cache_read:
-                per_message_cache_read.append(cache_read)
+            message_id = message.get("id")
+            if usage:
+                usage_lines_seen += 1
+            # Fall back to the event uuid when `id` is absent so a message without one is
+            # still counted exactly once rather than dropped.
+            dedupe_key = message_id or ("uuid:" + str(event.get("uuid")))
+            if dedupe_key not in counted_message_ids:
+                counted_message_ids.add(dedupe_key)
+                message_count += 1
+                if usage:
+                    usage_lines_counted += 1
+                usage_totals["input_tokens"] += usage.get("input_tokens", 0) or 0
+                usage_totals["output_tokens"] += usage.get("output_tokens", 0) or 0
+                cache_read = usage.get("cache_read_input_tokens", 0) or 0
+                usage_totals["cache_read_input_tokens"] += cache_read
+                usage_totals["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0) or 0
+                if cache_read:
+                    per_message_cache_read.append(cache_read)
             tool_calls.extend(calls_for_this_event)
 
         elif etype == "user" and not is_sidechain:
@@ -199,6 +219,36 @@ def analyze(path):
         "wall_clock_seconds": wall_clock_seconds,
         "active_duration_seconds": active_duration_seconds,
         "usage_totals": dict(usage_totals),
+        # How much a naive per-line sum would have overcounted. Report it so the dedupe is
+        # visible rather than silent, and so a transcript-format change that breaks
+        # `message.id` shows up as this dropping to 1.0.
+        "usage_overcount_factor_avoided": (
+            round(usage_lines_seen / usage_lines_counted, 2) if usage_lines_counted else None
+        ),
+        # Mean tokens transmitted per model call. This — not the totals — is what separates
+        # an expensive session from a wasteful one: sessions doing identical work at the
+        # same tool-calls-per-message ratio routinely differ many-fold here, and the whole
+        # difference is context re-transmission.
+        "context_depth_per_call": (
+            round(
+                (
+                    usage_totals["input_tokens"]
+                    + usage_totals["cache_read_input_tokens"]
+                    + usage_totals["cache_creation_input_tokens"]
+                )
+                / message_count
+            )
+            if message_count
+            else 0
+        ),
+        "tool_calls_per_message": round(len(tool_calls) / message_count, 3) if message_count else 0,
+        # Prefix churn: cache writes per cache read. Rising churn means the cached prefix
+        # keeps being invalidated instead of reused.
+        "cache_churn_ratio": (
+            round(usage_totals["cache_creation_input_tokens"] / usage_totals["cache_read_input_tokens"], 5)
+            if usage_totals["cache_read_input_tokens"]
+            else None
+        ),
         "tool_histogram": dict(tool_histogram.most_common()),
         "skills_invoked": sorted({(c["input"] or {}).get("skill") for c in skill_calls if c.get("input")}),
         "duplicate_calls": duplicate_calls,
