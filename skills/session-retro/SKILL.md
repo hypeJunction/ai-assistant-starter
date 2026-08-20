@@ -49,7 +49,10 @@ Three steps: **classify** the session's events, **identify** which classified is
 python3 references/session_transcript_analyzer.py <path-to-session.jsonl> --out ./session_retro_out.json
 ```
 
-This surfaces: tool-call histogram, exact-duplicate tool calls, `Read` calls that follow an `Edit`/`Write` on the same file (within a bounded call/time window — not just "ever read after ever edited"), skills invoked, token/cache usage, and candidate "user correction" turns (user messages containing correction language like "no,", "that's wrong", "instead of", "I asked for"; synthetic events like task notifications, hook output, and local-command results are filtered out before this check runs, not treated as user turns).
+This surfaces: tool-call histogram, exact-duplicate tool calls, `Read` calls that follow an `Edit`/`Write` on the same file (within a bounded call/time window — not just "ever read after ever edited"), skills invoked, token/cache usage, and candidate "user correction" turns (user messages containing correction language like "no,", "that's wrong", "instead of", "I asked for"; synthetic events like task notifications, hook output, and local-command results are filtered out before this check runs, not treated as user turns). It also surfaces two fields specifically for the structural findings in Step 1c/3a below:
+
+- `context_multiplication_signal` — `message_count` (main-loop turns) and `avg_cache_read_per_message` (mean `cache_read_input_tokens` per assistant message). This is the transcript-side view of `/cost-audit`'s `generation_count`/`avg_cache_read_per_generation` fields — a high `message_count` with a large, roughly flat `avg_cache_read_per_message` means every turn in this session re-paid cache-read on the same large accumulated context.
+- `largest_tool_results` — the 8 largest tool_result payloads in the session (size in characters, which tool produced them, and a one-line input summary), e.g. a `Skill` invocation's own `SKILL.md`/`references/*.md` body, a verbose command dump (a full `gh pr view` across several PRs, an unfiltered test run), or a large file read. These are candidate contributors to the baseline `context_multiplication_signal` measures — evidence for *what* is inflating the per-turn cost, which Langfuse alone can't show.
 
 The script only reports which skills **were** invoked (`skills_invoked`) — it has no notion of what skills exist to compare against. To check for a missed trigger, separately enumerate the available skills yourself (see Prerequisites — all three locations) and compare their descriptions/triggers against each user request in the transcript.
 
@@ -71,6 +74,8 @@ Drop false positives. Keep only genuine friction.
 | Redundant re-fetch / re-read | Same lookup repeated with no new information gained | Codebase (reinforce existing "don't re-verify" guidance) |
 | Scope drift / compound ask | The user had to correct direction mid-session; the originating request bundled multiple asks or left key constraints unstated | Prompt-side (see Step 3b) |
 | Ambiguous or underspecified request | The assistant's first attempt addressed a plausible-but-wrong interpretation, corrected only after the user clarified | Prompt-side |
+| Oversized skill footprint | `largest_tool_results` shows a `Skill` invocation's own `SKILL.md`/`references/*.md` body among the biggest payloads in the session, loaded in full regardless of which part of the skill's workflow actually applied to this request | Structural (see Step 3a-structural) — split the skill's reference docs for progressive disclosure |
+| Inline exploration that should be delegated | `context_multiplication_signal.message_count` is high (dozens+) with a large, flat `avg_cache_read_per_message`, and the tool histogram shows a long run of `Read`/`Bash`/`Grep`-type calls doing a broad investigative sweep with no `Agent`/`Task`/`Workflow` delegation in between | Structural (see Step 3a-structural) — delegate the sweep to a subagent instead of running it inline in the main thread |
 
 ### Step 2: Identify What Actually Caused Friction
 
@@ -89,6 +94,15 @@ Keep only findings with real impact (a correction, or a pattern with real turn/t
 - An ignored instruction → propose making the existing rule more prominent (move it earlier, restate more explicitly) rather than adding a duplicate rule
 - Cite the transcript evidence (timestamp, quoted text or tool call) for each proposed change
 
+**3a-structural. Structural / agentification fixes.** For a confirmed "Oversized skill footprint" or "Inline exploration that should be delegated" finding, the fix is a restructuring of the skill or the base repo, not a CLAUDE.md line — draft ONE specific, concrete change:
+
+- **Oversized skill footprint** → propose splitting the skill's `references/` doc(s) so the always-loaded body is an index (which procedure/section applies to which situation) and the full procedure text is only pulled in — via a targeted `Read` with `offset`/`limit`, or a second-tier `references/<procedure>.md` — once the relevant one is identified. Name the exact file(s) and current size (from `largest_tool_results`), and what the split would look like.
+- **Inline exploration that should be delegated** → propose the specific phase of the skill's workflow that should spawn a subagent (`Agent`/`Explore`/`dispatch`) instead of running inline, and what that subagent should return (a compact digest, not raw tool output) so the main thread's context doesn't carry the full exploration. Name the skill, the workflow step, and the evidence (`message_count`, `avg_cache_read_per_message`, the run of tool calls in question).
+
+Cite `largest_tool_results`/`context_multiplication_signal` evidence for each. These changes touch a skill's structure (splitting files, rewriting a workflow step to delegate), not a single line — describe the restructuring precisely enough that the user can approve or reject the shape of it, not just wording.
+
+**If a `/cost-audit` run flagged this session or trace as "Context-multiplication"**, that finding is a pointer to root-cause here — this step is where it gets an actual structural fix, since `/cost-audit`'s own Langfuse data can tell you *that* a trace multiplied cost by turn count but not *what* specifically to restructure.
+
 **3b. Prompt-side tips.** For each confirmed finding whose fix side is "prompt," draft a concrete before/after phrasing example — not generic advice like "be more specific." Show:
 - The actual request that led to the friction (quoted)
 - What was ambiguous, compound, or missing about it
@@ -101,7 +115,7 @@ Example shape:
 
 **3c. Present the report and gate.** Present the full report (Output Format below) before writing any changes.
 
-**GATE: user must approve each proposed codebase diff individually before it is applied.** Prompt-side tips are informational — no approval gate needed to *state* them, but do not silently rewrite the user's future prompts for them.
+**GATE: user must approve each proposed codebase diff individually before it is applied** — this includes structural/agentification changes from 3a-structural, which get the same per-item approval as a CLAUDE.md line edit. Prompt-side tips are informational — no approval gate needed to *state* them, but do not silently rewrite the user's future prompts for them.
 
 **3d. Apply and note follow-up.** Apply only approved codebase diffs. If a pattern seems likely to recur, tell the user it's worth checking on a future `/session-retro` run rather than promising a fixed re-check date.
 
@@ -113,7 +127,8 @@ Example shape:
 ## Summary
 - **Active duration**: [X] (wall-clock span: [Y] — only report the wall-clock figure if it differs meaningfully from active time, e.g. a resumed session spanning days; label it explicitly as wall-clock, not "duration")
 - **Tool calls**: [N] (main loop) + [N] (subagent, excluded from friction findings below) / **Messages**: [N]
-- **Genuine friction found**: [N] findings ([N] correction points, [N] redundant patterns)
+- **Context baseline**: avg [X] cache-read tokens/message across [N] messages (context only — flag as a finding in Step 1c only if it's unusually large/flat *and* paired with a specific `largest_tool_results` or delegable-exploration cause; a high number alone isn't evidence)
+- **Genuine friction found**: [N] findings ([N] correction points, [N] redundant patterns, [N] structural)
 
 ## Findings
 
@@ -132,6 +147,15 @@ Example shape:
 **Justification**: [timestamp/quote from Findings]
 
 [repeat per proposed diff]
+
+## Structural / Agentification Recommendations
+
+### 1. [target skill] — [oversized skill footprint | inline exploration that should be delegated]
+- **Current structure**: [file(s)/size, or the workflow step and its inline call sequence]
+- **Proposed change**: [the specific split, or the specific delegation — which step, what the subagent should return]
+- **Justification**: [`largest_tool_results` / `context_multiplication_signal` evidence, or the cross-referenced `/cost-audit` trace]
+
+[repeat per recommendation; omit this section entirely if no structural finding survived Step 2]
 
 ## Prompt Phrasing Tips
 
@@ -158,7 +182,8 @@ Example shape:
 ### Recommended
 - Run at the end of a session that felt inefficient, not on a fixed schedule
 - Prefer strengthening an existing CLAUDE.md rule over adding a new one when the finding shows a rule was ignored rather than missing
-- Cross-reference `/cost-audit` findings when both are available — a session flagged as a cost outlier there is a good candidate for a `/session-retro` deep dive here
+- Cross-reference `/cost-audit` findings when both are available — a session flagged as a cost outlier there is a good candidate for a `/session-retro` deep dive here, and a trace flagged "Context-multiplication" there should land here for the actual structural fix
+- Don't propose a structural/agentification change on `context_multiplication_signal` alone — pair it with a concrete `largest_tool_results` entry or an identifiable inline-exploration run before drafting a fix; a high baseline with no clear single contributor is architecture-inherent, not a defect in this skill or session
 
 ## Acceptance Tests
 
@@ -170,3 +195,4 @@ Example shape:
 | SR-T4 | Negative | "Review this PR before I merge it" | Does NOT trigger (-> /review, code review not session behavior) |
 | SR-T5 | Negative | "Run the finish workflow" | Does NOT trigger (-> /finish, end-of-session test/validate/commit) |
 | SR-T6 | Boundary | "Audit our Langfuse traces for wasted tokens across all sessions" | Does NOT trigger — cross-session/cost-focused, route to `/cost-audit` instead |
+| SR-T7 | Positive | "This audit skill cost $16 to run — should it be structured differently?" | Skill triggers; agent checks `largest_tool_results` and `context_multiplication_signal`, and if a genuine cause is found, proposes a Structural / Agentification Recommendation rather than a CLAUDE.md line |

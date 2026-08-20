@@ -170,7 +170,7 @@ def cmd_combined_metrics(base_url, headers, from_ts, to_ts, factor=3.0, cache_ke
     """
     by_trace = collections.defaultdict(
         lambda: {"sessionId": None, "cost": 0.0, "count": 0, "tool_calls": 0, "input_tokens": 0,
-                 "output_tokens": 0, "models": set()}
+                 "output_tokens": 0, "generation_count": 0, "cache_read_tokens": 0, "models": set()}
     )
     by_level = collections.Counter()
     total_input_tokens = 0
@@ -193,6 +193,14 @@ def cmd_combined_metrics(base_url, headers, from_ts, to_ts, factor=3.0, cache_ke
         entry["output_tokens"] += details.get("output", 0) or 0
         total_input_tokens += details.get("input", 0) or 0
         cache_tokens += details.get(cache_key, 0) or 0
+        if obs.get("type") == "GENERATION":
+            # Every GENERATION span (one per LLM call, i.e. one agentic turn) re-pays
+            # cache_read on the full accumulated context. generation_count is the turn
+            # count; cache_read_tokens / generation_count is what that context costs per
+            # turn — the multiplication factor a duplicate-call check can't see, because
+            # each of these calls has a genuinely distinct tool_use, not a repeat.
+            entry["generation_count"] += 1
+            entry["cache_read_tokens"] += details.get(cache_key, 0) or 0
 
     traces = [
         {
@@ -203,6 +211,10 @@ def cmd_combined_metrics(base_url, headers, from_ts, to_ts, factor=3.0, cache_ke
             "tool_call_count": data["tool_calls"],
             "input_tokens": data["input_tokens"],
             "output_tokens": data["output_tokens"],
+            "generation_count": data["generation_count"],
+            "cache_read_tokens": data["cache_read_tokens"],
+            "avg_cache_read_per_generation": round(data["cache_read_tokens"] / data["generation_count"], 1)
+            if data["generation_count"] else 0,
             "models": sorted(m for m in data["models"] if m),
         }
         for tid, data in by_trace.items()

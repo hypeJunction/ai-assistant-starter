@@ -109,6 +109,8 @@ def analyze(path):
     subagent_tool_calls = []  # same shape, for isSidechain events
     user_turns = []  # list of dicts: ts, text
     usage_totals = collections.Counter()
+    per_message_cache_read = []  # one entry per main-loop assistant message, for the growth check below
+    tool_result_sizes = []  # list of dicts: tool_use_id, size, ts — matched to a tool name below
     message_count = 0
     all_ts = []
 
@@ -138,20 +140,44 @@ def analyze(path):
             usage = message.get("usage") or {}
             usage_totals["input_tokens"] += usage.get("input_tokens", 0) or 0
             usage_totals["output_tokens"] += usage.get("output_tokens", 0) or 0
-            usage_totals["cache_read_input_tokens"] += usage.get("cache_read_input_tokens", 0) or 0
+            cache_read = usage.get("cache_read_input_tokens", 0) or 0
+            usage_totals["cache_read_input_tokens"] += cache_read
             usage_totals["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0) or 0
+            if cache_read:
+                per_message_cache_read.append(cache_read)
             tool_calls.extend(calls_for_this_event)
 
         elif etype == "user" and not is_sidechain:
             text = _extract_user_text(message.get("content"))
             if text and not _is_synthetic_user_text(text):
                 user_turns.append({"ts": ts, "text": text})
+            content = message.get("content")
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_result":
+                        size = _tool_result_size(block.get("content"))
+                        if size:
+                            tool_result_sizes.append({"tool_use_id": block.get("tool_use_id"), "size": size, "ts": ts})
 
     duplicate_calls = _find_duplicates(tool_calls)
     reedit_reads = _find_reedit_reads(tool_calls)
     corrections = _find_corrections(user_turns, tool_calls)
     skill_calls = [c for c in tool_calls if c["name"] == "Skill"]
     tool_histogram = collections.Counter(c["name"] for c in tool_calls)
+    largest_tool_results = _largest_tool_results(tool_result_sizes, tool_calls)
+    avg_cache_read_per_message = (
+        round(sum(per_message_cache_read) / len(per_message_cache_read), 1) if per_message_cache_read else 0
+    )
+    # A flat, large per-message cache-read alongside a high message_count is the
+    # transcript-side view of cost-audit's "Context-multiplication" pattern (see
+    # references/langfuse_queries.py in the cost-audit skill): every main-loop turn
+    # re-pays cache-read on the same large accumulated context. This local view adds
+    # what Langfuse can't see — which specific tool_result (e.g. a skill's own
+    # SKILL.md/references body) is contributing to that baseline size.
+    context_multiplication_signal = {
+        "message_count": message_count,
+        "avg_cache_read_per_message": avg_cache_read_per_message,
+    }
 
     wall_clock_seconds = None
     active_duration_seconds = None
@@ -178,7 +204,51 @@ def analyze(path):
         "duplicate_calls": duplicate_calls,
         "reedit_reads": reedit_reads,
         "correction_points": corrections,
+        "context_multiplication_signal": context_multiplication_signal,
+        "largest_tool_results": largest_tool_results,
     }
+
+
+def _tool_result_size(content):
+    """A tool_result's content is a plain string on the vast majority of calls
+    (verbatim command/file output), occasionally a list of content blocks (e.g.
+    image results) — measured on real transcripts, string is the common case, so
+    that's what actually needs measuring here."""
+    if isinstance(content, str):
+        return len(content)
+    if isinstance(content, list):
+        return sum(len(b.get("text", "")) for b in content if isinstance(b, dict) and b.get("type") == "text")
+    return 0
+
+
+# How many of the biggest tool_results to surface — enough to spot a skill's own
+# SKILL.md/references body (loaded once, near the start of a Skill invocation) or a
+# verbose command dump, without listing every large-ish read in a long session.
+LARGEST_TOOL_RESULTS_LIMIT = 8
+
+
+def _largest_tool_results(tool_result_sizes, tool_calls):
+    """Rank tool_results by size and label each with the tool call it answers, so a
+    large one can be read as e.g. "Read of SKILL.md, 12.4KB" instead of a bare number.
+    This is the concrete evidence for a Structural/Agentification finding: a skill
+    that loads a large reference doc up front shows up here as one big entry near the
+    session's start, then gets re-paid on every later turn per
+    `context_multiplication_signal`.
+    """
+    calls_by_id = {c["id"]: c for c in tool_calls if c.get("id")}
+    ranked = sorted(tool_result_sizes, key=lambda r: -r["size"])[:LARGEST_TOOL_RESULTS_LIMIT]
+    out = []
+    for r in ranked:
+        call = calls_by_id.get(r["tool_use_id"])
+        out.append(
+            {
+                "tool": call["name"] if call else None,
+                "input_summary": _summarize_input(call["name"], json.dumps(call["input"])) if call else None,
+                "size_chars": r["size"],
+                "ts": r["ts"],
+            }
+        )
+    return out
 
 
 def _find_duplicates(tool_calls):
