@@ -10,10 +10,10 @@ A developer notices their Claude Code spend jumped and asks: "Let's search Langf
 
 1. The agent runs `references/langfuse_queries.py all` and finds:
    - Cost concentrated in 3 sessions (69% of total spend)
-   - One trace with 340 exact-duplicate calls to `Tool: Read` on the same `file_path`, spaced ~4 seconds apart, no errors nearby (`duplicate_tool_calls.json` already excludes the generic `claude_code.tool`/`claude_code.tool.execution` wrapper spans, so this count is real per-tool repeats, not instrumentation noise)
-   - Two other whale sessions with duplicate Playwright `Tool: browser_navigate`/`Tool: browser_close`/`Tool: browser_console_messages` calls
-2. The agent drills into the 340-duplicate trace with `--drill --tool Read`, sees timestamps ~4 seconds apart with the same `file_path` input and no adjacent errors, and classifies it as a **stuck poll / runaway loop** — not a retry-after-error.
-3. The agent drills into the browser-automation sessions, sees repeated `navigate`→`console_messages`→`close` without an intervening code change, and classifies it as a **browser-automation retry** pattern.
+   - One trace with 340 exact-duplicate calls to `Tool: Read` on the same `file_path`, spaced ~4 seconds apart, no errors nearby (`duplicate_tool_calls.json` already excludes the generic `claude_code.tool`/`claude_code.tool.execution` wrapper spans, so this count is real per-tool repeats, not instrumentation noise) — `classified_findings.json` already labels this group `stuck-poll-or-runaway-loop` from the regular ~4s spacing and absence of adjacent errors
+   - Two other whale sessions with duplicate Playwright `Tool: browser_navigate`/`Tool: browser_close`/`Tool: browser_console_messages` calls, already labeled `browser-automation-retry` in `classified_findings.json`
+2. The agent reads the `stuck-poll-or-runaway-loop` label straight from `ranked_findings.json`/`classified_findings.json` — no manual re-derivation — then drills into that trace with `--drill --tool Read` only to pull the actual `file_path` and timestamps for the report's evidence line.
+3. The agent reads the `browser-automation-retry` label from `classified_findings.json`, then drills into the browser-automation sessions to confirm the `navigate`→`console_messages`→`close` sequence and pull the actual call content for the report.
 4. The agent proposes two specific corrections, each citing the session ID and numbers:
    - A rule about polling loops needing a growing backoff or an explicit exit condition, backed by the exact session ID and repeat count
    - A reinforcement of the existing "stop after 2-3 failed browser actions and ask" guidance, since the trace shows it wasn't followed
@@ -25,8 +25,8 @@ A developer notices their Claude Code spend jumped and asks: "Let's search Langf
 | # | Checkpoint | What to verify |
 |---|-----------|----------------|
 | 1 | Agent runs the actual queries, doesn't guess | `references/langfuse_queries.py` is invoked (or an equivalent live query) — the agent does not fabricate session IDs or numbers |
-| 2 | Agent root-causes before proposing a fix | The `drill` step runs for each shortlisted offender before Step 3; the agent does not jump from "high duplicate count" straight to a proposed rule |
-| 3 | Findings distinguish loop vs. retry vs. re-read patterns | The report classifies each offender using the Step 1c table, not a single generic "wasteful" label |
+| 2 | Agent root-causes before proposing a fix | The `drill` step runs for each shortlisted offender before Step 3 to pull real evidence for the report; the agent does not jump from "high duplicate count" straight to a proposed rule |
+| 3 | Findings distinguish loop vs. retry vs. re-read patterns | The report uses each offender's `pattern` value from `classified_findings.json`/`ranked_findings.json` (or the Step 1c table for cross-trace/manual cases), not a single generic "wasteful" label — and the agent does not silently overwrite a script-assigned label without a stated reason |
 | 4 | Every proposed correction cites evidence | Each diff in "Proposed Corrections" names a session ID and a number (repeat count or cost) |
 | 5 | Approval gate before writing | CLAUDE.md/skill files are not modified until the user explicitly approves each proposed diff |
 | 6 | Healthy metrics are called out, not flagged | If cache-read % is high (as in this scenario), the agent states it's healthy and out of scope rather than including it as a finding |

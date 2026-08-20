@@ -21,6 +21,7 @@ Usage:
     python3 langfuse_queries.py cache_read_pct
     python3 langfuse_queries.py drill --trace <id> --tool <name> --limit 5
     python3 langfuse_queries.py session_sequences --growth-factor 2.0
+    python3 langfuse_queries.py classify
     python3 langfuse_queries.py all --out-dir ./cost_audit_out
 """
 
@@ -519,6 +520,202 @@ def cmd_session_sequences(base_url, headers, from_ts, to_ts, growth_factor=2.0, 
     return sessions_out
 
 
+def _parse_ts(ts):
+    if not ts:
+        return None
+    if ts.endswith("Z"):
+        ts = ts[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(ts)
+    except ValueError:
+        return None
+
+
+def _file_path(input_obj):
+    if isinstance(input_obj, dict):
+        return input_obj.get("file_path") or input_obj.get("path")
+    return None
+
+
+BROWSER_TOOL_MARKERS = ("navigate", "console_messages", "close", "screenshot", "computer")
+EDIT_TOOL_MARKERS = ("Edit", "Write", "NotebookEdit")
+READ_TOOL_MARKERS = ("Read",)
+DISPATCH_TOOL_MARKERS = ("Agent", "Workflow", "Skill")
+
+
+def _errors_near(timestamps, errors, window_seconds):
+    """True if any repeat in the group has an ERROR-level observation in the
+    `window_seconds` immediately preceding it — the signature of a retry loop
+    rather than a healthy repeated call."""
+    for ts in timestamps[1:]:
+        for err_ts in errors:
+            if 0 <= (ts - err_ts).total_seconds() <= window_seconds:
+                return True
+    return False
+
+
+def _classify_group(name, input_json, timestamps, gaps, errors, all_events,
+                     stuck_poll_repeat_threshold, stuck_poll_regularity_cv,
+                     error_window_seconds, reverify_window_seconds):
+    """Assign one pattern label to a (tool, input) repeat group within a trace,
+    from timing/error/sequence signatures alone — no LLM judgment involved.
+
+    Order matters: retry-after-error is checked first since an error can occur
+    alongside any other signature (a browser retry or a read-after-edit can
+    both also be error-driven, and the error is the more specific cause). The
+    final `redundant-context-refetch` bucket is an explicit "none of the
+    deterministic signatures matched" catch-all — it still needs a human/LLM
+    to read `drill` output or the local transcript before it gets a sharper
+    label; it is not a confident classification on its own.
+    """
+    repeat_count = len(timestamps)
+    mean_gap = sum(gaps) / len(gaps) if gaps else 0
+    cv = (statistics.pstdev(gaps) / mean_gap) if mean_gap and len(gaps) > 1 else None
+
+    if _errors_near(timestamps, errors, error_window_seconds):
+        return "retry-after-error", {
+            "reason": f"{repeat_count} repeats with an ERROR observation within "
+                      f"{error_window_seconds}s before a repeat",
+        }
+
+    if any(marker in name for marker in READ_TOOL_MARKERS):
+        input_obj = json.loads(input_json) if input_json != "null" else None
+        path = _file_path(input_obj)
+        if path:
+            for e in all_events:
+                if any(m in e["name"] for m in EDIT_TOOL_MARKERS) and _file_path(e["input"]) == path:
+                    for ts in timestamps:
+                        if 0 <= (ts - e["ts"]).total_seconds() <= reverify_window_seconds:
+                            return "re-verification-read", {
+                                "reason": f"Read on {path} within {reverify_window_seconds}s "
+                                          f"after {e['name']} on the same file",
+                            }
+
+    if any(marker in name for marker in BROWSER_TOOL_MARKERS):
+        return "browser-automation-retry", {
+            "reason": f"{repeat_count} repeats of a browser-automation call ({name}) with identical input",
+        }
+
+    if any(marker in name for marker in DISPATCH_TOOL_MARKERS):
+        return "skill-or-subagent-over-dispatch", {
+            "reason": f"{repeat_count} repeats of the same {name} dispatch with identical input",
+        }
+
+    if repeat_count >= stuck_poll_repeat_threshold and cv is not None and cv < stuck_poll_regularity_cv:
+        return "stuck-poll-or-runaway-loop", {
+            "reason": f"{repeat_count} repeats at regular ~{round(mean_gap, 1)}s intervals "
+                      f"(coefficient of variation={round(cv, 2)}), no adjacent errors",
+        }
+
+    return "redundant-context-refetch", {
+        "reason": f"{repeat_count} repeats of the same call within one trace; no error/edit-adjacency/"
+                  f"browser-sequence/regular-interval signature matched — confirm with `drill` or the "
+                  f"local transcript before assigning a sharper label",
+        "needs_manual_confirmation": True,
+    }
+
+
+def cmd_classify(base_url, headers, from_ts, to_ts, stuck_poll_repeat_threshold=10,
+                  stuck_poll_regularity_cv=0.5, error_window_seconds=30,
+                  reverify_window_seconds=120, **_):
+    """Deterministically assign a pattern label to every within-trace duplicate-call
+    group, from call timing, ERROR-level adjacency, and tool-name sequences.
+
+    This replaces manual `drill`-and-eyeball classification for the common patterns
+    (retry-after-error, re-verification-read, browser-automation-retry,
+    skill/subagent-over-dispatch, stuck-poll-or-runaway-loop). It does NOT compute
+    the cross-trace patterns (cross_trace_duplicates, context_growth,
+    escalation_after_failure) — those already exist as structured fields in
+    `session_sequences`, so classifying them again here would be redundant, not
+    complementary. It also does NOT compute 'ignored correction' — that pattern is
+    only confirmable from the user's verbatim wording in the local transcript,
+    which Langfuse's OTel export doesn't reliably carry.
+
+    A finding with `needs_manual_confirmation: true` (the redundant-context-refetch
+    catch-all) is the one case where a human/LLM still has to read `drill` output or
+    the transcript before the pattern label can be trusted — everything else here is
+    a mechanical read of the same fields `duplicate_tool_calls` already surfaces,
+    just with the labeling done in code instead of in the agent's head.
+    """
+    by_trace = collections.defaultdict(lambda: {"sessionId": None, "tool_events": [], "error_events": []})
+    for obs in pull_observations(base_url, headers, "core,basic,io", from_ts, to_ts):
+        tid = obs.get("traceId") or "(no trace)"
+        entry = by_trace[tid]
+        entry["sessionId"] = entry["sessionId"] or obs.get("sessionId")
+        ts = _parse_ts(obs.get("startTime"))
+        if obs.get("level") == "ERROR" and ts:
+            entry["error_events"].append(ts)
+        if obs.get("type") == "TOOL" and obs.get("name") not in NO_INPUT_TOOL_SPAN_NAMES and ts:
+            entry["tool_events"].append({"name": obs.get("name"), "input": obs.get("input"), "ts": ts})
+
+    findings = []
+    for tid, data in by_trace.items():
+        events = sorted(data["tool_events"], key=lambda e: e["ts"])
+        errors = sorted(data["error_events"])
+
+        groups = collections.defaultdict(list)
+        for e in events:
+            key = (e["name"], json.dumps(e["input"], sort_keys=True))
+            groups[key].append(e["ts"])
+
+        for (name, input_json), timestamps in groups.items():
+            if len(timestamps) < 2:
+                continue
+            timestamps = sorted(timestamps)
+            gaps = [(b - a).total_seconds() for a, b in zip(timestamps, timestamps[1:])]
+            pattern, evidence = _classify_group(
+                name, input_json, timestamps, gaps, errors, events,
+                stuck_poll_repeat_threshold, stuck_poll_regularity_cv,
+                error_window_seconds, reverify_window_seconds,
+            )
+            findings.append({
+                "traceId": tid,
+                "sessionId": data["sessionId"],
+                "tool": name,
+                "input": json.loads(input_json) if input_json != "null" else None,
+                "repeat_count": len(timestamps),
+                "first_seen": timestamps[0].isoformat(),
+                "last_seen": timestamps[-1].isoformat(),
+                "pattern": pattern,
+                "evidence": evidence,
+            })
+
+    findings.sort(key=lambda f: -f["repeat_count"])
+    return findings
+
+
+def _rank_findings(classified, trace_outliers, session_sequences):
+    """Merge classified within-trace findings with trace-level outlier data and
+    session-level cross-trace flags into one sorted list — this mechanizes the
+    Step 1b shortlisting criteria (outlier-metric count, then ratio, then excess
+    cost, then repeat count) that used to be applied by eye.
+    """
+    outlier_by_trace = {t["traceId"]: t for t in trace_outliers}
+    session_flagged = {s["sessionId"] for s in session_sequences}
+
+    ranked = []
+    for f in classified:
+        outlier = outlier_by_trace.get(f["traceId"])
+        outlier_reasons = outlier["outlier_reasons"] if outlier else []
+        ranked.append({
+            **f,
+            "is_trace_outlier": bool(outlier_reasons),
+            "outlier_reasons": outlier_reasons,
+            "outlier_metric_count": len(outlier_reasons),
+            "outlier_max_ratio": max((r["ratio"] for r in outlier_reasons), default=0),
+            "excess_cost": outlier["excess_cost"] if outlier else 0,
+            "session_flagged_cross_trace": f["sessionId"] in session_flagged,
+        })
+
+    ranked.sort(key=lambda r: (
+        -r["outlier_metric_count"],
+        -r["outlier_max_ratio"],
+        -r["excess_cost"],
+        -r["repeat_count"],
+    ))
+    return ranked
+
+
 COMMANDS = {
     "cost_per_session": cmd_cost_per_session,
     "trace_outliers": cmd_trace_outliers,
@@ -528,6 +725,7 @@ COMMANDS = {
     "cache_read_pct": cmd_cache_read_pct,
     "drill": cmd_drill,
     "session_sequences": cmd_session_sequences,
+    "classify": cmd_classify,
 }
 
 
@@ -544,6 +742,22 @@ def main():
     parser.add_argument(
         "--growth-factor", type=float, default=2.0,
         help="input_tokens jump threshold between consecutive traces in a session, for `session_sequences`"
+    )
+    parser.add_argument(
+        "--stuck-poll-repeat-threshold", type=int, default=10,
+        help="min repeat count to consider a group for stuck-poll-or-runaway-loop, for `classify`"
+    )
+    parser.add_argument(
+        "--stuck-poll-regularity-cv", type=float, default=0.5,
+        help="max coefficient of variation of inter-call gaps to count as 'regular interval', for `classify`"
+    )
+    parser.add_argument(
+        "--error-window-seconds", type=float, default=30,
+        help="seconds before a repeat to look for an ERROR observation, for `classify`"
+    )
+    parser.add_argument(
+        "--reverify-window-seconds", type=float, default=120,
+        help="seconds after an Edit/Write to look for a Read on the same file, for `classify`"
     )
     parser.add_argument("--out-dir", default="./cost_audit_out", help="output dir for `all`")
     args = parser.parse_args()
@@ -583,10 +797,28 @@ def main():
             json.dump(result, f, indent=2)
         print(f"wrote {out_path}")
 
-        result = cmd_session_sequences(base_url, headers, from_ts, to_ts)
+        session_sequences = cmd_session_sequences(base_url, headers, from_ts, to_ts, growth_factor=args.growth_factor)
         out_path = os.path.join(args.out_dir, "session_sequences.json")
         with open(out_path, "w") as f:
-            json.dump(result, f, indent=2)
+            json.dump(session_sequences, f, indent=2)
+        print(f"wrote {out_path}")
+
+        classified = cmd_classify(
+            base_url, headers, from_ts, to_ts,
+            stuck_poll_repeat_threshold=args.stuck_poll_repeat_threshold,
+            stuck_poll_regularity_cv=args.stuck_poll_regularity_cv,
+            error_window_seconds=args.error_window_seconds,
+            reverify_window_seconds=args.reverify_window_seconds,
+        )
+        out_path = os.path.join(args.out_dir, "classified_findings.json")
+        with open(out_path, "w") as f:
+            json.dump(classified, f, indent=2)
+        print(f"wrote {out_path}")
+
+        ranked = _rank_findings(classified, combined["trace_outliers"], session_sequences)
+        out_path = os.path.join(args.out_dir, "ranked_findings.json")
+        with open(out_path, "w") as f:
+            json.dump(ranked, f, indent=2)
         print(f"wrote {out_path}")
         return
 
@@ -602,6 +834,10 @@ def main():
         limit=args.limit,
         factor=args.factor,
         growth_factor=args.growth_factor,
+        stuck_poll_repeat_threshold=args.stuck_poll_repeat_threshold,
+        stuck_poll_regularity_cv=args.stuck_poll_regularity_cv,
+        error_window_seconds=args.error_window_seconds,
+        reverify_window_seconds=args.reverify_window_seconds,
     )
     print(json.dumps(result, indent=2))
 

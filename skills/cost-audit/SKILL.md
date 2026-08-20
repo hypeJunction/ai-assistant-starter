@@ -50,7 +50,7 @@ Three steps: **classify** every trace worth looking at, **identify** which class
 python3 references/langfuse_queries.py all --out-dir ./cost_audit_out
 ```
 
-This writes `trace_outliers.json`, `duplicate_tool_calls.json`, `tool_usage.json`, `error_pct.json`, `cache_read_pct.json`, and `session_sequences.json`:
+This writes `trace_outliers.json`, `duplicate_tool_calls.json`, `tool_usage.json`, `error_pct.json`, `cache_read_pct.json`, `session_sequences.json`, `classified_findings.json`, and `ranked_findings.json`:
 
 1. `trace_outliers` — every **trace** (not session) that exceeds 2x the window's median on at least one of: cost, tool-call count, input tokens, output tokens. Each entry lists which metric(s) tripped and by what ratio. This is trace-first rather than session-first on purpose: a session aggregates many turns, so ranking by session cost buries a single runaway trace inside an otherwise-cheap session, and misses a trace that's a tool-call/token outlier without yet being a cost outlier. Each trace also carries `generation_count` (number of LLM calls, i.e. agentic turns, in that trace) and `avg_cache_read_per_generation` (that trace's total `cache_read_input_tokens` ÷ `generation_count`) — these exist to tell apart two outliers that look identical on `cost`/`tool_call_count` alone: one driven by duplicate/wasted calls (see `duplicate_tool_calls`) versus one driven by a high turn count, each turn genuinely distinct but each re-paying cache-read on the same large accumulated context. A trace with `generation_count` in the tens and `avg_cache_read_per_generation` in the tens-to-hundreds-of-thousands is the second kind — see the "Context-multiplication" pattern in Step 1c.
 2. `duplicate_tool_calls` — groups of `[traceId, tool, input]` where the exact same call happened more than once within one trace (a trace is the natural boundary for one turn/loop, tighter than grouping by the whole session)
@@ -58,6 +58,21 @@ This writes `trace_outliers.json`, `duplicate_tool_calls.json`, `tool_usage.json
 4. `error_pct` — error rate across observations
 5. `cache_read_pct` — baseline caching health (context only; io_ratio can be derived from the same file's input/output token sums if needed)
 6. `session_sequences` — every **session** with 2+ traces, traces ordered chronologically, flagged for patterns invisible to any single-trace view: the same `(tool, input)` signature repeated across separate traces in the session (`cross_trace_duplicates`), a jump in input tokens from one trace to the next without proportional new tool work (`context_growth`), and a trace with an error immediately followed by a retry on a pricier model tier (`escalation_after_failure`). A session only appears here if at least one of these three fired — this is explicitly the "does a prompt's cost trace back to something an earlier trace in the same session already established" check the trace-only view can't do.
+7. `classified_findings` — every within-trace duplicate-call group (repeat count ≥2), each already assigned a `pattern` label deterministically from timing/error/sequence signatures — no drill-and-eyeball needed for the common cases. See "Automated classification" below.
+8. `ranked_findings` — `classified_findings` merged with each finding's trace-level outlier data (`outlier_reasons`, ratio, excess cost) and a `session_flagged_cross_trace` boolean, sorted by outlier-metric count → outlier ratio → excess cost → repeat count. This is the shortlist source for Step 1b — read its top entries directly instead of re-deriving the ranking by eye.
+
+**Automated classification.** `classified_findings.json` assigns one of these labels to each group purely from call timestamps, ERROR-level adjacency, and tool-name matching — this is deterministic code, not an LLM guess:
+
+| `pattern` value | Signature the script checked |
+|---|---|
+| `retry-after-error` | An ERROR-level observation fell within `--error-window-seconds` (default 30s) before a repeat |
+| `re-verification-read` | A `Read` on a file within `--reverify-window-seconds` (default 120s) after an `Edit`/`Write`/`NotebookEdit` on that same `file_path` |
+| `browser-automation-retry` | Tool name matches a browser-automation marker (`navigate`, `console_messages`, `close`, `screenshot`, `computer`) |
+| `skill-or-subagent-over-dispatch` | Tool name matches `Agent`/`Workflow`/`Skill` |
+| `stuck-poll-or-runaway-loop` | Repeat count ≥ `--stuck-poll-repeat-threshold` (default 10) AND inter-call gaps are regular (coefficient of variation < `--stuck-poll-regularity-cv`, default 0.5) with no adjacent error |
+| `redundant-context-refetch` | Catch-all: none of the above signatures matched. Carries `"needs_manual_confirmation": true` — this is the *only* label in this table that still requires a `drill` read or a transcript check before it's reported as more than "repeated, cause unclear" |
+
+Cross-trace patterns (`cross_trace_duplicates`, `context_growth`, `escalation_after_failure`) are intentionally NOT recomputed in `classified_findings` — they already exist as structured fields in `session_sequences`; treat those as already-classified findings when reading Step 1c. `ignored correction` is also never computed by script — it requires the user's verbatim wording, which only the local transcript reliably carries; it stays a manual/transcript-only classification (see 1c).
 
 **1a-static. Measure the static context footprint** — the fixed, every-turn baseline this project/user controls, separate from anything Langfuse observes:
 
@@ -76,12 +91,12 @@ Use `fixed_baseline_total_est_tokens` as the comparison point for a Context-mult
 
 **If `trace_outliers` is empty and no trace has a duplicate-call rate above 10% of its observations, and `session_sequences` is empty:** report "No significant waste patterns found" and stop — do not manufacture findings to justify the audit.
 
-**1b. Shortlist candidates** (max 5 single-trace + max 3 session-level) from that output, prioritized by:
+**1b. Shortlist candidates** (max 5 single-trace + max 3 session-level). `ranked_findings.json` already sorts within-trace findings by the criteria below — take its top entries directly rather than re-deriving the order by eye; the ranking logic lives in `_rank_findings()` in the script, not in the agent's judgment:
 
-1. Traces flagged on 2+ metrics in `trace_outliers` (e.g. both tool-call count and output tokens) — these are the least ambiguous offenders
-2. Traces where duplicate-call count / trace observation count > 15%
-3. Remaining traces in `trace_outliers`, ranked by highest ratio-to-median on any single metric, with excess absolute cost as the tiebreak
-4. From `tool_usage`, any tool whose `pct_of_calls` is disproportionate to what it should cost per call (e.g. `Bash`/`Edit`/`Read` dominating overall volume is normal agentic shape and not itself a finding, but a heavy `Agent`/`Workflow`/`Skill` dispatch *rate* relative to session count points at process-level churn — skills or subagents re-triggering — rather than a single stuck trace). Cross-reference the trace IDs in `trace_count` against `trace_outliers` before shortlisting; a high invocation count alone isn't evidence of cost impact for this metric (see the cost-attribution caveat above)
+1. Findings flagged on 2+ metrics in `outlier_reasons` (e.g. both tool-call count and output tokens) — these are the least ambiguous offenders, and sort first
+2. Findings where `repeat_count` / trace observation count > 15% (cross-check against `duplicate_tool_calls.json` if the raw share matters for the report)
+3. Remaining findings, ranked by `outlier_max_ratio`, with `excess_cost` as the tiebreak (this is exactly `ranked_findings`'s sort order)
+4. From `tool_usage`, any tool whose `pct_of_calls` is disproportionate to what it should cost per call (e.g. `Bash`/`Edit`/`Read` dominating overall volume is normal agentic shape and not itself a finding, but a heavy `Agent`/`Workflow`/`Skill` dispatch *rate* relative to session count points at process-level churn — skills or subagents re-triggering — rather than a single stuck trace; this is also visible directly as `skill-or-subagent-over-dispatch` entries in `ranked_findings`). Cross-reference the trace IDs in `trace_count` against `trace_outliers` before shortlisting; a high invocation count alone isn't evidence of cost impact for this metric (see the cost-attribution caveat above)
 
 From `session_sequences`, shortlist a session (separately from the single-trace list above, capped at 3) when:
 
@@ -93,13 +108,19 @@ From `session_sequences`, shortlist a session (separately from the single-trace 
 
 Drop everything below these — this step is about the worst offenders, not a full inventory. Note the sessionId alongside each shortlisted trace for context in the report, but keep classification and root-causing scoped to the trace.
 
-**1c. Drill into each shortlisted trace** and assign it a pattern label:
+**1c. Take each shortlisted finding's pattern label from `ranked_findings`/`classified_findings` directly** — do not re-derive the label by reading `drill` output from scratch; the label was already assigned deterministically in Step 1a. `drill` is now a confirmation/root-cause tool, not a classification tool:
 
 ```bash
 python3 references/langfuse_queries.py drill --trace <traceId> --tool <toolName> --limit 5
 ```
 
-This returns the input, an output preview, and the timestamp of each matching call. If every row shows `input: null`, that's almost always the generic `claude_code.tool`/`claude_code.tool.execution` wrapper span, not a real signal — those spans never populate `input`, `drill` excludes them by default, but they can still surface if `--tool` targets one directly. Re-run against the actual per-tool span name (observation names are prefixed, e.g. `Tool: Read` not `Read`) or read the session's local transcript for the real arguments before concluding anything about the pattern; null input on its own does not indicate a heartbeat/poll loop.
+Use `drill` (or the local transcript) to fill in the report's "Root cause"/"Evidence" line with the actual call content, and in these specific cases where the script's label needs a human check:
+
+- The finding's `pattern` is `redundant-context-refetch` (carries `"needs_manual_confirmation": true`) — this is the one label the script could not resolve; `drill` or the transcript is required to give it a sharper label or confirm it really is an unexplained re-fetch.
+- The finding is a candidate for `ignored correction` — never computed by script (Langfuse's OTel export doesn't reliably carry the user's verbatim wording); confirm via the local transcript only.
+- Anything that looks like an edge case where the deterministic thresholds (10+ repeats, 30s error window, 120s re-verification window, 0.5 coefficient-of-variation) plausibly mislabeled the finding — e.g. a `stuck-poll-or-runaway-loop` label on a legitimately-scheduled periodic health check. Spot-check, don't re-classify everything by hand.
+
+If a `drill` row shows `input: null`, that's almost always the generic `claude_code.tool`/`claude_code.tool.execution` wrapper span, not a real signal — those spans never populate `input`, `drill` excludes them by default, but they can still surface if `--tool` targets one directly. Re-run against the actual per-tool span name (observation names are prefixed, e.g. `Tool: Read` not `Read`) or read the session's local transcript for the real arguments.
 
 For a shortlisted **session** (from `session_sequences`), drill separately into each trace named in the relevant `cross_trace_duplicates`/`context_growth`/`escalation_after_failure` entry (same `drill --trace <id> --tool <toolName>` command, one call per trace) to confirm the two traces are doing what the aggregate implies — e.g. that a `cross_trace_duplicate` really is the same file/search re-fetched, not two coincidentally-identical short strings. When the aggregate alone doesn't make the causal story clear (most often for `escalation_after_failure`, since that needs to know *what* the error was and *why* the retry didn't just fix it), read the local transcript for that `sessionId` (`~/.claude/projects/<project-slug>/<sessionId>.jsonl`) around the two traces' timestamps — this is also the only way to confirm an "ignored correction" pattern, since Langfuse's OTel export doesn't reliably carry the user's verbatim wording.
 
@@ -211,6 +232,7 @@ Rank the labeled traces by this combined impact and keep only the ones worth fix
 - Always run `session_sequences` alongside the single-trace queries (part of the `all` invocation) — a trace-only audit misses waste that only shows up when comparing traces within the same session, and this step exists specifically to catch it
 - Always run `static_footprint.py` (Step 1a-static) and report its numbers — a Context-multiplication or context-growth finding without the static floor for comparison is a guess at how much is "fixed overhead" versus "actual growth"; the static footprint is what turns that guess into a number
 - A cross-trace finding (`cross_trace_duplicates`, `context_growth`, `escalation_after_failure`) gets the same root-cause treatment as a single-trace one — drill into the specific traces involved (or read the local transcript) before proposing a fix, never propose straight from the aggregate ratio
+- Trust `classified_findings`/`ranked_findings` pattern labels as-is for every value except `redundant-context-refetch` (flagged `needs_manual_confirmation`) and candidate `ignored correction` findings — those two still require a `drill`/transcript check before the label is reported; don't re-derive a label the script already assigned deterministically
 - Present the full report and get per-diff approval before writing any file
 - Record a baseline so a future audit can verify the fix worked
 - Explicitly state when caching/io_ratio numbers are healthy and out of scope, rather than flagging them as problems
@@ -234,3 +256,4 @@ Rank the labeled traces by this combined impact and keep only the ones worth fix
 | CA-T7 | Positive | "Is a prompt paying for context an earlier prompt in the same session already set up, in a way that could've been avoided?" | Skill triggers; agent runs `session_sequences` and reports cross-trace findings, not just single-trace outliers |
 | CA-T8 | Positive | "This audit run cost $16 — where did that actually go?" | Skill triggers; agent checks `generation_count`/`avg_cache_read_per_generation` on the trace, not just cost/output-token totals, and reports whether it's duplication- or multiplication-driven |
 | CA-T9 | Positive | "How big is our context window footprint, and can we shrink it?" | Skill triggers; agent runs `static_footprint.py`, reports CLAUDE.md/skill-index token totals as a floor (not the full per-turn baseline), and compares against any observed `avg_cache_read_per_generation`/`avg_cache_read_per_message` rather than treating the static number alone as the answer |
+| CA-T10 | Positive | "Audit this week's traces" (offender includes a 340-repeat `Tool: Read` with regular ~4s spacing and no adjacent errors) | Skill triggers; agent reads the `stuck-poll-or-runaway-loop` label straight from `classified_findings.json` instead of re-deriving it from raw `drill` output, and uses `drill` only to pull the actual file path/content for the report's evidence line |
