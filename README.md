@@ -80,6 +80,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/track-files` | Track files for batch operations |
 | `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
+| `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
 | `/init` | Bootstrap project configuration |
 
 ### Enforcement Hooks (auto-loaded)
