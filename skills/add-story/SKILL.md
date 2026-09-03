@@ -37,25 +37,9 @@ triggers:
 
 ### Step 0: Verify Storybook Setup
 
-Before proceeding, verify Storybook is installed and configured:
-
-```bash
-# Check for Storybook config directory
-ls .storybook/ 2>/dev/null
-
-# Check for Storybook in package.json
-grep -q "storybook" package.json && echo "Found" || echo "Not found"
-```
+Mechanical check — delegate to the `dispatch` subagent (haiku) rather than running inline: "Check whether Storybook is installed/configured in this repo (`.storybook/` dir, `storybook` in package.json) and detect the package manager (pnpm/yarn/bun/npm from lockfile). Report: installed yes/no, and PKG_MGR." Use its answer directly.
 
 **If Storybook is not installed:** Inform the user and suggest installation. Do not proceed without Storybook.
-
-**Detect package manager:**
-```bash
-if [ -f "pnpm-lock.yaml" ]; then PKG_MGR="pnpm"
-elif [ -f "yarn.lock" ]; then PKG_MGR="yarn"
-elif [ -f "bun.lockb" ]; then PKG_MGR="bun"
-else PKG_MGR="npm"; fi
-```
 
 ### Step 1: Read the Component Structure
 
@@ -127,12 +111,7 @@ For components with API dependencies, use MSW handlers in story parameters. See 
 
 ### Step 7: Run Tests and Validate
 
-```bash
-# Use detected package manager from Step 0
-$PKG_MGR run test-storybook -- --grep "ComponentName"
-```
-
-Fix failures, re-run until all pass. See `references/testing-best-practices.md` for debugging guidance.
+Delegate the run itself to `dispatch` (mechanical): "Run `$PKG_MGR run test-storybook -- --grep \"ComponentName\"` and report full pass/fail output." Only bring failures back into the main loop to diagnose and fix — re-run via `dispatch` after each fix until green. See `references/testing-best-practices.md` for debugging guidance.
 
 ## Story File Checklist
 
