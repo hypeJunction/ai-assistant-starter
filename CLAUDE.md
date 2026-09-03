@@ -55,7 +55,7 @@ npx skills add ./ai-assistant-starter -s commit
 
 ## Available Skills
 
-### Workflow Skills (30 total, categories: process + meta)
+### Workflow Skills (33 total, categories: process + meta)
 
 **Development Workflows**
 
@@ -105,6 +105,9 @@ npx skills add ./ai-assistant-starter -s commit
 | `/add-todo` | Document deferred work |
 | `/research` | Ethical web research with attribution and license compliance |
 | `/track-files` | Track files for batch operations |
+| `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
+| `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
+| `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
 | `/init` | Bootstrap project configuration |
 
 ### Background Skills (22 total)
