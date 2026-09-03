@@ -2,6 +2,8 @@
 name: review
 description: Comprehensive code review of the current branch against base. Read-only analysis with P0-P3 severity-rated findings and actionable feedback. Use before merging or to check code quality.
 category: process
+model: opus
+effort: high
 triggers:
   - review code
   - check quality

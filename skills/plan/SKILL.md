@@ -2,6 +2,8 @@
 name: plan
 description: Create a detailed implementation plan without writing code. Read-only analysis and planning with user approval gate. Use before implementing features or making significant changes.
 category: process
+model: sonnet
+effort: high
 triggers:
   - plan approach
   - design before coding

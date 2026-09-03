@@ -2,6 +2,8 @@
 name: explore
 description: Understand code without making changes. Read-only exploration of codebase structure, patterns, data flow, and dependencies. Use when asked "how does X work" or to investigate code before planning.
 category: process
+model: sonnet
+effort: medium
 triggers:
   - how does X work
   - what would change affect

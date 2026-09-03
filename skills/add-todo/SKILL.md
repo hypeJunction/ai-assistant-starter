@@ -2,6 +2,8 @@
 name: add-todo
 description: Document deferred work, shortcuts, and technical debt for future resolution. Use when taking a shortcut, finding tech debt, or deferring out-of-scope work.
 category: meta
+model: haiku
+effort: low
 triggers:
   - defer this
   - tech debt

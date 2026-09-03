@@ -2,6 +2,8 @@
 name: implement
 description: Full feature implementation workflow with explore, plan, code, test, validate, and commit phases. Use for new features, enhancements, or significant code changes.
 category: process
+model: sonnet
+effort: medium
 triggers:
   - build feature
   - add functionality

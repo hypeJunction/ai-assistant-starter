@@ -2,6 +2,8 @@
 name: docs
 description: Add or improve documentation for code. Use when code needs JSDoc comments, inline explanations, README files, or documentation updates.
 category: meta
+model: sonnet
+effort: medium
 triggers:
   - add documentation
   - needs docs

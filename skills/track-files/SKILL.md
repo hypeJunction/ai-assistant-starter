@@ -2,6 +2,8 @@
 name: track-files
 description: Track batches of files that need similar changes for large-scale work. Use when refactoring affects many files, migrating patterns, or coordinating batch operations across sessions.
 category: meta
+model: haiku
+effort: low
 triggers:
   - batch operation
   - track files

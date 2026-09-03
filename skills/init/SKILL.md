@@ -2,6 +2,8 @@
 name: init
 description: Bootstrap AI assistant with project-specific configuration by analyzing the codebase and generating populated template files. Use when setting up a new project or re-initializing after major changes.
 category: meta
+model: sonnet
+effort: high
 triggers:
   - new project
   - bootstrap

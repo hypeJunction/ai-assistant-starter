@@ -2,6 +2,8 @@
 name: adr
 description: Capture an Architecture Decision Record documenting context, reasoning, alternatives, and consequences of a significant technical decision.
 category: meta
+model: sonnet
+effort: medium
 triggers:
   - architecture decision
   - record decision

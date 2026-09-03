@@ -2,6 +2,8 @@
 name: validate
 description: Run validation checks to ensure code quality, security, and correctness. Supports quick (scoped), full (CI pipeline), fix (auto-correct), and CI mirror modes.
 category: process
+model: sonnet
+effort: medium
 triggers:
   - run checks
   - verify quality

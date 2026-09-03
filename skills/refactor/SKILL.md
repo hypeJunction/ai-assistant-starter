@@ -2,6 +2,8 @@
 name: refactor
 description: Systematic multi-file refactoring with pattern analysis, scope detection, batched execution, and progress tracking. Use for renames, pattern changes, API migrations, or any change affecting 6+ files.
 category: process
+model: opus
+effort: high
 triggers:
   - rename
   - restructure

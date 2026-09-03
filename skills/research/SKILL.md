@@ -2,6 +2,8 @@
 name: research
 description: Ethical web research with attribution tracking, license compliance, and citation-based output. Use for technical research, competitive analysis, or content synthesis requiring source transparency.
 category: process
+model: sonnet
+effort: medium
 triggers:
   - research topic
   - find information

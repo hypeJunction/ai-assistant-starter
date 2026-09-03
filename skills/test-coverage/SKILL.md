@@ -2,6 +2,8 @@
 name: test-coverage
 description: Analyze branch changes and ensure adequate test coverage. Creates missing tests with test plans, runs them, and reports results. Use after implementing changes to add tests.
 category: process
+model: sonnet
+effort: medium
 triggers:
   - add tests
   - missing tests

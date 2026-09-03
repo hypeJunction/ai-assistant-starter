@@ -2,6 +2,8 @@
 name: release
 description: Prepare and publish a release with version bump, changelog, and tagging. Use when shipping a new version, creating a release candidate, or tagging a production build.
 category: process
+model: sonnet
+effort: medium
 triggers:
   - ship version
   - release

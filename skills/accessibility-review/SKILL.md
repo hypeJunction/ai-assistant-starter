@@ -2,6 +2,8 @@
 name: accessibility-review
 description: Systematic WCAG 2.1 AA accessibility audit with confidence-based reporting. Scans UI components for keyboard, screen reader, and visual accessibility issues. Use for pre-release audits or after major UI changes.
 category: process
+model: sonnet
+effort: high
 triggers:
   - accessibility audit
   - WCAG check

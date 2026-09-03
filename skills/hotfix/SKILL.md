@@ -2,6 +2,8 @@
 name: hotfix
 description: Emergency bug fix with abbreviated validation for production issues. Use when production is broken, a critical security vulnerability is discovered, data corruption is occurring, or a user-blocking bug has no workaround.
 category: process
+model: sonnet
+effort: high
 triggers:
   - production broken
   - emergency fix

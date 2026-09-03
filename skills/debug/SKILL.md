@@ -2,6 +2,8 @@
 name: debug
 description: Systematic bug investigation and fixing with hypotheses, root cause analysis, regression tests, and verification. Use when encountering bugs, errors, or unexpected behavior.
 category: process
+model: sonnet
+effort: high
 triggers:
   - fix bug
   - something broken

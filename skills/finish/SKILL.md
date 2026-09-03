@@ -2,6 +2,8 @@
 name: finish
 description: End-of-session routine. Ensures test coverage, performs self-review, runs validation, and commits cleanly. Use when finishing a unit of work.
 category: process
+model: sonnet
+effort: medium
 triggers:
   - done for now
   - wrap up

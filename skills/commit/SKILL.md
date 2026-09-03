@@ -2,6 +2,8 @@
 name: commit
 description: Review changes and create a git commit with user confirmation. Use when work is ready to commit, changes need staging, or the user says "commit".
 category: process
+model: sonnet
+effort: medium
 triggers:
   - commit changes
   - save work
