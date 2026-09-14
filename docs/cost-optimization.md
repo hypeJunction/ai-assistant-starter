@@ -14,30 +14,71 @@ apply, adjust the rest.
 A `PreToolUse` hook on `Bash` calls can rewrite expensive commands (verbose
 `git status`, full `git log`, dependency listing commands, etc.) into
 token-filtered equivalents before the output ever reaches the model — the
-model never sees the tokens it didn't need. This works with any external
-filtering tool exposed as a CLI; the shape is what matters:
+model never sees the tokens it didn't need.
+
+**Option A — dedicated CLI proxy tool.** [`rtk`](https://github.com/rtk-ai/rtk)
+("Rust Token Killer") is a purpose-built proxy for this: it ships a rewrite
+registry for common dev commands (`git`, `find`, package-manager output,
+etc.), reports realized savings (`rtk gain`), and can mine your Claude Code
+history for missed rewrite opportunities (`rtk discover`). If you'd rather
+not add a new binary dependency, use Option B.
 
 ```bash
 #!/usr/bin/env bash
-# ~/.claude/hooks/filter-rewrite.sh — PreToolUse hook, matcher: "Bash"
+# ~/.claude/hooks/rtk-rewrite.sh — PreToolUse hook, matcher: "Bash"
+# Requires: rtk >= 0.23.0 (cargo install rtk), jq
+command -v jq >/dev/null 2>&1 || exit 0
+command -v rtk >/dev/null 2>&1 || exit 0
+
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 [ -z "$CMD" ] && exit 0
 
-# Delegate to whatever filtering tool/binary you use; it should exit 1
-# (not 0) when there's no rewrite for this command, so the hook can
-# pass the original command through untouched.
-REWRITTEN=$(your-filter-tool rewrite "$CMD" 2>/dev/null) || exit 0
+# rtk rewrite exits 1 when there's no rewrite for this command.
+REWRITTEN=$(rtk rewrite "$CMD" 2>/dev/null) || exit 0
 [ "$CMD" = "$REWRITTEN" ] && exit 0
 
 ORIGINAL_INPUT=$(echo "$INPUT" | jq -c '.tool_input')
 UPDATED_INPUT=$(echo "$ORIGINAL_INPUT" | jq --arg cmd "$REWRITTEN" '.command = $cmd')
 jq -n --argjson updated "$UPDATED_INPUT" \
   '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow",
-    permissionDecisionReason: "filtered rewrite", updatedInput: $updated}}'
+    permissionDecisionReason: "RTK auto-rewrite", updatedInput: $updated}}'
 ```
 
-Register it in `settings.json`:
+**Option B — dependency-free hook with a small built-in rewrite table.** No
+external binary; extend the `case` statement as you find more noisy commands.
+
+```bash
+#!/usr/bin/env bash
+# ~/.claude/hooks/filter-rewrite.sh — PreToolUse hook, matcher: "Bash"
+# Requires: jq. No other dependencies.
+command -v jq >/dev/null 2>&1 || exit 0
+
+INPUT=$(cat)
+CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+[ -z "$CMD" ] && exit 0
+
+REWRITTEN="$CMD"
+case "$CMD" in
+  "git status")            REWRITTEN="git status --short --branch" ;;
+  "git log")                REWRITTEN="git log --oneline -20" ;;
+  git\ log\ -p*)            REWRITTEN="${CMD/-p/--stat}" ;;
+  "git diff")               REWRITTEN="git diff --stat" ;;
+  "ls -la"|"ls -al")        REWRITTEN="ls -la | head -50" ;;
+  find\ .\ -iname* )        REWRITTEN="$CMD | head -100" ;;
+  npm\ ls*|pnpm\ ls*)       REWRITTEN="$CMD --depth=0" ;;
+esac
+
+[ "$CMD" = "$REWRITTEN" ] && exit 0
+
+ORIGINAL_INPUT=$(echo "$INPUT" | jq -c '.tool_input')
+UPDATED_INPUT=$(echo "$ORIGINAL_INPUT" | jq --arg cmd "$REWRITTEN" '.command = $cmd')
+jq -n --argjson updated "$UPDATED_INPUT" \
+  '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow",
+    permissionDecisionReason: "token-filtered rewrite", updatedInput: $updated}}'
+```
+
+Register whichever one you pick in `settings.json`:
 
 ```json
 {
@@ -50,12 +91,17 @@ Register it in `settings.json`:
 ```
 
 Key properties that make this safe to leave always-on:
-- **Fails open**: if the filtering tool or `jq` is missing, the hook exits 0
-  and the original command runs unmodified — no silent breakage.
+- **Fails open**: if `jq` (or `rtk`, for Option A) is missing, the hook exits
+  0 and the original command runs unmodified — no silent breakage.
 - **Transparent**: it rewrites the command, not the result — you still see
   real command output, just pre-filtered to the relevant subset.
-- Track realized savings if your tool supports it (e.g. a `gain`/`stats`
-  subcommand) so the hook's value is measurable, not assumed.
+- **Don't trust filtered output blindly.** A filtering layer can mask real
+  failures (e.g. a linter's exit code buried under trimmed output). For
+  anything you're about to act on as pass/fail, spot-check by invoking the
+  underlying tool directly (e.g. `node_modules/.bin/eslint` instead of the
+  filtered wrapper) rather than trusting the compressed summary.
+- If your tool tracks savings (`rtk gain`, or your own counter for Option B),
+  check it periodically so the hook's value is measured, not assumed.
 
 ### 2. Model-tier routing (biggest win on agentic/subagent work)
 
@@ -70,24 +116,69 @@ task class:
 | architecture | top-tier | high | redesigns, tradeoff analysis, multi-file reasoning |
 | extreme | top-tier, long-horizon | high | codebase-wide rewrites, multi-system migrations, RFCs |
 
-Two ways to apply this:
+Three ways to apply this, roughly in order of setup cost:
 
-- **Session-level default**: set a moderate default model/effort in
-  `settings.json` (`"model"`, `"effortLevel"`) rather than maxing out effort
-  on every turn by default.
-- **Subagent-level enforcement**: when spawning subagents (Task/Agent tool),
-  explicitly pass the model tier matching the task class — never default all
-  subagents to your most expensive model. This can be automated with a
-  `SessionStart` hook that injects the routing table as context, or a
-  dedicated router hook/plugin that classifies prompts and sets the model
-  parameter for you.
+**A — a `dispatch` subagent you invoke explicitly.** Cheapest to set up:
+one Markdown agent definition, no hooks. Create
+`.claude/agents/dispatch.md`:
 
-A general-purpose `dispatch`-style subagent — one that tries the cheapest
-capable model first and escalates only when the worker signals it's out of
-depth — is a good default for well-scoped, self-contained tasks (lookups,
-mechanical edits, boilerplate, isolated fixes with clear acceptance
-criteria). Keep ambiguous, architectural, or context-heavy work in the main
-loop instead of delegating it down.
+```markdown
+---
+name: dispatch
+description: Cost-aware task router. Runs a well-scoped, self-contained task
+  (lookups, mechanical edits, boilerplate, isolated fixes with clear
+  acceptance criteria) on the cheapest capable model, escalating only if the
+  worker signals it's out of depth. Not for ambiguous, architectural, or
+  context-heavy work.
+tools: Read, Grep, Glob, Bash, Edit
+model: haiku
+---
+
+You are a cost-optimized task executor. You were given a fully self-contained
+task description — treat it as complete context, you have no prior
+conversation to draw on.
+
+1. Attempt the task as specified.
+2. If you hit a decision the prompt didn't resolve, or the task requires
+   judgment beyond mechanical execution (design tradeoffs, ambiguous intent,
+   deep multi-file reasoning), stop and clearly say so instead of guessing —
+   the caller will re-run this on a stronger model.
+3. Report exactly what you changed/found, not what you attempted.
+```
+
+Then delegate to it with the Agent/Task tool for well-scoped work instead of
+reaching for your default (likely pricier) model.
+
+**B — a static routing table you enforce by convention.** No tooling; add a
+table like the one above to your `CLAUDE.md` and an explicit rule: "when
+spawning subagents, pass the model tier matching the task class — never
+default all subagents to the most expensive model." This is free but relies
+on you (or the assistant) actually consulting it every time.
+
+**C — automatic classification via a `SessionStart` hook or router plugin.**
+Highest setup cost, fully automatic. Two concrete options:
+- [`claude-model-router-hook`](https://github.com/tzachbon/claude-model-router-hook) —
+  an installable plugin that classifies each prompt/subagent task against a
+  routing table (mechanical/implementation/debugging/architecture/extreme →
+  model + effort) and injects the applicable rule as session context, so
+  both you and every subagent you spawn see routing guidance without it
+  living in `CLAUDE.md`.
+- A minimal hand-rolled version: a `SessionStart` hook that just prints the
+  routing table as context, e.g.:
+  ```bash
+  #!/usr/bin/env bash
+  # ~/.claude/hooks/model-routing-context.sh — SessionStart hook
+  cat <<'EOF'
+  Route tasks by class: mechanical->haiku/none, implementation->sonnet/medium,
+  debugging->sonnet/high, architecture->opus/high, extreme->opus/xhigh.
+  Never default all subagents to the most expensive model.
+  EOF
+  ```
+  This is weaker than a real plugin (no enforcement, just a reminder) but
+  costs nothing to add.
+
+Don't stack B and C — pick one source of truth for routing rules so they
+don't drift out of sync.
 
 ### 3. Context and process hygiene (compounds over a session/project)
 
@@ -169,12 +260,14 @@ If you're an AI assistant walking a user through adopting this setup:
 
 1. Ask which levers they want (filtering hook, model routing, process rules,
    or all three) rather than installing everything at once.
-2. For the filtering hook: confirm they have (or want) a CLI filtering tool
-   before wiring the hook — it fails open, so it's safe to add even if the
-   tool isn't installed yet, but it's dead weight until then.
+2. For the filtering hook: default to Option B (dependency-free) unless they
+   specifically want `rtk` — it needs no external binary and is easy to
+   extend with their own noisy commands.
 3. For model routing: check what subagent/model-selection mechanism their
-   Claude Code setup already has before adding a new one — don't stack two
-   routing mechanisms.
+   Claude Code setup already has (a plugin, an existing agents/ dir, rules
+   in CLAUDE.md) before adding a new one — don't stack two routing
+   mechanisms (A/B/C above). Option A (a `dispatch` agent) is the lowest-cost
+   starting point if they have nothing yet.
 4. For process rules: add them to the user's own `CLAUDE.md` (global or
    project), not this repo's — they're personal working conventions, and
    should evolve from the user's own corrections/confirmations over time
