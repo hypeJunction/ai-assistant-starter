@@ -155,27 +155,38 @@ spawning subagents, pass the model tier matching the task class — never
 default all subagents to the most expensive model." This is free but relies
 on you (or the assistant) actually consulting it every time.
 
-**C — automatic classification via a `SessionStart` hook or router plugin.**
-Highest setup cost, fully automatic. Two concrete options:
-- [`claude-model-router-hook`](https://github.com/tzachbon/claude-model-router-hook) —
-  an installable plugin that classifies each prompt/subagent task against a
-  routing table (mechanical/implementation/debugging/architecture/extreme →
-  model + effort) and injects the applicable rule as session context, so
-  both you and every subagent you spawn see routing guidance without it
-  living in `CLAUDE.md`.
-- A minimal hand-rolled version: a `SessionStart` hook that just prints the
-  routing table as context, e.g.:
-  ```bash
-  #!/usr/bin/env bash
-  # ~/.claude/hooks/model-routing-context.sh — SessionStart hook
-  cat <<'EOF'
-  Route tasks by class: mechanical->haiku/none, implementation->sonnet/medium,
-  debugging->sonnet/high, architecture->opus/high, extreme->opus/xhigh.
-  Never default all subagents to the most expensive model.
-  EOF
-  ```
-  This is weaker than a real plugin (no enforcement, just a reminder) but
-  costs nothing to add.
+**C — automatic classification via a real router plugin.** Highest setup
+cost, fully automatic, and enforced rather than advisory-only.
+[`claude-model-router-hook`](https://github.com/tzachbon/claude-model-router-hook)
+(MIT, by tzachbon) is a concrete example worth installing rather than
+reimplementing — it wires three hooks:
+
+- **`SessionStart`** (`session_init.py`) — emits the resolved routing table as
+  `additionalContext`, so the current session (and you) can see what it will
+  do before it does anything.
+- **`UserPromptSubmit`** (`user_prompt_submit.py`) — classifies your own
+  prompt and either *warns* (prints a `/model … && /effort …` suggestion and
+  blocks for resend) or *autoswitches* (writes the suggested model as the
+  default for new sessions), depending on config.
+- **`PreToolUse`** matched on `Agent|Task` (`pre_tool_use.py`) — classifies
+  the subagent's prompt and rewrites the spawn's `model` (and, when a
+  matching `routed-*` agent variant is installed, its `subagent_type`) before
+  the subagent starts. An explicit `model` the caller already set is never
+  overridden.
+
+The classifier itself (`hooks/router/taxonomy.py`) is a scored heuristic, not
+a keyword blocklist: each class gets points from keyword/regex hits (capped
+per class so no single signal can force a tier), plus structural signals
+(prompt length, code fences, traceback text, question density). A class only
+"wins" past a confidence margin; below that margin, an optional CLI tiebreak
+can run before it abstains and leaves the model unchanged. Every decision
+degrades gracefully — missing config, an uninstalled agent variant, or an
+env var pinning a model all fail open to "leave it alone" rather than
+blocking the tool call.
+
+If you want the effect but not the dependency, the honest fallback is Option
+B — the classifier's sophistication is exactly what a static table can't
+replicate, so treat B as a stopgap, not an equivalent.
 
 Don't stack B and C — pick one source of truth for routing rules so they
 don't drift out of sync.
