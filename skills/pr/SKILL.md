@@ -176,7 +176,17 @@ Recommend: Update existing PR.
 
 **Wait for user response.** If updating, use `gh pr edit` instead of `gh pr create`.
 
-### Step 7: Confirm Before Pushing
+### Step 7: Determine Ticket Number
+
+Ask the user which ticket number this PR should reference:
+
+```markdown
+Which ticket number should this PR reference (e.g. T-1234)? Say "none" if there isn't one.
+```
+
+**Wait for user response.** Use their answer as `[TICKET]` in the title and description below. If they say there's no ticket, drop the `[TICKET]` suffix from both the title and the body — do not invent one.
+
+### Step 8: Confirm Before Pushing
 
 Present the full PR plan and **wait for explicit user approval** before pushing or creating/updating the PR:
 
@@ -186,7 +196,7 @@ Present the full PR plan and **wait for explicit user approval** before pushing 
 **Commits:** [N commits]
 **Action:** [Create new PR / Update existing PR #N]
 
-**Proposed title:** [type]: [description]
+**Proposed title:** [component]: [description] [TICKET]
 
 [Full PR body preview]
 
@@ -195,7 +205,7 @@ Confirm push and [create/update] PR? (yes / edit / cancel)
 
 **GATE: Do NOT push or create/update the PR until user responds with explicit approval.**
 
-### Step 8: Push and Create/Update PR
+### Step 9: Push and Create/Update PR
 
 ```bash
 git push -u origin HEAD
@@ -209,11 +219,13 @@ Write for a reviewer who has no idea what problem is being solved or what the so
 - `## What changed` bullets describe user-visible or behavioral outcomes — never file names, function/variable names, or line-level detail (that's what the diff is for). Cap it at ~5 bullets; group related changes under one higher-level bullet rather than enumerating every commit.
 - Include `## Test Plan` only when verification is non-obvious or hard to reproduce (special data setup, a race condition, a multi-step manual flow). Omit it entirely when existing tests or standard manual QA obviously cover the change.
 - Include `## Security` only when the change actually touches something security-relevant (auth, secrets, input handling, permissions, new dependencies). Omit it entirely otherwise — don't pad every PR with an always-N/A checklist.
+- Title format is `[component]: [description] [TICKET]` — a component/scope name (the area of the codebase affected), not a conventional-commit type. Omit the ` [TICKET]` suffix entirely if there's no ticket (Step 7).
+- Add the ticket as a standalone `[TICKET]` line at the very end of the body, after every other section. Omit it entirely if there's no ticket.
 
 **If creating a new PR:**
 
 ```bash
-gh pr create --title "[Type]: Brief description" --body "$(cat <<'EOF'
+gh pr create --title "[component]: Brief description [TICKET]" --body "$(cat <<'EOF'
 ## Summary
 
 [One paragraph: what this PR does and why, in plain language, for a reviewer with no prior context.]
@@ -234,6 +246,8 @@ gh pr create --title "[Type]: Brief description" --body "$(cat <<'EOF'
 ## Screenshots (if applicable)
 
 [Add screenshots for UI changes]
+
+[TICKET]
 EOF
 )"
 ```
@@ -241,7 +255,7 @@ EOF
 **If updating an existing PR:**
 
 ```bash
-gh pr edit [number] --title "[Type]: Brief description" --body "$(cat <<'EOF'
+gh pr edit [number] --title "[component]: Brief description [TICKET]" --body "$(cat <<'EOF'
 [same body template as above]
 EOF
 )"
@@ -253,7 +267,7 @@ EOF
 - Add a bullet to `## What changed` only for genuinely new user-facing behavior. If a new commit just fixes or tweaks something already covered by an existing bullet, leave that bullet as-is instead of adding another one.
 - Never let the description grow into a changelog or edit history across updates — it should always read as if written fresh for the branch's current state.
 
-### Step 9: Report
+### Step 10: Report
 
 ```markdown
 **PR:** #[number] — [title]
@@ -280,13 +294,14 @@ EOF
 
 ## PR Title Conventions
 
+Format: `component: brief description [TICKET]` — the component is the area of the codebase the change affects, not a conventional-commit type. Drop the `[TICKET]` suffix if there's no ticket.
+
 ```
-feat: add user authentication
-fix: resolve login issue with special characters
-refactor: extract validation logic
-docs: update API documentation
-test: add tests for auth module
-chore: update dependencies
+auth: add user authentication [T-1204]
+login: resolve issue with special characters [T-1198]
+validation: extract shared validation logic [T-1310]
+docs: update API documentation [T-1322]
+deps: update dependencies
 ```
 
 ## Example PR Body
@@ -311,6 +326,10 @@ Users currently have no way to authenticate — every API endpoint is open. This
 ## Breaking Changes
 
 None — new endpoints only; existing routes now require a token, which is called out above.
+
+[T-1204]
 ```
+
+Title for this example: `auth: add token-based login [T-1204]`.
 
 Note what's absent: no `## Test Plan` (login/registration is standard flow, covered by the new test suite included in the PR), no file names or variable names anywhere in the body.
