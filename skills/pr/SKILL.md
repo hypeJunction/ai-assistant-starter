@@ -9,6 +9,8 @@ triggers:
   - pull request
   - ready for review
   - open PR
+  - fix PR description
+  - update PR description
 ---
 
 # Create Pull Request
@@ -23,6 +25,7 @@ triggers:
 - Always verify changes are committed before pushing
 - Requires `gh` (GitHub CLI) for PR creation
 - Flag mixed-concern PRs (feature + refactor) as candidates for splitting
+- Never call `gh pr create` or `gh pr edit` outside this workflow — any request to open, create, update, or fix the description of a pull request goes through this skill (starting at whichever step already applies, e.g. Step 6 if the PR already exists), not a standalone `gh` invocation. This applies even when opening several PRs back-to-back as part of a larger task.
 
 > **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
 
@@ -291,6 +294,7 @@ EOF
 | PR-T6 | Negative | "Fix the CI failures on my PR" | Does NOT trigger (-> /iterate-pr) |
 | PR-T7 | Boundary | "Commit and create a PR" | Triggers (PR is the final intent) |
 | PR-T8 | Early-exit | No commits ahead of base branch | Reports "Nothing to push" and exits |
+| PR-T9 | Positive | "Fix the description on PR #123" | Skill triggers, jumps to Step 6 (existing PR) then Step 9 with `gh pr edit`, not a standalone `gh` call |
 
 ## PR Title Conventions
 
