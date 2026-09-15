@@ -44,6 +44,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/debug` | Find and fix bugs |
 | `/refactor` | Multi-file changes with tracking |
 | `/migrate` | Database/schema migrations with rollback planning |
+| `/stack` | Split a large branch into a resumable series of stacked PRs |
 
 ### Quality & Testing
 
@@ -52,6 +53,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/validate` | Run type check, lint, tests |
 | `/test-coverage` | Ensure test coverage for changes |
 | `/tdd` | Test-driven development (RED → GREEN → REFACTOR) |
+| `/spec-loop` | Scope-locked implementation with an approved file-scope contract |
 | `/api-test` | Discover, test, and report on API endpoints |
 | `/e2e` | End-to-end testing with Playwright/Cypress |
 | `/review` | Review current branch against base |

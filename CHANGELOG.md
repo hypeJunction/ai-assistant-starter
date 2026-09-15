@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `stack` workflow skill — splits a large branch into a resumable series of stacked PRs, one worktree per bucket, with a `stack-plan.md` manifest, remote-ref-based divergence checks, per-bucket validation against a captured baseline, and PR-base verification after creation
+- `spec-loop` workflow skill — scope-locked implementation loop: baseline pre-existing failures, get an explicit file-scope contract (allowed files, forbidden actions, open questions) approved before any code changes, write failing tests, implement within scope, and self-check every commit's diff against the contract before committing
+- `apply-template` CLAUDE.md template gains "Scope Discipline" (no unrequested selectors/tests/refactors/commits; no deleting exports without evidence they're dead) and "Repo & Branch Pre-Flight" (confirm target directory/worktree and re-fetch remote refs before install, rebase, or base-branch decisions) sections
+- `refactor` skill requires a naming-options table, approved before any file is touched, when a rename targets shared or overloaded vocabulary
+- `git-conventions` codifies a fetch-first rule: always `git fetch origin` and compute divergence/merge-base against `origin/<branch>`, never a stale local ref
+
+### Added
 - `context-disambiguation` background skill — protocol for asking targeted clarifying questions instead of broad exploration when a prompt is ambiguous and resolving it would require an unbounded search, reading many files, or a disambiguation-only subagent dispatch; includes an Auto Mode interaction rule (narrowest-interpretation-plus-stated-assumption, not silent broad-scope guessing)
 
 ### Added

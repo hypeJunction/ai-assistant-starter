@@ -55,7 +55,7 @@ npx skills add ./ai-assistant-starter -s commit
 
 ## Available Skills
 
-### Workflow Skills (34 total, categories: process + meta)
+### Workflow Skills (36 total, categories: process + meta)
 
 **Development Workflows**
 
@@ -67,6 +67,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/debug` | Find and fix bugs |
 | `/refactor` | Multi-file changes with tracking |
 | `/migrate` | Database/schema migrations with rollback planning |
+| `/stack` | Split a large branch into a resumable series of stacked PRs |
 
 **Quality & Testing**
 
@@ -75,6 +76,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/validate` | Run type check, lint, tests |
 | `/test-coverage` | Ensure test coverage for changes |
 | `/tdd` | Test-driven development (RED → GREEN → REFACTOR) |
+| `/spec-loop` | Scope-locked implementation with an approved file-scope contract |
 | `/api-test` | Discover, test, and report on API endpoints |
 | `/e2e` | End-to-end testing with Playwright/Cypress |
 | `/review` | Review current branch against base |

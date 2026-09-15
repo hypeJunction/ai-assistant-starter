@@ -63,6 +63,8 @@ Ask: (1) What pattern/code needs to change? (2) Target state? (3) Why? (4) Areas
 
 **Wait for user response before exploring code.**
 
+**If the refactor renames a shared or overloaded piece of vocabulary** (a term used for more than one concept, or a name the user has flagged as ambiguous), present a table of naming schemes — scheme, example names, tradeoff, files affected — as its own read-only step, and get one scheme approved before touching any file. Rejecting a name after 15+ files have already been audited under it is expensive; rejecting it before the audit starts is free.
+
 ### Step 1.2: Explore and Categorize
 
 Determine refactor type, file count, risk level:

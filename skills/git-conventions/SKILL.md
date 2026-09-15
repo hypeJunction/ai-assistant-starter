@@ -99,6 +99,16 @@ git rebase origin/main
 git push -u origin feature/my-feature
 ```
 
+## Divergence and Base Branches
+
+Before rebasing, computing ahead/behind counts, or picking a base branch for a PR or PR stack, always `git fetch origin` first and compute against the `origin/<branch>` ref — never a local branch ref, which can be stale and silently produce the wrong merge-base or an aborted rebase.
+
+```bash
+git fetch origin
+git merge-base HEAD origin/<base-branch>
+git log origin/<base-branch>..HEAD --oneline
+```
+
 ## Safety Rules
 
 - **Never rewrite public history** (no force push to main)

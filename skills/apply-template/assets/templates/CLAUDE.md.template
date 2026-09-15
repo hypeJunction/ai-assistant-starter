@@ -73,6 +73,27 @@ quality of what you can judge. Apply this before trusting search output:
   here rather than optimizing on intuition.
 <!-- ai-assistant-starter:end:process-hygiene -->
 
+<!-- ai-assistant-starter:begin:scope-discipline -->
+## Scope Discipline
+
+Do exactly what was asked, no more.
+
+- Do not add selectors, tests, refactors, or documentation sections that were not requested — including things that seem obviously useful.
+- Never delete an existing exported symbol, selector, or function unless the user explicitly asked, or you have proven it is dead code and stated the evidence for that claim.
+- Do not create commits that were not requested. If uncommitted changes exist and it's unclear whether to commit, stage them and ask rather than committing.
+- If you notice something else worth changing while working, note it separately (a `proposed-additions` list, a follow-up suggestion) instead of doing it inline.
+<!-- ai-assistant-starter:end:scope-discipline -->
+
+<!-- ai-assistant-starter:begin:repo-preflight -->
+## Repo & Branch Pre-Flight
+
+Before running an install/apply-template step, or before rebasing or picking a base branch for a PR or PR stack:
+
+- State the resolved target directory and confirm via `git rev-parse --show-toplevel` which repo you're actually operating in — do not assume the current working directory matches the intended target.
+- Re-fetch remote refs (`git fetch origin`) before computing divergence, merge-base, or a rebase/PR base branch. Never trust a stale local ref for this.
+- When multiple worktrees or stacked branches exist, confirm the active worktree before editing.
+<!-- ai-assistant-starter:end:repo-preflight -->
+
 <!-- ai-assistant-starter:begin:ai-generated-text -->
 ## AI-Generated Text Conventions
 
