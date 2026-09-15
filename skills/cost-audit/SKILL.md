@@ -194,7 +194,7 @@ Rank the labeled traces by `recoverable_cost` and keep only the ones worth fixin
 
 **3b. Present the report and gate.** Present the full report (Output Format below) before writing any changes.
 
-**GATE: user must approve each proposed diff individually before it is applied.** A user can approve some and reject others.
+**GATE: user must approve each proposed diff individually before it is applied.** Ask per-diff via `AskUserQuestion` with options **Approve** / **Reject** — a user can approve some and reject others.
 
 **3c. Apply and schedule follow-up.**
 

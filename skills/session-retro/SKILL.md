@@ -115,7 +115,7 @@ Example shape:
 
 **3c. Present the report and gate.** Present the full report (Output Format below) before writing any changes.
 
-**GATE: user must approve each proposed codebase diff individually before it is applied** — this includes structural/agentification changes from 3a-structural, which get the same per-item approval as a CLAUDE.md line edit. Prompt-side tips are informational — no approval gate needed to *state* them, but do not silently rewrite the user's future prompts for them.
+**GATE: user must approve each proposed codebase diff individually before it is applied** — this includes structural/agentification changes from 3a-structural, which get the same per-item approval as a CLAUDE.md line edit. Ask per-item via `AskUserQuestion` with options **Apply** / **Skip** / **Edit first** rather than free-text confirmation. Prompt-side tips are informational — no approval gate needed to *state* them, but do not silently rewrite the user's future prompts for them.
 
 **3d. Apply and note follow-up.** Apply only approved codebase diffs. If a pattern seems likely to recur, tell the user it's worth checking on a future `/session-retro` run rather than promising a fixed re-check date.
 

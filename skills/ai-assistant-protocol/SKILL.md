@@ -285,6 +285,8 @@ Workflows with approval gates require explicit approval before proceeding.
 **Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `looks good`, `go ahead`
 **Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
 
+**Presenting a gate:** When the choice is a fixed set of options (approve/edit/cancel, pick one of N, yes/no), use the `AskUserQuestion` tool instead of printing a markdown prompt and waiting for typed text — it renders as a selectable widget and the response still counts as explicit approval per the terms above. Reserve free-text prompts for genuinely open-ended answers (e.g., "what commit message?") where there's no fixed option set.
+
 Individual skills may accept domain-specific terms (e.g., `commit` in the commit workflow). These supplement — never replace — the list above.
 
 ## Skill Coordination

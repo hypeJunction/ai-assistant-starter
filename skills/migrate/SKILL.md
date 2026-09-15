@@ -365,10 +365,7 @@ psql -d $DATABASE_URL -f migrations/<file>.sql
 \`\`\`
 ```
 
-**If failed:** Do NOT proceed. Analyze the error and present options:
-1. Fix and retry
-2. Rollback to previous state
-3. Abort
+**If failed:** Do NOT proceed. Analyze the error, then use `AskUserQuestion` with options **Fix and retry**, **Rollback to previous state**, **Abort**.
 
 ---
 

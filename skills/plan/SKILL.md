@@ -144,12 +144,13 @@ When the plan involves security-sensitive work (auth, input handling, data acces
 | [What could go wrong] | [How to prevent or recover] |
 
 ---
-**Approve this plan?** (yes / no / modify)
 ```
 
 For Complex/Risky plans, optionally include a Mermaid diagram showing component relationships or data flow.
 
 ### Step 6: Wait for Approval
+
+After presenting the plan, use `AskUserQuestion` with options **Approve** / **Modify** / **Reject** rather than asking the user to type a reply.
 
 **GATE: Do NOT proceed to implementation without explicit approval.**
 

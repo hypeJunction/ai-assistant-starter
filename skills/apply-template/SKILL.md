@@ -94,12 +94,12 @@ skills/apply-template/scripts/apply-template.sh \
 This prints a unified diff and writes nothing. Show the diff to the user
 verbatim (or a summary if it's large) — this is the approval gate.
 
-**GATE: Ask the user to confirm before proceeding.** They may:
-- Apply as-is
-- Ask to trim/adjust a section first (edit the template invocation is out of
-  scope — tell them to edit `CLAUDE.md` directly after applying, since the
-  merge only owns the marker-delimited blocks)
-- Decline
+**GATE: Ask the user to confirm before proceeding**, via `AskUserQuestion` with options:
+- **Apply as-is**
+- **Trim/adjust first** (editing the template invocation is out of scope —
+  tell them to edit `CLAUDE.md` directly after applying, since the merge
+  only owns the marker-delimited blocks)
+- **Decline**
 
 ### Step 4: Apply
 

@@ -165,16 +165,7 @@ npm run test -- [affected]
 
 ### Step 5: Confirm
 
-```markdown
-**Suggested commit message:**
-```
-[type](scope): [description]
-
-[optional body]
-```
-
-Options: **yes** / **edit** / **review** / **cancel**
-```
+Show the suggested commit message, then use `AskUserQuestion` with options **Yes** (commit as-is), **Edit** (revise the message first), **Review** (show the diff again), **Cancel**.
 
 **GATE: Do NOT run `git commit` until user responds with explicit approval.**
 

@@ -334,13 +334,9 @@ npm run test -- [affected-patterns]
 > - Later code depends on the reverted changes
 > - Additional fixes needed after revert
 >
-> **Options:**
-> 1. Fix issues and continue with revert
-> 2. Abort revert (reset staged changes)
-> 3. Create todo for fixes and proceed
->
-> **How to proceed?**
 ```
+
+Use `AskUserQuestion` with options **Fix issues and continue with revert**, **Abort revert** (reset staged changes), **Create todo for fixes and proceed**.
 
 Wait for decision.
 
