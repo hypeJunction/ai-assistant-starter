@@ -48,6 +48,12 @@ from datetime import datetime, timedelta, timezone
 
 PAGE_LIMIT = 1000
 
+# Set from --user (default: LANGFUSE_USER_ID env var) in main() before any command
+# runs. The Langfuse project this plugin points at is typically shared org/team-wide
+# (one instance, many engineers), so an unscoped query mixes every user's traces —
+# this makes "audit my own usage" the default instead of an org-wide dump.
+USER_ID_FILTER = None
+
 # Some Claude Code OTel instrumentation emits generic TOOL-type spans
 # ("claude_code.tool", "claude_code.tool.execution") that never populate
 # `input` — every call collapses into one (traceId, name, null) group and
@@ -82,13 +88,24 @@ BIE_MULTIPLIER = {
 # assert that Langfuse's recorded `totalCost` actually matches the token counts.
 # NOTE: Opus 4.8 / Opus 5 are $5/$25 — NOT the older $15/$75. Assuming the old rates
 # inflates an estimate 3x. There is also no long-context premium: the 1M window is
-# served at standard rates.
+# served at standard rates. Sonnet 5 is $2/$10 — not the older Sonnet-tier $3/$15.
+# Dated snapshots (e.g. `-20250929`, `-20251001`) are priced identically to their
+# unsuffixed model — add the snapshot ID as its own key rather than assuming the
+# reconcile lookup falls back to a prefix match. Non-Anthropic models (glm-*, kimi-*,
+# routed through a third-party/local provider) are intentionally absent — this table
+# only carries published Anthropic first-party rates.
 RATES = {
     "claude-opus-5": (5.0, 25.0),
     "claude-opus-4-8": (5.0, 25.0),
-    "claude-sonnet-5": (3.0, 15.0),
+    "claude-sonnet-5": (2.0, 10.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
     "claude-sonnet-4-5": (3.0, 15.0),
+    "claude-sonnet-4-5-20250929": (3.0, 15.0),
     "claude-haiku-4-5": (1.0, 5.0),
+    "claude-haiku-4-5-20251001": (1.0, 5.0),
+    "claude-fable-5-1": (10.0, 50.0),
+    "claude-fable-5": (10.0, 50.0),
+    "claude-mythos-5-1": (10.0, 50.0),
 }
 
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".pdf")
@@ -228,6 +245,8 @@ def pull_observations(base_url, headers, fields, from_ts, to_ts, extra_filter=No
             params["cursor"] = cursor
         if extra_filter:
             params["filter"] = json.dumps(extra_filter)
+        if USER_ID_FILTER:
+            params["userId"] = USER_ID_FILTER
 
         page = _get(base_url, "/api/public/v2/observations", params, headers)
         rows = page.get("data", [])
@@ -1234,12 +1253,25 @@ def main():
         help="seconds after an Edit/Write to look for a Read on the same file, for `classify`"
     )
     parser.add_argument("--out-dir", default="./cost_audit_out", help="output dir for `all`")
+    parser.add_argument(
+        "--user", default=os.environ.get("LANGFUSE_USER_ID") or None,
+        help="restrict every query to this Langfuse userId (default: LANGFUSE_USER_ID env var, if set). "
+             "Pass --user '' explicitly to audit the whole shared project across all users."
+    )
     args = parser.parse_args()
+
+    global USER_ID_FILTER
+    USER_ID_FILTER = args.user or None
 
     base_url = _env("LANGFUSE_BASE_URL", default="https://cloud.langfuse.com")
     public_key = _env("LANGFUSE_PUBLIC_KEY", required=True)
     secret_key = _env("LANGFUSE_SECRET_KEY", required=True)
     headers = _auth_header(public_key, secret_key)
+
+    if USER_ID_FILTER:
+        print(f"scoping to userId={USER_ID_FILTER!r} (pass --user '' to audit the whole shared project)")
+    else:
+        print("WARNING: no --user / LANGFUSE_USER_ID set — querying the ENTIRE shared Langfuse project (all users)")
 
     to_dt = datetime.now(timezone.utc)
     from_dt = to_dt - timedelta(days=30)
