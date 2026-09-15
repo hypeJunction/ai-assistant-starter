@@ -52,7 +52,7 @@ experiment/new-caching-strategy
 - Use imperative mood ("add" not "added" or "adds")
 - No period at the end
 - Max 50 characters (72 for body lines)
-- Capitalize first letter
+- Lowercase after the type/scope prefix (matches Angular, Kubernetes, and most Conventional Commits adopters)
 - Reference issues when applicable
 
 ### Examples

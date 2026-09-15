@@ -180,7 +180,7 @@ Options: **yes** / **edit** / **review** / **cancel**
 
 ```bash
 git add [scope-paths]  # Stage files explicitly by name — NEVER use -A or .
-git commit -m "[message]"
+git commit -m "[message]"       # or: git commit -s -m "[message]" if git.dco_signoff is configured
 ```
 
 **Staging rule:** Only stage files that are part of the intended commit scope. If there are unstaged changes in other files, they must remain unstaged. Verify with `git status` after staging that no unintended files were included.
@@ -221,8 +221,10 @@ See `references/commit-conventions.md` for extended formats (breaking changes, r
 ### Rules
 
 - Imperative mood ("add" not "added")
-- Max 50 characters subject, 72 body
-- No period at end
+- Lowercase after the type/scope prefix (`feat(auth): add login`, not `feat(auth): Add login`) — matches the lowercase convention used by Angular, Kubernetes, and most Conventional Commits adopters
+- Subject line ≤50 characters; wrap body text at 72 characters per line (not "72 characters total")
+- No period at end of subject
+- Blank line between subject and body
 - Every message answers: **what** changed and **why**
 
 ### Banned Messages
@@ -233,9 +235,12 @@ See `references/commit-conventions.md` for extended formats (breaking changes, r
 
 `Fixes #123` / `Closes #123` (closes on merge) — `Refs #123` (links without closing)
 
-### AI Attribution
+If the current branch name encodes a ticket (per `git-conventions` branch naming, e.g. `feature/TICKET-123-payment-integration`), add `Refs TICKET-123` to the footer automatically — don't ask the user each commit. This mirrors `/pr`'s ticket handling but stays lightweight since a branch spans many commits; `/pr` still asks once per branch in case the ticket wasn't encoded in the branch name.
 
-If configured, add an AI co-author trailer to commits where AI wrote most of the code. Follow the project's `config.yaml` setting for `git.ai_attribution`.
+### Commit Trailers
+
+- **AI Attribution:** If configured, add an AI co-author trailer to commits where AI wrote most of the code. Follow the project's `config.yaml` setting for `git.ai_attribution`. Default: do not add one.
+- **DCO Sign-off:** If the project requires a Developer Certificate of Origin (the convention used by the Linux kernel, Kubernetes, and many other OSS projects), commit with `git commit -s` to add a `Signed-off-by` trailer. Follow the project's `config.yaml` setting for `git.dco_signoff`; do not add unless configured.
 
 ## Acceptance Tests
 
