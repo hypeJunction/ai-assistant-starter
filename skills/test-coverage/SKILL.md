@@ -205,6 +205,8 @@ describe('ModuleName', () => {
 
 ### Step 7: Run and Fix
 
+**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+
 ```bash
 npm run test -- path/to/file.spec.ts
 ```

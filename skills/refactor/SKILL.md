@@ -154,6 +154,8 @@ For each batch:
 3. Run affected tests
 4. Report progress
 
+**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+
 **If tests fail after a batch:** Revert the batch (`git checkout -- [affected-files]`), reassess the approach, and try again with a corrected strategy. Do not debug individual file changes within a broken batch.
 
 ### Step 4.5: Handle Discrepancies

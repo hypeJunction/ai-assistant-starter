@@ -148,6 +148,8 @@ Review code for common violations (see `references/wcag-checklist.md` for full W
 
 If a11y testing tools are configured, suggest running them:
 
+**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+
 ```bash
 # If jest-axe is available (use project's package manager)
 <pkg-manager> run test -- --grep "a11y\|accessibility\|axe"

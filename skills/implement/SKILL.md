@@ -262,6 +262,8 @@ Fix issues before proceeding.
 
 **Mode:** Testing — ensure new code has appropriate test coverage.
 
+**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+
 **Test ordering:**
 - **New functions/modules** — prefer writing the test first (TDD-style: write failing test, then implement, then verify). This produces tighter, more targeted code.
 - **Enhancements to existing code** — write tests after implementation, verifying both new and existing behavior.

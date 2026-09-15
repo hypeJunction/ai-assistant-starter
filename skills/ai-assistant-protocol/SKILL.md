@@ -17,6 +17,7 @@ These are absolute rules. No rationalization, no exceptions, no "just this once.
 2. **NO FIXES WITHOUT ROOT CAUSE** — Never apply a fix without first identifying and confirming the root cause. Guessing is not debugging.
 3. **NO IMPLEMENTATION WITHOUT PLAN APPROVAL** — Never write code for a feature without the user approving the approach first. Wasted code is worse than no code.
 4. **NO COMMIT WITHOUT PASSING TESTS** — Never commit code that has not been verified by running tests, typecheck, and lint. "It should pass" is not passing.
+8. **NO VALIDATION IN THE MAIN AGENT** — Never run tests, typecheck, lint, build, or any other validation/verification command directly in the main agent's own shell. Delegate every such run to an independent subagent (via the `Agent` tool) and read its full raw output before reporting a result. See "Validation Execution" below.
 5. **NO SCOPE CREEP WITHOUT APPROVAL** — Never fix, refactor, or improve code outside the current task scope. Create a todo instead.
 6. **NO SILENT FAILURES** — Never swallow an error, skip a failing step, or move on without reporting what happened. Every failure gets reported.
 7. **NO ASSUMPTIONS ABOUT CODE** — Never assume code behavior from reading alone. Run it, test it, verify it.
@@ -54,24 +55,26 @@ Before claiming any task is complete, you MUST run actual commands and see actua
 
 ### Verification Workflows
 
+Every run below is delegated to a subagent per **Validation Execution** — "run typecheck" means "dispatch a subagent to run typecheck and read back its output," not "run it in the main agent."
+
 **Code change verification:**
-1. Run typecheck → read output
-2. Run lint → read output
-3. Run scoped tests → read output
+1. Run typecheck (via subagent) → read output
+2. Run lint (via subagent) → read output
+3. Run scoped tests (via subagent) → read output
 4. Confirm all three pass before claiming done
 
 **Bug fix verification:**
-1. Regression test passes → read output
-2. Related tests pass → read output
+1. Regression test passes (via subagent) → read output
+2. Related tests pass (via subagent) → read output
 3. Original bug no longer reproduces → confirm
 
 **Refactor verification:**
-1. All existing tests pass (no behavior change) → read output
-2. Typecheck passes → read output
+1. All existing tests pass (via subagent, no behavior change) → read output
+2. Typecheck passes (via subagent) → read output
 3. No new warnings introduced → confirm
 
 **Build verification:**
-1. Clean build succeeds → read output
+1. Clean build succeeds (via subagent) → read output
 2. No warnings in build output → confirm
 3. Build artifacts exist → verify
 
@@ -103,6 +106,27 @@ Before claiming any task is complete, you MUST run actual commands and see actua
 | "Tests are passing so it must be correct" | Tests verify what they test, not overall correctness. Think about what's NOT tested. |
 | "I'll add tests later" | Later never comes. Write tests with the code or before the code. |
 | "This error is unrelated, I can ignore it" | Investigate first. "Unrelated" errors are often symptoms of the same root cause. |
+
+## Validation Execution
+
+**Universal rule: All validation runs in an independent subagent, never in the main agent.**
+
+This applies to every test run, typecheck, lint, build, coverage run, security scan, or other verification command — in every skill, at every scope (single-file check through full CI mirror).
+
+### How to Delegate
+
+1. **Dispatch a subagent** via the `Agent` tool to run the command(s). Use `dispatch` for a single mechanical command; use a scoped `general-purpose`/domain agent when the run needs judgment (e.g., triaging failures).
+2. **Give it the exact command(s)** to run and instruct it to return the complete raw output (stdout/stderr, exit code) — not a paraphrase.
+3. **Read the raw output yourself** before making any claim. A subagent's "tests pass" summary is not evidence — the output it returns is.
+4. **Never fall back to running the command inline** because delegation feels slower or the check seems trivial. There is no exception for "just a quick check."
+
+### Why
+
+Running validation in the main agent lets a failing or fabricated result slip into the same context that's making completion claims, and it burns the main session's context on raw tool output that a subagent can absorb instead. An independent subagent has no stake in the outcome and no incentive to soften a failure.
+
+### Applies To
+
+Every workflow that includes a validation, verification, or testing step — including but not limited to `/validate`, `/test-coverage`, `/tdd`, `/e2e`, `/api-test`, `/review`, `/security-review`, `/accessibility-review`, `/finish`, `/hotfix`, `/migrate`, `/refactor`, `/debug`, `/implement`, `/iterate-pr`, `/pr`, `/release`, `/deps`. Each of these delegates its command execution per this section even where its own SKILL.md doesn't repeat the mechanics.
 
 ## Priority Order (When Instructions Conflict)
 

@@ -24,6 +24,7 @@ triggers:
 2. **REPORT WHAT THE OUTPUT SAYS** — Never summarize or interpret validation output. Show the actual errors with file paths and line numbers.
 3. **FAILURES ARE NOT SUGGESTIONS** — A failing validation means the code is not ready. Do not proceed past a failing check.
 4. **NO CLAIMS WITHOUT FRESH EVIDENCE** — Never report a check as passing without showing the actual command output from this session. Words like "should pass," "probably works," or "looks correct" are not verification. Run the command, read the output, then state the result.
+5. **NEVER RUN CHECKS IN THE MAIN AGENT** — Every command in this skill (format, typecheck, lint, tests, build, coverage, audit) is dispatched to an independent subagent via the `Agent` tool. The main agent reads the subagent's raw output; it does not execute the command itself.
 
 ## When to Use
 
@@ -270,11 +271,13 @@ A regression test that passes both with and without the fix proves nothing. Skip
 
 ### Agent Delegation Verification
 
+Every command in this skill (typecheck, lint, tests, build, coverage, security scan) runs in an independent subagent via the `Agent` tool — never directly in the main agent's shell (see `ai-assistant-protocol` § Validation Execution).
+
 When a subagent reports task completion, verify independently:
 
 1. Check the VCS diff — does it show the expected changes?
-2. Run validation commands yourself — don't trust "all tests pass" claims from agents
-3. Report the actual state based on your own verification
+2. Dispatch a fresh subagent to (re-)run validation commands and return full raw output — don't trust a bare "all tests pass" claim from any agent, including the one that made the change
+3. Read that raw output yourself and report the actual state based on it
 
 ---
 

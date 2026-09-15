@@ -136,6 +136,8 @@ Self-review before validation. Fixes made here will be validated in Phase 4.
 
 Run checks in order — stop and fix if any fail. This phase runs AFTER review to ensure review fixes have not introduced new issues.
 
+**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+
 ```bash
 npm run typecheck
 npm run lint
