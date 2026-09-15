@@ -82,6 +82,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
 | `/init` | Bootstrap project configuration |
+| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation |
 
 ### Enforcement Hooks (auto-loaded)
 

@@ -55,7 +55,7 @@ npx skills add ./ai-assistant-starter -s commit
 
 ## Available Skills
 
-### Workflow Skills (33 total, categories: process + meta)
+### Workflow Skills (34 total, categories: process + meta)
 
 **Development Workflows**
 
@@ -109,6 +109,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
 | `/init` | Bootstrap project configuration |
+| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation |
 
 ### Background Skills (22 total)
 

@@ -1,0 +1,86 @@
+<!-- ai-assistant-starter:begin:task-classification -->
+## Task Classification
+
+Before acting on a request, or before spawning any subagent, classify it into
+one class and act (or delegate) accordingly. Do not default everything to
+your most capable model or skip classification because a task "looks small."
+
+| Class | Model tier | Effort | Examples |
+|---|---|---|---|
+| mechanical | cheapest/fastest | none/low | git ops, renames, formatting, lookups, version bumps |
+| implementation | mid-tier | medium | writing/editing code, standard feature work, tests |
+| debugging | mid-tier | high | diagnosing failures, races, regressions, bisecting |
+| architecture | top-tier | high | redesigns, tradeoff analysis, multi-file reasoning |
+| extreme | top-tier, long-horizon | high | codebase-wide rewrites, multi-system migrations, RFCs |
+
+Rules:
+- When spawning a subagent, pass the model tier matching the task class —
+  never default all subagents to the most expensive model.
+- If a task doesn't clearly match one class, don't force it — abstain and
+  leave the current model/effort unchanged rather than guessing a tier.
+- Re-classify mid-task if scope changes (a "mechanical" rename that turns
+  into an API redesign is now "architecture").
+<!-- ai-assistant-starter:end:task-classification -->
+
+<!-- ai-assistant-starter:begin:search-relevance -->
+## Search & Relevance Protocol
+
+Relevance is judged by the model reading results in-context, not by a
+separate classifier — so the quality of what you retrieve directly gates the
+quality of what you can judge. Apply this before trusting search output:
+
+- **Narrow before broad.** Prefer a scoped Grep/Glob (specific pattern, path,
+  file type) over a wide fishing query — every false positive returned is a
+  token the model must personally triage.
+- **Classify raw hits before acting on them.** A grep/glob match is a
+  syntactic hit, not a semantic one — confirm relevance by reading enough
+  context around the match before treating it as an answer.
+- **Match the tool to the query shape.** Known pattern/symbol → direct
+  Grep/Glob. Fuzzy or exploratory ("how does X work," "where is Y handled")
+  → a read-only search subagent that returns a distilled answer, not raw
+  matches, into your context.
+- **Delegate wide-net searches.** If a search would return more than a
+  screenful of undifferentiated matches, delegate the search-and-filter step
+  to a subagent instead of paging through raw output inline — this keeps the
+  relevance judgment out of your own context budget.
+- **Prefer structural filters over content filters when available.** A path
+  or file-type constraint you already know is true costs nothing and cuts
+  the candidate set before any content matching runs.
+<!-- ai-assistant-starter:end:search-relevance -->
+
+<!-- ai-assistant-starter:begin:process-hygiene -->
+## Context & Process Hygiene
+
+- **Clear stale sessions.** When resuming work after a long gap (new
+  calendar day, or wall-clock time much greater than active work time),
+  checkpoint progress into a short handoff note and start fresh rather than
+  continuing in an old session's accumulated context — this holds even for a
+  direct continuation of the same task.
+- **Delegate long sequential traces.** If a single turn is running long
+  (dozens of sequential exploration/verification calls against the same
+  project), delegate the remaining work to a subagent instead of continuing
+  inline.
+- **Avoid redundant verification calls.** Before re-fetching state you
+  already have (re-navigating a tab, re-reading a file you just wrote,
+  re-running a check you just ran), check whether you already know the
+  answer from earlier in the session.
+- **Avoid blind bulk edits on structured files.** Use targeted, verified
+  edits on config/source files instead of regex/sed sweeps — a broken bulk
+  edit triggers an expensive diagnose-fix-rebuild loop.
+- **Audit periodically, don't guess.** If trace/observability data is
+  available, periodically audit real sessions for waste (duplicate calls,
+  retry loops, outlier-cost sessions) and turn confirmed patterns into rules
+  here rather than optimizing on intuition.
+<!-- ai-assistant-starter:end:process-hygiene -->
+
+<!-- ai-assistant-starter:begin:further-reading -->
+## Further Reading
+
+Additional adoption guides live in `docs/`:
+- `docs/README-cost-optimization.md` — pointer to the full cost-optimization reference (command-filtering hooks, model-tier routing setup, settings.json skeleton)
+- `docs/README-search-relevance.md` — the reasoning behind the Search & Relevance Protocol above
+- `docs/README-security-scripts.md` — what the `apply-template` install scripts do and don't do
+
+(Only present if selected during `/apply-template` install — see that skill
+to add or refresh them.)
+<!-- ai-assistant-starter:end:further-reading -->
