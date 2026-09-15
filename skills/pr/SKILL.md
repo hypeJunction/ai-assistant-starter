@@ -201,30 +201,35 @@ Confirm push and [create/update] PR? (yes / edit / cancel)
 git push -u origin HEAD
 ```
 
+**PR Description Guidelines:**
+
+Write for a reviewer who has no idea what problem is being solved or what the solution is — spell out context, don't assume shared background.
+
+- `## Summary` is one short paragraph (2-4 sentences) of plain prose describing the overall direction and motivation — not a changelog, not a list of edits.
+- `## What changed` bullets describe user-visible or behavioral outcomes — never file names, function/variable names, or line-level detail (that's what the diff is for). Cap it at ~5 bullets; group related changes under one higher-level bullet rather than enumerating every commit.
+- Include `## Test Plan` only when verification is non-obvious or hard to reproduce (special data setup, a race condition, a multi-step manual flow). Omit it entirely when existing tests or standard manual QA obviously cover the change.
+- Include `## Security` only when the change actually touches something security-relevant (auth, secrets, input handling, permissions, new dependencies). Omit it entirely otherwise — don't pad every PR with an always-N/A checklist.
+
 **If creating a new PR:**
 
 ```bash
 gh pr create --title "[Type]: Brief description" --body "$(cat <<'EOF'
 ## Summary
 
-[1-3 bullet points describing what this PR does]
+[One paragraph: what this PR does and why, in plain language, for a reviewer with no prior context.]
 
-## Changes
+## What changed
 
-- [Specific change 1]
-- [Specific change 2]
+- [Main change 1, described by behavior/outcome]
+- [Main change 2]
 
 ## Test Plan
 
-- [ ] [How to test change 1]
-- [ ] [How to test change 2]
+[Include only if verification isn't obvious — omit this section otherwise]
 
 ## Security
 
-- [ ] No secrets or credentials in code
-- [ ] Input validation on new endpoints/handlers
-- [ ] Auth checks on protected operations
-- [ ] N/A — no security-sensitive changes
+[Include only if the change touches something security-sensitive — omit this section otherwise]
 
 ## Screenshots (if applicable)
 
@@ -241,6 +246,12 @@ gh pr edit [number] --title "[Type]: Brief description" --body "$(cat <<'EOF'
 EOF
 )"
 ```
+
+**When updating because new commits landed:** rewrite the description fresh rather than appending to it.
+
+- Re-derive the `## Summary` paragraph so it still describes the PR's *current* overall direction — edit it in place, don't bolt on a second paragraph for the new commits.
+- Add a bullet to `## What changed` only for genuinely new user-facing behavior. If a new commit just fixes or tweaks something already covered by an existing bullet, leave that bullet as-is instead of adding another one.
+- Never let the description grow into a changelog or edit history across updates — it should always read as if written fresh for the branch's current state.
 
 ### Step 9: Report
 
@@ -283,23 +294,23 @@ chore: update dependencies
 ```markdown
 ## Summary
 
-- Add JWT-based authentication to API endpoints
-- Implement login and registration endpoints
-- Protect existing routes with auth middleware
+Users currently have no way to authenticate — every API endpoint is open. This adds token-based login so requests can be tied to a user and existing routes can be locked down behind auth.
 
-## Changes
+## What changed
 
-- `src/middleware/auth.ts` - New auth middleware
-- `src/routes/auth.ts` - Login/register endpoints
-- `src/models/User.ts` - User model with password hashing
+- Users can register and log in, receiving a token to use for future requests
+- Passwords are stored securely rather than in plain text
+- Existing API routes now require a valid token
 
-## Test Plan
+## Security
 
-- [ ] Register new user with valid credentials
-- [ ] Login with correct credentials returns token
-- [ ] Protected routes reject requests without token
+- [ ] Passwords hashed before storage, never logged or returned in responses
+- [ ] Auth checks added to all previously-open routes
+- [ ] N/A — input validation (handled by existing framework middleware)
 
 ## Breaking Changes
 
-None - new endpoints only.
+None — new endpoints only; existing routes now require a token, which is called out above.
 ```
+
+Note what's absent: no `## Test Plan` (login/registration is standard flow, covered by the new test suite included in the PR), no file names or variable names anywhere in the body.
