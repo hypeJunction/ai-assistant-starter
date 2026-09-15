@@ -1,6 +1,6 @@
 ---
 name: apply-template
-description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, verification/test delegation, scope discipline, repo pre-flight, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs and the context-circuit-breaker / cost-guardrail enforcement hooks. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
+description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, verification/test delegation, scope discipline, repo pre-flight, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs, the context-circuit-breaker / cost-guardrail enforcement hooks, and verified cost-saving settings.json env vars. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
 category: meta
 model: sonnet
 effort: medium
@@ -16,13 +16,13 @@ triggers:
 
 > **Purpose:** Merge the standardized CLAUDE.md sections into an existing
 > installation without disturbing project-specific content, and offer
-> companion reference READMEs and the context-circuit-breaker / cost-guardrail
-> enforcement hooks.
+> companion reference READMEs, the context-circuit-breaker / cost-guardrail
+> enforcement hooks, and verified cost-saving `settings.json` env vars.
 > **Usage:** `/apply-template [--target <path>]`
 > **Output:** Updated `CLAUDE.md` (backed up first), any selected
 > `docs/README-*.md` files, and — only if opted in — a `context-circuit-breaker`
-> and/or `cost-guardrail` `PreToolUse` hook entry in `settings.json` (also
-> backed up first).
+> and/or `cost-guardrail` `PreToolUse` hook entry and/or selected `env` vars
+> in `settings.json` (also backed up first).
 
 ## Constraints
 
@@ -37,14 +37,15 @@ triggers:
 - **Ask before installing companion READMEs** — don't copy all of them by
   default.
 - **This skill edits `CLAUDE.md`, `docs/`, and, only if the user opts in,
-  a narrowly-scoped `settings.json` hook entry per enforcement hook.** The
-  two exceptions are the `context-circuit-breaker` hook (Step 5.5) and the
-  `cost-guardrail` hook (Step 5.6) — each installed only on explicit request,
-  behind the same dry-run/backup/approval gate as everything else. Neither
-  touches any other part of `settings.json` (permissions, model, other
-  hooks) or `.claude/skills/` content beyond copying that one hook's
-  `references/hook.js` — broader hook/settings changes are out of scope (see
-  `docs/cost-optimization.md` once installed).
+  a narrowly-scoped `settings.json` hook entry per enforcement hook or a
+  selected set of env vars.** The three exceptions are the
+  `context-circuit-breaker` hook (Step 5.5), the `cost-guardrail` hook
+  (Step 5.6), and the cost-saving env vars (Step 5.7) — each installed only
+  on explicit request, behind the same dry-run/backup/approval gate as
+  everything else. None touches any other part of `settings.json`
+  (permissions, model, other hooks/env keys) or `.claude/skills/` content
+  beyond copying that one hook's `references/hook.js` — broader hook/settings
+  changes are out of scope (see `docs/cost-optimization.md` once installed).
 
 ## Prerequisites
 
@@ -241,12 +242,70 @@ Same idempotency guarantee as Step 5.5: re-running only confirms presence,
 never duplicates an entry, and every other key in `settings.json` is left
 untouched.
 
+### Step 5.7: Offer cost-saving env vars
+
+Ask the user (`AskUserQuestion`, `multiSelect: true`) which of these verified,
+documented env vars (see `code.claude.com/docs/en/env-vars`) they want added
+to `settings.json`'s top-level `env` object. None are forced — only the ones
+explicitly selected are installed:
+
+| Var | What it does | Suggested value |
+|---|---|---|
+| `DISABLE_TELEMETRY` | Turns off telemetry collection | `1` |
+| `DISABLE_ERROR_REPORTING` | Turns off error reporting | `1` |
+| `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | Disables non-essential network calls | `1` |
+| `CLAUDE_CODE_FORK_SUBAGENT` | `0` disables fork-mode subagents entirely (no context-inheriting forks, no background scheduling for them); `1` forces fork mode on everywhere including non-interactive/SDK | `0` |
+| `BASH_DEFAULT_TIMEOUT_MS` | Default timeout for Bash commands | `120000` |
+| `BASH_MAX_TIMEOUT_MS` | Hard cap a command can request | `600000` |
+| `BASH_MAX_OUTPUT_LENGTH` | Truncates large Bash output before it reaches the model | `30000` |
+
+**Flag this distinction to the user explicitly:** the first three are
+telemetry/network-only and behavior-neutral. `CLAUDE_CODE_FORK_SUBAGENT=0`
+and the three `BASH_*` vars change runtime behavior — forks become
+unavailable, and commands can now time out or have output truncated that
+previously wouldn't have been — so don't bundle these silently with the
+telemetry vars.
+
+**GATE: only proceed with the vars explicitly selected.** This is the third
+and last step in this skill that touches `settings.json`.
+
+If any are selected:
+
+1. Back up any existing target settings file the same way Steps 5.5/5.6 do:
+   ```bash
+   skills/apply-template/scripts/backup-claude-md.sh <target>/.claude/settings.json
+   ```
+2. Dry-run the merge (one `--env KEY=VALUE` per selected var):
+   ```bash
+   node skills/apply-template/scripts/merge-settings-hook.js \
+     <target>/.claude/settings.json \
+     --env DISABLE_TELEMETRY=1 --env BASH_DEFAULT_TIMEOUT_MS=120000
+   ```
+3. Only after confirmation, apply it:
+   ```bash
+   node skills/apply-template/scripts/merge-settings-hook.js \
+     <target>/.claude/settings.json \
+     --env DISABLE_TELEMETRY=1 --env BASH_DEFAULT_TIMEOUT_MS=120000 --apply
+   ```
+
+The merge script only ever adds or updates the specific `env` keys given,
+reporting which were added vs. already present — it never touches
+`hooks.PreToolUse` or any other key unless `--command`/`--matcher` are also
+passed, and re-running is idempotent.
+
+> **Note on fork mode:** `CLAUDE_CODE_FORK_SUBAGENT` is real and `0` does
+> disable fork-mode subagents, but it doesn't change whether a *non-fork*
+> subagent (`general-purpose`, `Explore`, a definition-based agent) inherits
+> context — those are always isolated regardless of this setting. See
+> `docs/cost-optimization.md`'s "Fork mode" section once installed for the
+> full explanation before presenting this option to the user.
+
 ### Step 6: Report
 
 Summarize: what was backed up, which sections were applied/refreshed, which
-companion READMEs were installed, and whether the circuit-breaker and/or
-cost-guardrail hooks were installed. Do not commit — leave staging/committing
-to the user or a follow-up `/commit`.
+companion READMEs were installed, whether the circuit-breaker and/or
+cost-guardrail hooks were installed, and which (if any) env vars were added.
+Do not commit — leave staging/committing to the user or a follow-up `/commit`.
 
 ## Security Notes
 

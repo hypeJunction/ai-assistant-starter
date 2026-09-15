@@ -37,6 +37,18 @@ it does and doesn't do. This is a live, per-session warning layer,
 complementary to the after-the-fact analysis that `cost-audit` and
 `session-retro` already provide from trace/transcript data.
 
+## Cost-saving env vars
+
+`/apply-template` also offers a third, direct opt-in step (5.7): a
+multi-select list of verified `settings.json` env vars
+(`DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING`,
+`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `CLAUDE_CODE_FORK_SUBAGENT`, and
+the `BASH_*` timeout/output bounds). Only the vars you pick are added. See
+the canonical doc's "Fork mode and `CLAUDE_CODE_FORK_SUBAGENT`" section for
+what that var actually controls (fork-mode subagent spawning and
+scheduling) versus what it doesn't (non-fork subagents are always isolated,
+regardless of this setting).
+
 ## Cost guardrail
 
 `/apply-template` offers a second hook the same way, as Step 5.6:

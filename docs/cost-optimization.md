@@ -7,7 +7,69 @@ names, paths, model choices) to your own environment.
 This is reference material, not an installable skill — copy the pieces that
 apply, adjust the rest.
 
-## The three levers
+## Fork mode and `CLAUDE_CODE_FORK_SUBAGENT`
+
+A claim has circulated that a Claude Code update made subagents "fork" by
+default — silently inheriting the full parent conversation instead of
+starting with isolated context. The env var it names,
+`CLAUDE_CODE_FORK_SUBAGENT`, **is real** (Claude Code ≥2.1.232) — but the
+framing overstates what it controls.
+
+`CLAUDE_CODE_FORK_SUBAGENT` governs **fork mode**: whether Claude can spawn
+the `fork` subagent type at all, and the background-execution behavior of
+whatever subagents it does spawn (fork mode on runs both forks and non-forks
+in the background by default, apart from cases that must stay foreground).
+It is on by default in interactive sessions (≥2.1.232) and off by default in
+non-interactive mode (`-p`) and the Agent SDK. Set it to `1` to force fork
+mode on everywhere (including non-interactive/SDK), or `0` to force it off
+everywhere.
+
+What it does **not** do: change whether a *non-fork* subagent (`general-purpose`,
+`Explore`, a definition-based agent) inherits context. Those still start
+fresh and isolated — system prompt, task message, CLAUDE.md, git status,
+preloaded skills — regardless of fork mode. A fork inheriting the parent's
+full context is the explicit, unchanged purpose of that subagent type; fork
+mode just gates whether Claude is allowed to request it and how it's
+scheduled. See
+[code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents)
+for the authoritative description.
+
+If you specifically want to guarantee no fork-type subagents ever spawn
+(e.g. to bound cost from context-inheriting subagents), two real options:
+
+- **`CLAUDE_CODE_FORK_SUBAGENT=0`** — turns off fork mode everywhere; Claude
+  can't spawn forks and background-runs only the documented exceptions.
+- **`permissions.deny: ["Agent(fork)"]`** — a more surgical rule that blocks
+  the `fork` subagent type specifically, leaving fork mode's background
+  scheduling behavior for other subagents untouched.
+
+## The levers
+
+### 0. Cost-saving env vars (near-zero setup cost)
+
+A handful of genuinely documented env vars
+([code.claude.com/docs/en/env-vars](https://code.claude.com/docs/en/env-vars))
+cut cost with no behavior tradeoff, plus a couple that trade a small behavior
+change for a hard ceiling on runaway command/fork cost:
+
+| Var | Effect | Tradeoff |
+|---|---|---|
+| `DISABLE_TELEMETRY` | Turns off telemetry collection | None |
+| `DISABLE_ERROR_REPORTING` | Turns off error reporting | None |
+| `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | Disables non-essential network calls | None |
+| `CLAUDE_CODE_FORK_SUBAGENT` | `0` disables fork-mode subagents entirely; `1` forces it on everywhere | `0` means Claude can no longer use forks for cheap cache-sharing background research |
+| `BASH_DEFAULT_TIMEOUT_MS` | Default timeout for Bash commands | Commands can now time out that previously ran unbounded |
+| `BASH_MAX_TIMEOUT_MS` | Hard cap on a requested timeout | Same |
+| `BASH_MAX_OUTPUT_LENGTH` | Truncates large Bash output before it reaches the model | Long legitimate output can get cut |
+
+These are offered as an explicit opt-in step (`/apply-template`'s Step 5.7) —
+none are installed by default, and `CLAUDE_CODE_FORK_SUBAGENT`/`BASH_*` are
+called out separately from the telemetry-only ones since they change runtime
+behavior.
+
+`DISABLE_TELEMETRY` only turns off Anthropic's own internal usage telemetry —
+it's independent of OpenTelemetry export configuration, so it does not affect
+a Langfuse-based tracing setup (what `cost-audit`/`cost-guardrail` read from).
 
 ### 1. Command-level filtering (biggest win on repetitive shell output)
 
@@ -267,6 +329,10 @@ scheduled job may remind, never run the refresh unattended — see
 {
   "model": "sonnet",
   "effortLevel": "medium",
+  "env": {
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_ERROR_REPORTING": "1"
+  },
   "permissions": {
     "allow": [
       "Bash(git status:*)",
@@ -302,8 +368,8 @@ is curating it deliberately, not the specific entries above.
 
 If you're an AI assistant walking a user through adopting this setup:
 
-1. Ask which levers they want (filtering hook, model routing, process rules,
-   or all three) rather than installing everything at once.
+1. Ask which levers they want (env vars, filtering hook, model routing,
+   process rules, or a subset) rather than installing everything at once.
 2. For the filtering hook: default to Option B (dependency-free) unless they
    specifically want `rtk` — it needs no external binary and is easy to
    extend with their own noisy commands.
