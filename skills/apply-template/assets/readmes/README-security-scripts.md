@@ -1,6 +1,6 @@
 # Security Notes — `apply-template` Install Scripts
 
-`/apply-template` runs three scripts, all in
+`/apply-template` runs four scripts, all in
 `skills/apply-template/scripts/`. Each is short enough to read in full before
 trusting it — that's deliberate, not incidental. Read them; this file
 summarizes what you'll find.
@@ -38,9 +38,26 @@ Copies the companion READMEs you selected into the target project's `docs/`.
   stay confined to the destination directory you gave it.
 - Won't overwrite an existing destination file unless you pass `--force`.
 
+## `merge-settings-hook.js`
+Only runs when you explicitly opt in to installing the
+`context-circuit-breaker` hook. Adds or confirms one `PreToolUse` entry in
+the target's `settings.json`.
+
+- **Dry-run by default.** Prints the resulting JSON and writes nothing
+  unless called with `--apply`, same gate as `apply-template.sh`.
+- **Touches only `hooks.PreToolUse`.** Reads the whole file as JSON, appends
+  one array entry if absent, and writes it back — every other key
+  (`permissions`, `model`, other hooks) is preserved as-is.
+- **Idempotent.** Checks whether an entry already references
+  `context-circuit-breaker/references/hook.js` by command string before
+  appending, so re-running never duplicates it.
+- Refuses to touch the target if it isn't valid JSON, rather than guessing.
+- No network access, no `eval`, no shelling out — pure Node `fs`/`JSON`.
+
 ## What none of these do
 No script here downloads anything, shells out to another script, phones
 home, or touches files outside the explicit paths it's given. If you want to
-verify that independently: `grep -n 'curl\|wget\|eval\|source \|\. \$' skills/apply-template/scripts/*.sh`
+verify that independently:
+`grep -n 'curl\|wget\|eval\|source \|\. \$' skills/apply-template/scripts/*.sh skills/apply-template/scripts/*.js`
 should only match this file's own explanatory comments about their absence —
 never an actual invocation.

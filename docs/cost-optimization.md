@@ -228,6 +228,22 @@ wasted context gets re-paid on every subsequent cache read in a session:
   expensive ("whale") sessions — and turn confirmed patterns into rules
   here, rather than optimizing on intuition alone.
 
+### 4. Runtime circuit breaker (catches multiplication as it happens)
+
+The three levers above reduce token cost per call or per session; none of
+them watch for a single turn silently multiplying its own cost — fanning out
+many subagents at once, or repeating the same expensive call in a loop.
+`ai-assistant-starter`'s `context-circuit-breaker` skill wires a `PreToolUse`
+hook, matched on every tool (`"*"`), that tracks a short rolling window of
+recent calls per session and warns — via the same
+`hookSpecificOutput`/`permissionDecision: "allow"` shape used above, never a
+block — once it sees 5+ `Agent`/`Task` spawns or 4+ near-identical/oversized
+calls to the same tool within a 5-minute window. It's installed via
+`/apply-template`'s Step 5.5 as an explicit opt-in, and is complementary to
+this doc's other levers: it catches the pattern live, in-session, where
+`cost-audit`/`session-retro` only see it after the fact in trace or
+transcript data.
+
 ## Suggested `settings.json` skeleton
 
 ```json

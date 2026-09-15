@@ -1,6 +1,6 @@
 ---
 name: apply-template
-description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
+description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs and the context-circuit-breaker hook. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
 category: meta
 model: sonnet
 effort: medium
@@ -16,10 +16,11 @@ triggers:
 
 > **Purpose:** Merge the standardized CLAUDE.md sections into an existing
 > installation without disturbing project-specific content, and offer
-> companion reference READMEs.
+> companion reference READMEs and the context-circuit-breaker hook.
 > **Usage:** `/apply-template [--target <path>]`
-> **Output:** Updated `CLAUDE.md` (backed up first) plus any selected
-> `docs/README-*.md` files.
+> **Output:** Updated `CLAUDE.md` (backed up first), any selected
+> `docs/README-*.md` files, and — only if opted in — a `context-circuit-breaker`
+> `PreToolUse` hook entry in `settings.json` (also backed up first).
 
 ## Constraints
 
@@ -33,10 +34,14 @@ triggers:
   outside those markers are never modified.
 - **Ask before installing companion READMEs** — don't copy all of them by
   default.
-- **This skill only edits `CLAUDE.md` and `docs/`.** It never modifies
-  `settings.json`, hooks, or `.claude/skills/` — those are separate,
-  heavier-weight changes (see `docs/cost-optimization.md` once installed) and
-  are out of scope here.
+- **This skill edits `CLAUDE.md`, `docs/`, and, only if the user opts in,
+  one narrowly-scoped `settings.json` hook entry.** The one exception is the
+  `context-circuit-breaker` hook (see Step 5.5) — installed only on explicit
+  request, behind the same dry-run/backup/approval gate as everything else.
+  It never touches any other part of `settings.json` (permissions, model,
+  other hooks) or `.claude/skills/` content beyond copying that one hook's
+  `references/hook.js` — broader hook/settings changes are out of scope (see
+  `docs/cost-optimization.md` once installed).
 
 ## Prerequisites
 
@@ -149,16 +154,55 @@ with `--apply`. **If no READMEs were selected or copied, skip this
 sub-step entirely** — do not add a "Further Reading" section pointing at
 docs that don't exist.
 
+### Step 5.5: Offer the circuit-breaker hook
+
+Ask the user (`AskUserQuestion`, options **Install** / **Skip**) whether to
+install the `context-circuit-breaker` hook — a `PreToolUse` hook that warns
+(never blocks) on subagent fan-out and expensive-call loops. See
+`skills/context-circuit-breaker/SKILL.md` for what it does and doesn't do.
+
+**GATE: only proceed on explicit "Install."** This is the only step in this
+skill that touches `settings.json`; treat it with the same caution as any
+other settings/hooks change.
+
+If installed:
+
+1. Copy the hook script:
+   ```bash
+   mkdir -p <target>/.claude/skills/context-circuit-breaker/references
+   cp skills/context-circuit-breaker/references/hook.js \
+     <target>/.claude/skills/context-circuit-breaker/references/hook.js
+   ```
+2. Back up any existing target settings file the same way `CLAUDE.md` is
+   backed up (reuse `backup-claude-md.sh <target>/.claude/settings.json` —
+   it works on any file path, not just `CLAUDE.md`).
+3. Dry-run the merge and show the resulting JSON as the diff/approval gate:
+   ```bash
+   node skills/apply-template/scripts/merge-settings-hook.js \
+     <target>/.claude/settings.json
+   ```
+4. Only after confirmation, apply it:
+   ```bash
+   node skills/apply-template/scripts/merge-settings-hook.js \
+     <target>/.claude/settings.json --apply
+   ```
+
+The merge script only ever adds or confirms the presence of one
+`PreToolUse` entry referencing `context-circuit-breaker/references/hook.js`
+— it is idempotent and leaves every other key in `settings.json` untouched.
+
 ### Step 6: Report
 
 Summarize: what was backed up, which sections were applied/refreshed, which
-companion READMEs were installed. Do not commit — leave staging/committing
-to the user or a follow-up `/commit`.
+companion READMEs were installed, and whether the circuit-breaker hook was
+installed. Do not commit — leave staging/committing to the user or a
+follow-up `/commit`.
 
 ## Security Notes
 
-All three scripts in `scripts/` are dependency-free POSIX shell, make no
-network calls, and are short enough to read end-to-end before running. See
+The four scripts in `scripts/` (three dependency-free POSIX shell, one
+dependency-free Node script for JSON-aware merging) make no network calls
+and are short enough to read end-to-end before running. See
 `assets/readmes/README-security-scripts.md` for the specific properties of
 each — offer to show the user that file if they ask why it's safe to run.
 

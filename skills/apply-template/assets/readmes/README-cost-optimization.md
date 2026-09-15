@@ -24,3 +24,15 @@ installed by `/apply-template` — it only wires the advisory rules into
 `CLAUDE.md`. Follow the canonical doc's "Getting started" section to add
 either one; they involve adding hooks/settings.json entries that touch your
 actual tool execution path, and shouldn't be installed silently.
+
+## Runtime circuit breaker
+
+`/apply-template` *does* offer one hook directly, as an explicit opt-in step
+(Step 5.5): `context-circuit-breaker`, a `PreToolUse` hook that warns —
+never blocks — on subagent fan-out (many `Agent`/`Task` spawns in a short
+window) and expensive-call loops (the same tool called repeatedly with
+near-identical or oversized input). See
+`skills/context-circuit-breaker/SKILL.md` for the exact thresholds and what
+it does and doesn't do. This is a live, per-session warning layer,
+complementary to the after-the-fact analysis that `cost-audit` and
+`session-retro` already provide from trace/transcript data.

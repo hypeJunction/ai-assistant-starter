@@ -111,9 +111,9 @@ npx skills add ./ai-assistant-starter -s commit
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
 | `/init` | Bootstrap project configuration |
-| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation |
+| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs and circuit-breaker hook |
 
-### Background Skills (23 total)
+### Background Skills (24 total)
 
 Auto-loaded when relevant — no slash command needed:
 
@@ -133,6 +133,7 @@ Auto-loaded when relevant — no slash command needed:
 |-------|--------|
 | `branch-protection` | Runtime hook: blocks force-push, hard reset on protected branches |
 | `destructive-command-protection` | Runtime hook: blocks rm -rf, DROP DATABASE, and other destructive commands |
+| `context-circuit-breaker` | Runtime hook: warns (never blocks) on subagent fan-out and expensive-call loops |
 
 **Guideline Skills** (category: guideline)
 
