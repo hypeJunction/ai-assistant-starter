@@ -48,6 +48,21 @@ skills will actually read.
 
 ## Workflow
 
+### Step 0: Refuse to run on this repo itself
+
+Before doing anything else, check whether the target resolves to the
+`ai-assistant-starter` source repo (this repo) rather than a downstream
+consumer project — e.g. its `package.json` has `"name":
+"ai-assistant-starter"`, or it has both a top-level `skills/` directory and
+a `CLAUDE.md` mentioning "Agent Skills specification".
+
+This skill and the `npx skills add` install step exist to configure a
+*separate* project that consumes these skills — never this repo, which
+authors them and already documents itself natively. If the target matches,
+stop and tell the user this looks like the skills source repo itself; ask
+them to confirm the actual target path (e.g. `--target ../my-project`)
+before proceeding.
+
 ### Step 1: Locate the target
 
 Default target is `./CLAUDE.md` (current working directory). If the user

@@ -13,11 +13,15 @@ AI coding assistants work better with structured guidance. This collection provi
 
 ## Installation
 
+Run these commands from **your project's** directory, not from inside this
+cloned repo — `./ai-assistant-starter` is the skills *source*, and installing
+consumes it into a separate target project.
+
 ```bash
-# Clone the repo
+# Clone the repo (as a sibling of your project)
 git clone https://github.com/hypefi/ai-assistant-starter.git
 
-# Install all skills into your project
+# From your project directory, install all skills into your project
 npx skills add ./ai-assistant-starter
 
 # Or install specific skills
