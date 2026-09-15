@@ -189,6 +189,10 @@ npx skills add ./ai-assistant-starter
 /init --update
 ```
 
+## Further Reading
+
+- [Cost Optimization](docs/cost-optimization.md) — reference setup for reducing Claude Code token/dollar spend (command filtering hooks, model-tier routing, context hygiene)
+
 ## Third-Party Notices
 
 This project includes content derived from third-party sources including WCAG 2.1 (W3C, CC BY 4.0), Conventional Commits (CC BY 3.0), and OWASP Top 10 (CC BY-SA 4.0). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for full attribution details.

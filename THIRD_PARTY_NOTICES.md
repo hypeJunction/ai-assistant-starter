@@ -37,6 +37,16 @@ This project includes content derived from or inspired by the following third-pa
 - **License:** [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 - **Scope:** API security category names and risk descriptions.
 
+## MIT Licensed Content
+
+### claude-model-router-hook
+
+- **Used in:** `docs/cost-optimization.md`
+- **Source:** [claude-model-router-hook](https://github.com/tzachbon/claude-model-router-hook)
+- **Author:** [tzachbon](https://github.com/tzachbon)
+- **License:** [MIT](https://github.com/tzachbon/claude-model-router-hook/blob/main/LICENSE)
+- **Scope:** Architecture description (SessionStart/UserPromptSubmit/PreToolUse hook wiring, scored-taxonomy classification approach) referenced as a named example of automatic model-tier routing. No source code is copied into this project.
+
 ## Other Referenced Standards
 
 ### SLSA Framework
