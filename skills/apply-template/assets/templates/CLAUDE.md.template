@@ -77,6 +77,21 @@ quality of what you can judge. Apply this before trusting search output:
   here rather than optimizing on intuition.
 <!-- ai-assistant-starter:end:process-hygiene -->
 
+<!-- ai-assistant-starter:begin:verification-reporting -->
+## Verification Reporting
+
+Never run tests, typecheck, lint, build, or any other validation/verification
+command directly in the main agent's own shell — delegate the run to an
+independent subagent and read its output before claiming success. Size what
+you ask the subagent to report to the outcome:
+- On any failure or ambiguous result, require the complete raw output
+  (stdout/stderr, exit code) — you cannot diagnose from a summary.
+- On a clean pass, ask only for the command(s) run, the exit code, a
+  one-line result, and one representative raw-output sample per distinct
+  scenario — never a dump of every repeated call in a passing loop or
+  threshold test.
+<!-- ai-assistant-starter:end:verification-reporting -->
+
 <!-- ai-assistant-starter:begin:scope-discipline -->
 ## Scope Discipline
 

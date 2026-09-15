@@ -162,7 +162,7 @@ Ready to verify this test fails.
 
 **Mode:** Read-only verification -- run tests, do not change anything.
 
-**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require raw output sized to the outcome; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
 
 ### Step 2.1: Run the Test
 

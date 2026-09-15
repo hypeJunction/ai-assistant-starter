@@ -287,7 +287,7 @@ Every command in this skill (typecheck, lint, tests, build, coverage, security s
 When a subagent reports task completion, verify independently:
 
 1. Check the VCS diff — does it show the expected changes?
-2. Dispatch a fresh subagent to (re-)run validation commands and return full raw output — don't trust a bare "all tests pass" claim from any agent, including the one that made the change
+2. Dispatch a fresh subagent to (re-)run validation commands and return raw output sized to the outcome (see `ai-assistant-protocol` § Validation Execution) — don't trust a bare "all tests pass" claim from any agent, including the one that made the change
 3. Read that raw output yourself and report the actual state based on it
 
 ---
