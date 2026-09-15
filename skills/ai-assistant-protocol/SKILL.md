@@ -279,8 +279,11 @@ These skills include their own validation and commit phases. Do not chain additi
 | `/migrate` | assess + plan + generate + review + apply + validate + commit |
 | `/release` | prepare + version + validate + tag |
 | `/deps` | audit + plan + update + validate + commit |
+| `/pr` | validate + security scan + existing-PR check + push + create/update PR |
 
 **Do NOT chain:** `/finish` after `/implement`, `/validate` after `/finish`, `/commit` after `/debug`. The enclosing workflow already performs these steps.
+
+**Never bypass `/pr` with a raw `gh pr create`/`gh pr edit`.** Composing the `gh` invocation directly skips the skill's validation loop, security scan, existing-PR check, and description-quality rules — even when the task is "just fix the description" on a PR that already exists. Route every PR creation or edit through `/pr`.
 
 ### Composable Building Blocks
 
@@ -307,6 +310,7 @@ These skills perform a single concern and are designed to be called independentl
 - **Code written, need tests?** → `/test-coverage`
 - **Want tests first?** → `/tdd`
 - **End of work session?** → `/finish` (only if work was not done via a self-contained workflow)
+- **Pushing a branch, opening a PR, or fixing a PR's description?** → `/pr` (never call `gh pr create`/`gh pr edit` directly)
 
 ## Token Optimization
 
