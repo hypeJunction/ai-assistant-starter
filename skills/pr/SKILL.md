@@ -118,29 +118,19 @@ Report format:
 
 Run concrete security scan commands against the changed files (see also `../commit/references/pre-commit-verification.md` and `../validate/references/security-scan-patterns.md` for detailed pattern guidance):
 
+Run as a single grep pass (not one invocation per category — the match text itself tells you which category it is) and cap the output so an unbounded diff can't flood context:
+
 ```bash
 MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
 CHANGED_FILES=$(git diff $MAIN...HEAD --name-only)
 
-# Secrets detection
 grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
-  -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" $CHANGED_FILES
-
-# Insecure pattern detection
-grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
-  -E "(eval\(|new Function\(|innerHTML\s*=|dangerouslySetInnerHTML|document\.write\()" $CHANGED_FILES
-
-# Raw SQL interpolation (injection risk)
-grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
-  -E "(\\\$queryRaw\`|\\\$executeRaw\`|\.query\(.*\\\$\{|SELECT.*\\\$\{|INSERT.*\\\$\{|UPDATE.*\\\$\{|DELETE.*\\\$\{)" $CHANGED_FILES
-
-# Command injection patterns
-grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
-  -E "(child_process|exec\(|execSync\(|spawn\(|execFile\()" $CHANGED_FILES
-
-# Disabled security controls
-grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
-  -E "(rejectUnauthorized:\s*false|NODE_TLS_REJECT_UNAUTHORIZED|--no-verify)" $CHANGED_FILES
+  -e "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" \
+  -e "(eval\(|new Function\(|innerHTML\s*=|dangerouslySetInnerHTML|document\.write\()" \
+  -e "(\\\$queryRaw\`|\\\$executeRaw\`|\.query\(.*\\\$\{|SELECT.*\\\$\{|INSERT.*\\\$\{|UPDATE.*\\\$\{|DELETE.*\\\$\{)" \
+  -e "(child_process|exec\(|execSync\(|spawn\(|execFile\()" \
+  -e "(rejectUnauthorized:\s*false|NODE_TLS_REJECT_UNAUTHORIZED|--no-verify)" \
+  -E $CHANGED_FILES | head -100
 ```
 
 **Interpreting results:**
