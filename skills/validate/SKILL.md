@@ -55,6 +55,17 @@ If `git status` shows no changes and no specific mode is requested, report "No c
 
 > **Note:** Detect package manager from lockfile (`package-lock.json` = npm, `pnpm-lock.yaml` = pnpm, `yarn.lock` = yarn, `bun.lockb` = bun). Use detected manager for all commands. Command examples below use `npm` as placeholder — substitute the detected manager.
 
+## Quiet Execution
+
+`scripts/quiet-run.sh <label> -- <command...>` runs a command and prints nothing but `PASS: <label>` when it exits 0; on a non-zero exit it prints `FAIL: <label> (exit N)` followed by the full captured output. The subagent running validation uses this wrapper for commands with a known, stable exit-code contract — typecheck, lint, test, build, format:check — since a clean pass carries no information worth spending tokens on.
+
+Use the raw command (no wrapper) instead when:
+- The tool is unfamiliar or its exit-code semantics haven't been verified (e.g. it exits 0 with warnings you'd still want to see)
+- The check is `--fix` mode, coverage, or anything where the passing output itself is the deliverable
+- Debugging a failure in detail — re-run raw for full interactive context
+
+This does not relax Iron Law 4: on a `FAIL`, the wrapper's output *is* the fresh evidence — read it before reporting.
+
 ## Scope Flags
 
 | Flag | Description |
