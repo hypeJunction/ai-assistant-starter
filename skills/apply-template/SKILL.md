@@ -1,6 +1,6 @@
 ---
 name: apply-template
-description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs and the context-circuit-breaker / cost-guardrail enforcement hooks. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
+description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, verification/test delegation, scope discipline, repo pre-flight, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs and the context-circuit-breaker / cost-guardrail enforcement hooks. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
 category: meta
 model: sonnet
 effort: medium

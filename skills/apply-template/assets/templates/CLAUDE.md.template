@@ -58,8 +58,9 @@ quality of what you can judge. Apply this before trusting search output:
   direct continuation of the same task.
 - **Delegate long sequential traces.** If a single turn is running long
   (dozens of sequential exploration/verification calls against the same
-  project), delegate the remaining work to a subagent instead of continuing
-  inline.
+  project) — including checking status/log/diff or reading files across
+  multiple git worktrees of the same repo — delegate the remaining work to a
+  subagent instead of continuing inline.
 - **Avoid redundant verification calls.** Before re-fetching state you
   already have (re-navigating a tab, re-reading a file you just wrote,
   re-running a check you just ran), check whether you already know the
@@ -80,10 +81,15 @@ quality of what you can judge. Apply this before trusting search output:
 <!-- ai-assistant-starter:begin:verification-reporting -->
 ## Verification Reporting
 
-Never run tests, typecheck, lint, build, or any other validation/verification
-command directly in the main agent's own shell — delegate the run to an
-independent subagent and read its output before claiming success. Size what
-you ask the subagent to report to the outcome:
+Never run tests, typecheck, lint, build, ad-hoc verification scripts (e.g.
+Playwright/Node one-offs), or process management (starting, stopping, or
+killing dev servers) directly in the main agent's own shell — always delegate
+the run to an independent subagent (via the Agent tool) and read its full raw
+output before reporting a result, even for a single quick check. This applies
+to every project and every skill, not just one. A subagent's pass/fail
+summary is not evidence on its own — always read the raw command output it
+returns before claiming success. Size what you ask the subagent to report to
+the outcome:
 - On any failure or ambiguous result, require the complete raw output
   (stdout/stderr, exit code) — you cannot diagnose from a summary.
 - On a clean pass, ask only for the command(s) run, the exit code, a
