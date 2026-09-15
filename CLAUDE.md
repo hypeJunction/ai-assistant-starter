@@ -111,7 +111,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/init` | Bootstrap project configuration |
 | `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation |
 
-### Background Skills (22 total)
+### Background Skills (23 total)
 
 Auto-loaded when relevant — no slash command needed:
 
@@ -120,6 +120,7 @@ Auto-loaded when relevant — no slash command needed:
 | Skill | Domain |
 |-------|--------|
 | `ai-assistant-protocol` | Core execution protocol, code quality, testing requirements |
+| `context-disambiguation` | When to ask clarifying questions vs. explore, to keep initial context small |
 | `communication-guidelines` | Response formatting and status indicators |
 | `code-review-guidelines` | Review checklist and feedback patterns |
 | `interaction-boundaries` | Human-AI interaction boundaries, non-anthropomorphic communication |

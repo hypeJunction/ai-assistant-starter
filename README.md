@@ -96,6 +96,7 @@ Runtime hooks that intercept and block dangerous operations:
 These are loaded automatically when relevant — no slash command needed:
 
 - **ai-assistant-protocol** — Core execution protocol, code quality, testing requirements
+- **context-disambiguation** — Ask clarifying questions instead of broad exploration when ambiguity would pull large context
 - **git-conventions** — Branch naming, commit messages, workflow patterns
 - **typescript-guidelines** — TypeScript best practices and patterns
 - **vitest-guidelines** — Testing with Vitest

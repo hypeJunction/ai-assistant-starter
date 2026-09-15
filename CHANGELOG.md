@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `context-disambiguation` background skill — protocol for asking targeted clarifying questions instead of broad exploration when a prompt is ambiguous and resolving it would require an unbounded search, reading many files, or a disambiguation-only subagent dispatch; includes an Auto Mode interaction rule (narrowest-interpretation-plus-stated-assumption, not silent broad-scope guessing)
+
 ### Changed
 - `/commit` clarifies body wrapping ("wrap at 72 chars/line", not "72 chars total") and switches subject casing to lowercase-after-prefix, matching Angular/Kubernetes/Conventional Commits practice — `git-conventions` previously said "Capitalize first letter," contradicting both `/commit`'s own examples and `/pr`'s lowercase title examples
 - `/commit` auto-derives a `Refs TICKET-123` footer from a ticket encoded in the branch name (per `git-conventions` branch naming) instead of leaving ticket references entirely manual, without asking per-commit the way `/pr` asks once per branch
