@@ -100,6 +100,22 @@ Use `fixed_baseline_total_est_tokens` as the comparison point for a Context-mult
 
 **Skill-name limitation**: the OTel exporter records `Skill` as one generic tool name — it does not expose *which* skill was invoked (that argument lives only in the assistant's tool-call input, which this exporter drops). If `tool_usage` shows `Skill` at meaningful volume, cross-reference with local session transcripts (`~/.claude/projects/<project-slug>/*.jsonl`, one file per session) to break it down by name: grep each transcript for `"name":"Skill"` tool_use blocks and read the `input.skill` value. Do this only when `Skill` invocation count is itself high enough to be worth decomposing — otherwise note the limitation and move on.
 
+**1a-baseline. Refresh cost baselines for `cost-guardrail`** (optional, only if the `cost-guardrail` enforcement hook is installed):
+
+```bash
+python3 references/build_cost_baselines.py --out .claude/cost-audit/cost_baselines.json
+```
+
+This groups cost-bearing observations by model and by tool, computing
+`count`/`median_cost`/`p95_cost`/`mean_cost` for each (only for models/tools
+with at least `--min-sample`, default 5, observations), and writes a small,
+fixed-shape JSON — no raw trace data — to a stable path outside the
+per-run `--out-dir` scratch directories, so the `cost-guardrail` hook always
+knows where to look. This is a manual, credentialed step (same Langfuse
+credentials as the rest of this audit); the hook itself never calls
+Langfuse. See "Continuous baseline refresh" below for the recommended
+refresh cadence.
+
 **Stop condition.** Report "No significant waste patterns found" and stop only when **all** of these hold — do not manufacture findings to justify the audit, but do not stop early either:
 
 1. `trace_outliers` is empty, **and**
@@ -274,6 +290,27 @@ Rank the labeled traces by `recoverable_cost` and keep only the ones worth fixin
 - Keep the offender list short (≤5 single-trace, ≤3 session-level) — depth over breadth
 - When a past `/cost-audit` correction exists, check whether the targeted pattern's rate actually dropped before looking for new offenders
 - When a cross-trace finding looks like an ignored user correction, confirm it by reading the local transcript rather than proposing a fix off the Langfuse aggregate alone — that pattern is the one Langfuse's own data is least equipped to confirm on its own
+
+## Continuous Baseline Refresh (for `cost-guardrail`)
+
+`.claude/cost-audit/cost_baselines.json` (produced by Step 1a-baseline) is
+not self-updating — it only changes when `build_cost_baselines.py` is run
+again. Recommended cadence: weekly, via a **scheduled reminder**, not an
+autonomous job.
+
+Configure one scheduled agent via the `schedule` skill with a message-only
+prompt/action, e.g.:
+
+> "Reminder: refresh the cost-guardrail baseline. Run
+> `python3 skills/cost-audit/references/build_cost_baselines.py --out .claude/cost-audit/cost_baselines.json`
+> (with Langfuse env vars exported) and review the diff before committing,
+> if the file is tracked."
+
+**Do not configure the scheduled job to execute `build_cost_baselines.py`
+directly.** It needs live Langfuse credentials and incurs its own token
+cost, so it should remain a manual, reviewed step — the scheduled job's only
+job is to remind, not to run it. This mirrors the rest of `/cost-audit`:
+the agent reruns queries on request, never on an unattended timer.
 
 ## Acceptance Tests
 

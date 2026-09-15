@@ -88,7 +88,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
 | `/init` | Bootstrap project configuration |
-| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs and circuit-breaker hook |
+| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs and circuit-breaker/cost-guardrail hooks |
 
 ### Enforcement Hooks (auto-loaded)
 
@@ -97,6 +97,7 @@ Runtime hooks that intercept dangerous or costly operations:
 - **branch-protection** — Blocks force-push, hard reset, branch deletion on main/master
 - **destructive-command-protection** — Blocks rm -rf /, DROP DATABASE, and other destructive commands
 - **context-circuit-breaker** — Warns (never blocks) on subagent fan-out and expensive-call loops
+- **cost-guardrail** — Warns or blocks Agent spawns and Bash calls whose historical cost is disproportionate to the cheapest tracked model tier, using baselines cost-audit refreshes
 
 ### Background Skills (auto-loaded)
 

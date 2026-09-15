@@ -244,6 +244,23 @@ this doc's other levers: it catches the pattern live, in-session, where
 `cost-audit`/`session-retro` only see it after the fact in trace or
 transcript data.
 
+### 5. Historical cost baselines (gates disproportionate spawns)
+
+The circuit breaker above watches call *shape* (fan-out, repeats) — it has
+no notion of dollars. `ai-assistant-starter`'s `cost-guardrail` skill closes
+that gap: it wires a `PreToolUse` hook, matched on `Agent` and `Bash`, that
+compares a requested subagent model tier against historical cost baselines
+`cost-audit` mines from Langfuse trace data (`.claude/cost-audit/cost_baselines.json`,
+refreshed by `build_cost_baselines.py`), and warns (default) or blocks when
+the requested tier's historical median cost is a large multiple of the
+cheapest tracked tier's. It fails open whenever that baseline is missing,
+stale, or doesn't cover the requested tier, so installing it is harmless
+before a baseline exists. Like the circuit breaker, it's installed via
+`/apply-template`'s opt-in Step 5.6, uses the same `hookSpecificOutput`
+protocol, and the baseline file itself is refreshed only manually (a
+scheduled job may remind, never run the refresh unattended — see
+`cost-audit`'s "Continuous Baseline Refresh" section).
+
 ## Suggested `settings.json` skeleton
 
 ```json

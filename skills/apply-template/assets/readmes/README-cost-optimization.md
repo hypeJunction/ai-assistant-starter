@@ -36,3 +36,15 @@ near-identical or oversized input). See
 it does and doesn't do. This is a live, per-session warning layer,
 complementary to the after-the-fact analysis that `cost-audit` and
 `session-retro` already provide from trace/transcript data.
+
+## Cost guardrail
+
+`/apply-template` offers a second hook the same way, as Step 5.6:
+`cost-guardrail`, a `PreToolUse` hook (matched on `Agent` and `Bash`) that
+compares a requested subagent model tier against historical cost baselines
+`cost-audit` mines from Langfuse (`.claude/cost-audit/cost_baselines.json`),
+and warns (default `warn-only`) or blocks (`enforce`) when the requested
+tier's historical median cost is a large multiple of the cheapest tracked
+tier's. It fails open until that baseline file exists, so installing it
+before running `/cost-audit`'s baseline-refresh step is harmless. See
+`skills/cost-guardrail/SKILL.md` for configuration and thresholds.

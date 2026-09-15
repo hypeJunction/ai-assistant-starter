@@ -1,6 +1,6 @@
 ---
 name: apply-template
-description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs and the context-circuit-breaker hook. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
+description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs and the context-circuit-breaker / cost-guardrail enforcement hooks. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
 category: meta
 model: sonnet
 effort: medium
@@ -16,11 +16,13 @@ triggers:
 
 > **Purpose:** Merge the standardized CLAUDE.md sections into an existing
 > installation without disturbing project-specific content, and offer
-> companion reference READMEs and the context-circuit-breaker hook.
+> companion reference READMEs and the context-circuit-breaker / cost-guardrail
+> enforcement hooks.
 > **Usage:** `/apply-template [--target <path>]`
 > **Output:** Updated `CLAUDE.md` (backed up first), any selected
 > `docs/README-*.md` files, and — only if opted in — a `context-circuit-breaker`
-> `PreToolUse` hook entry in `settings.json` (also backed up first).
+> and/or `cost-guardrail` `PreToolUse` hook entry in `settings.json` (also
+> backed up first).
 
 ## Constraints
 
@@ -35,11 +37,12 @@ triggers:
 - **Ask before installing companion READMEs** — don't copy all of them by
   default.
 - **This skill edits `CLAUDE.md`, `docs/`, and, only if the user opts in,
-  one narrowly-scoped `settings.json` hook entry.** The one exception is the
-  `context-circuit-breaker` hook (see Step 5.5) — installed only on explicit
-  request, behind the same dry-run/backup/approval gate as everything else.
-  It never touches any other part of `settings.json` (permissions, model,
-  other hooks) or `.claude/skills/` content beyond copying that one hook's
+  a narrowly-scoped `settings.json` hook entry per enforcement hook.** The
+  two exceptions are the `context-circuit-breaker` hook (Step 5.5) and the
+  `cost-guardrail` hook (Step 5.6) — each installed only on explicit request,
+  behind the same dry-run/backup/approval gate as everything else. Neither
+  touches any other part of `settings.json` (permissions, model, other
+  hooks) or `.claude/skills/` content beyond copying that one hook's
   `references/hook.js` — broader hook/settings changes are out of scope (see
   `docs/cost-optimization.md` once installed).
 
@@ -191,12 +194,59 @@ The merge script only ever adds or confirms the presence of one
 `PreToolUse` entry referencing `context-circuit-breaker/references/hook.js`
 — it is idempotent and leaves every other key in `settings.json` untouched.
 
+### Step 5.6: Offer the cost-guardrail hook
+
+Ask the user (`AskUserQuestion`, options **Install** / **Skip**) whether to
+install the `cost-guardrail` hook — a `PreToolUse` hook that warns or blocks
+on `Agent` spawns (and `Bash` calls) whose historical cost is disproportionate
+to the cheapest tracked model tier. See `skills/cost-guardrail/SKILL.md` for
+what it does and doesn't do, including that it fails open until a
+`cost_baselines.json` file exists — installing the hook alone is harmless.
+
+**GATE: only proceed on explicit "Install."** Same caution as Step 5.5 — this
+is the only other step in this skill that touches `settings.json`.
+
+If installed:
+
+1. Copy the hook script:
+   ```bash
+   mkdir -p <target>/.claude/skills/cost-guardrail/references
+   cp skills/cost-guardrail/references/hook.js \
+     <target>/.claude/skills/cost-guardrail/references/hook.js
+   ```
+2. Back up any existing target settings file the same way as Step 5.5
+   (`backup-claude-md.sh <target>/.claude/settings.json`).
+3. Dry-run the merge — this hook needs two matcher entries (`Agent` and
+   `Bash`), both pointing at the same command, in one call:
+   ```bash
+   node skills/apply-template/scripts/merge-settings-hook.js \
+     <target>/.claude/settings.json \
+     --command "node .claude/skills/cost-guardrail/references/hook.js" \
+     --matcher Agent --matcher Bash
+   ```
+4. Only after confirmation, apply it:
+   ```bash
+   node skills/apply-template/scripts/merge-settings-hook.js \
+     <target>/.claude/settings.json \
+     --command "node .claude/skills/cost-guardrail/references/hook.js" \
+     --matcher Agent --matcher Bash --apply
+   ```
+5. Remind the user that the hook is inert until they run
+   `/cost-audit`'s baseline-refresh command (see its SKILL.md's "Continuous
+   baseline refresh" section) to populate `.claude/cost-audit/cost_baselines.json`,
+   and that it defaults to `warn-only` mode (never blocks) until
+   `COST_GUARDRAIL_MODE=enforce` is set explicitly.
+
+Same idempotency guarantee as Step 5.5: re-running only confirms presence,
+never duplicates an entry, and every other key in `settings.json` is left
+untouched.
+
 ### Step 6: Report
 
 Summarize: what was backed up, which sections were applied/refreshed, which
-companion READMEs were installed, and whether the circuit-breaker hook was
-installed. Do not commit — leave staging/committing to the user or a
-follow-up `/commit`.
+companion READMEs were installed, and whether the circuit-breaker and/or
+cost-guardrail hooks were installed. Do not commit — leave staging/committing
+to the user or a follow-up `/commit`.
 
 ## Security Notes
 

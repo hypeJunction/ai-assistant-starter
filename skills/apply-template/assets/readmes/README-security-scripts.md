@@ -39,18 +39,21 @@ Copies the companion READMEs you selected into the target project's `docs/`.
 - Won't overwrite an existing destination file unless you pass `--force`.
 
 ## `merge-settings-hook.js`
-Only runs when you explicitly opt in to installing the
-`context-circuit-breaker` hook. Adds or confirms one `PreToolUse` entry in
-the target's `settings.json`.
+Only runs when you explicitly opt in to installing an enforcement hook
+(`context-circuit-breaker` and/or `cost-guardrail`). Adds or confirms one
+`PreToolUse` entry per matcher in the target's `settings.json`, for the
+`--command`/`--matcher` pair given on the command line (defaults to the
+`context-circuit-breaker` hook under matcher `"*"` if neither is passed).
 
 - **Dry-run by default.** Prints the resulting JSON and writes nothing
   unless called with `--apply`, same gate as `apply-template.sh`.
 - **Touches only `hooks.PreToolUse`.** Reads the whole file as JSON, appends
-  one array entry if absent, and writes it back — every other key
-  (`permissions`, `model`, other hooks) is preserved as-is.
-- **Idempotent.** Checks whether an entry already references
-  `context-circuit-breaker/references/hook.js` by command string before
-  appending, so re-running never duplicates it.
+  or extends array entries for the given matcher(s) if absent, and writes it
+  back — every other key (`permissions`, `model`, other hooks) is preserved
+  as-is.
+- **Idempotent.** Checks whether an entry under the same matcher already
+  references the exact command string before appending, so re-running never
+  duplicates it.
 - Refuses to touch the target if it isn't valid JSON, rather than guessing.
 - No network access, no `eval`, no shelling out — pure Node `fs`/`JSON`.
 
