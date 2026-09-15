@@ -1,6 +1,6 @@
 ---
 name: apply-template
-description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene) to an existing installation, and optionally install companion reference READMEs. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
+description: Apply the AI Assistant Starter CLAUDE.md template (task classification, search-relevance protocol, process hygiene, AI-generated text conventions) to an existing installation, and optionally install companion reference READMEs. Use when a project already has skills installed but lacks the standardized CLAUDE.md sections, or to refresh them after a template update.
 category: meta
 model: sonnet
 effort: medium
@@ -134,6 +134,20 @@ skills/apply-template/scripts/copy-readmes.sh \
 The script skips (does not overwrite) a destination file that already
 exists unless the user explicitly asks to overwrite, in which case add
 `--force` before the file list.
+
+**If at least one README was actually copied**, add the "Further Reading"
+section listing only those files — never the full catalog:
+
+```bash
+skills/apply-template/scripts/write-further-reading.sh \
+  <target>/CLAUDE.md docs \
+  <copied-file-1.md> [<copied-file-2.md> ...]
+```
+
+Run without `--apply` first (dry-run diff, same gate as Step 3), then re-run
+with `--apply`. **If no READMEs were selected or copied, skip this
+sub-step entirely** — do not add a "Further Reading" section pointing at
+docs that don't exist.
 
 ### Step 6: Report
 

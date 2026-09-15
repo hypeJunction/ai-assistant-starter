@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `context-disambiguation` background skill — protocol for asking targeted clarifying questions instead of broad exploration when a prompt is ambiguous and resolving it would require an unbounded search, reading many files, or a disambiguation-only subagent dispatch; includes an Auto Mode interaction rule (narrowest-interpretation-plus-stated-assumption, not silent broad-scope guessing)
 
+### Added
+- `apply-template` CLAUDE.md template gains an "AI-Generated Text Conventions" section: caps comment length at one line, caps concept explanations at one paragraph, bounds agent verbosity generally, and requires all AI-generated text (comments, docs, PR/commit prose) to describe the codebase's current state for a real reader rather than narrating the change history or reading like a changelog
+- `apply-template` script `write-further-reading.sh` generates the "Further Reading" CLAUDE.md section from only the companion READMEs actually copied into a target's `docs/`, merged via the same marker mechanism
+
+### Fixed
+- `apply-template`'s "Further Reading" section moved out of the always-merged `CLAUDE.md.template` — it previously listed all three companion READMEs unconditionally, producing dead `docs/README-*.md` links on any target where the user didn't install some or all of them (or has no `docs/` at all)
+
 ### Changed
 - `/commit` clarifies body wrapping ("wrap at 72 chars/line", not "72 chars total") and switches subject casing to lowercase-after-prefix, matching Angular/Kubernetes/Conventional Commits practice — `git-conventions` previously said "Capitalize first letter," contradicting both `/commit`'s own examples and `/pr`'s lowercase title examples
 - `/commit` auto-derives a `Refs TICKET-123` footer from a ticket encoded in the branch name (per `git-conventions` branch naming) instead of leaving ticket references entirely manual, without asking per-commit the way `/pr` asks once per branch

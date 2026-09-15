@@ -73,14 +73,28 @@ quality of what you can judge. Apply this before trusting search output:
   here rather than optimizing on intuition.
 <!-- ai-assistant-starter:end:process-hygiene -->
 
-<!-- ai-assistant-starter:begin:further-reading -->
-## Further Reading
+<!-- ai-assistant-starter:begin:ai-generated-text -->
+## AI-Generated Text Conventions
 
-Additional adoption guides live in `docs/`:
-- `docs/README-cost-optimization.md` — pointer to the full cost-optimization reference (command-filtering hooks, model-tier routing setup, settings.json skeleton)
-- `docs/README-search-relevance.md` — the reasoning behind the Search & Relevance Protocol above
-- `docs/README-security-scripts.md` — what the `apply-template` install scripts do and don't do
+All AI-generated text — code comments, docstrings, PR/commit descriptions,
+generated docs — is written for a real person reading the current codebase,
+not for a changelog or a future auditor of what changed.
 
-(Only present if selected during `/apply-template` install — see that skill
-to add or refresh them.)
-<!-- ai-assistant-starter:end:further-reading -->
+- **Audience is a person, not a diff.** Write for someone who wants to
+  understand what the code does and why, right now — never "used by X",
+  "added for the Y fix", or "handles the case from issue #123."
+- **Never narrate history.** Describe the current state only. No "previously
+  this did X, now it does Y," no changelog-style entries embedded in code,
+  docs, or comments, and no explaining the sequence of changes that produced
+  the current state.
+- **One paragraph per concept.** A single explanation (docstring, comment
+  block, section of generated docs) covers one concept in one paragraph. If
+  a second paragraph feels needed, it's a second concept — split it or cut
+  it.
+- **Comments have a length ceiling.** A variable/method/function comment is
+  one line. If the reasoning needs more than a line, question whether the
+  code itself should be clearer instead of leaning on prose.
+- **Verbosity is capped throughout.** Default to the shortest text that
+  fully conveys the point — this applies to comments, generated docs, and
+  agent-authored prose alike, not just user-facing chat responses.
+<!-- ai-assistant-starter:end:ai-generated-text -->

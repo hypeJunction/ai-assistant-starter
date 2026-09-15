@@ -27,3 +27,20 @@ or other sections — is never read or modified by the merge.
    scanning the template's own markers.
 3. Document the new section in `SKILL.md`'s workflow if it changes what gets
    shown in the dry-run diff meaningfully.
+
+## Conditional sections (content depends on user choice)
+
+`CLAUDE.md.template` only holds sections that apply unconditionally to every
+target. A section whose content depends on what the user actually chose to
+install (e.g. "Further Reading", which must list only the companion READMEs
+that were copied) does **not** belong there — a fixed version of it would
+get merged into every target regardless of what's actually on disk,
+producing dead links.
+
+Instead, generate that section's content at the point the choice is made and
+merge it with `apply-template.sh` against a small temp template file built
+for that run (see `scripts/write-further-reading.sh` for the pattern: build
+one section's marker block into a temp file, then call `apply-template.sh
+<temp-file> <target> [--apply]`). Skip the merge entirely if the user's
+choice was empty — never fall back to listing all options as if they were
+installed.
