@@ -113,6 +113,16 @@ Runtime enforcement hook for Claude Code's PreToolUse hook system. Intercepts Ba
 | `node -e "execSync(...)"` | Interpreter one-liner scan | Block |
 | `ruby -e "system(...)"` | Interpreter one-liner scan | Block |
 
+## When a Legitimate Operation Is Blocked
+
+The hook blocks the command outright and does not execute it — it never runs a destructive command with hidden safety flags. If a blocked operation is genuinely needed (e.g. a real `DROP DATABASE` on a decommissioned dev DB), do not try to bypass the hook (no alternate quoting, interpreter one-liners, or disabling the hook). Instead:
+
+1. Take a backup/snapshot first (e.g. `pg_dump`, an RDS/Cloud SQL snapshot, an EBS/volume snapshot, `terraform state pull`, an S3/GCS bucket sync to a backup location) appropriate to the resource.
+2. Explain to the user what's blocked and why, and confirm the backup is in place.
+3. Have the user run the command themselves outside the hooked environment, or explicitly ask them to temporarily disable the hook for that one command.
+
+Never advise disabling this hook globally or permanently to work around a single blocked command.
+
 ## Installation
 
 Add to your Claude Code settings (`~/.claude/settings.json` or project `.claude/settings.json`):

@@ -299,6 +299,29 @@ gh release create vX.Y.Z \
 
 ---
 
+## Recovery: Undoing a Bad Release
+
+If a problem is discovered after tagging/pushing, do not force-push or delete history on `main`. Use these steps, choosing based on what already happened:
+
+**Tag pushed, but nothing published (no `npm publish`/`gh release create` yet):**
+```bash
+git tag -d vX.Y.Z                       # delete local tag
+git push origin :refs/tags/vX.Y.Z       # delete remote tag
+```
+Then revert the release commit on `main` with the `revert` skill rather than resetting the branch.
+
+**GitHub release created:**
+```bash
+gh release delete vX.Y.Z --yes          # remove the GitHub release
+```
+Delete the tag as above afterward if it should not exist.
+
+**Package published to a registry (e.g. npm):** registries generally do not allow un-publishing after a window (npm blocks unpublish after 72 hours and once other packages depend on it). Prefer `npm deprecate <pkg>@X.Y.Z "reason"` and ship a corrected patch release, rather than attempting to unpublish.
+
+**Release commit already on `main` with people having pulled it:** use the `revert` skill to create a new revert commit — never `git reset --hard` a shared branch.
+
+---
+
 ## Release Complete
 
 Present release summary. See [references/release-display-templates.md](references/release-display-templates.md) for summary template.

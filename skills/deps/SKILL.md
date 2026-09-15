@@ -155,6 +155,8 @@ Present the update strategy and get approval.
 
 #### Step 3.1: Apply Updates in Batches
 
+Before the first batch, confirm `package.json` and `$LOCK_FILE` have no uncommitted changes (`git status --porcelain package.json $LOCK_FILE`) — if they're dirty, stop and get them committed or stashed first, so each batch has a clean revert point.
+
 **For each approved batch:**
 
 ```bash
@@ -168,7 +170,7 @@ $PKG_MGR install package1@X.Y.W package2@A.B.D
 $PKG_MGR run typecheck
 ```
 
-**If type errors occur:** Present warning with options (fix, revert batch, pin version). Wait for decision. See [references/common-issues.md](references/common-issues.md) for troubleshooting.
+**If type errors occur:** Present warning with options (fix, revert batch, pin version). To revert the batch: `git checkout -- package.json $LOCK_FILE && $PKG_MGR install`, which restores the last committed manifest/lockfile and reinstalls. Wait for decision. See [references/common-issues.md](references/common-issues.md) for troubleshooting.
 
 #### Step 3.3: Progress Report
 
@@ -213,7 +215,7 @@ $PKG_MGR run build
 | Build | Pass / Fail | [details] |
 ```
 
-**If failures:** Present options (fix and re-validate, revert packages, create todo). Wait for decision.
+**If failures:** Present options (fix and re-validate, revert packages, create todo). To revert all package updates: `git checkout -- package.json $LOCK_FILE && $PKG_MGR install`. Wait for decision.
 
 **GATE: All validations must pass before commit.**
 

@@ -53,6 +53,10 @@ export PROTECTED_BRANCHES="main,master,production"
 
 The hook protocol only supports `block` and passthrough. "Warn"-level operations are implemented as blocks with a softer confirmation-style message — the agent is told to ask the user before retrying.
 
+## Feature-Branch Safety Reminder
+
+`git reset --hard` and `git push --force` are allowed unconditionally on non-protected branches (BP-T4, BP-T5) — the hook does not block them there. That does not make them safe by default: before running either on any branch, the agent must run `git status` first and stash (`git stash -u`) or commit any uncommitted work it finds, so a feature-branch hard reset or force-push never silently discards it.
+
 ## Acceptance Tests
 
 | ID | Type | Condition | Expected |

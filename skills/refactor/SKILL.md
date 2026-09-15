@@ -115,13 +115,14 @@ Present the chosen strategy (direct change or abstraction layer) as part of the 
 
 ### Step 4.1: Create Git Savepoint
 
-Before starting any changes:
+Before starting any changes, ensure a clean, restorable starting point:
 
 ```bash
-git stash push -m "savepoint: before refactor" --include-untracked 2>/dev/null; git stash pop 2>/dev/null
+git status --porcelain   # check for uncommitted work
 ```
 
-Or ensure all current work is committed so you can revert cleanly.
+- If the tree is clean, note the current commit: `git rev-parse HEAD` — this is the savepoint to return to (`git reset --hard <sha>`) if the refactor needs to be fully abandoned.
+- If there is uncommitted work, either commit it first, or create a real (non-popped) stash: `git stash push -m "savepoint: before refactor" --include-untracked`. Recover it later with `git stash pop` (do not pop immediately — an immediate stash+pop is a no-op and leaves no restorable snapshot).
 
 ### Step 4.2: Determine Change Order (Phased Refactoring)
 
