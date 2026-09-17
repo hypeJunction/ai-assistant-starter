@@ -3,19 +3,23 @@
 /**
  * Branch Protection Hook for Claude Code
  *
- * Intercepts Bash tool calls and blocks dangerous git operations
- * on protected branches (main, master, production).
+ * Intercepts Bash tool calls and blocks (or asks confirmation for) git
+ * operations that would rewrite history or destroy work on a protected
+ * branch (default: main, master).
  *
- * Hook protocol: reads tool input from stdin as JSON,
- * outputs JSON decision to stdout.
+ * Hook protocol: reads tool input from stdin as JSON, outputs
+ * `hookSpecificOutput.permissionDecision` JSON to stdout (allow/ask/deny).
+ * Hard-destructive operations (force-push, hard-reset, branch delete) on a
+ * protected branch return `deny`. Softer operations (checkout/restore/clean
+ * that discard uncommitted or untracked work) return `ask` rather than a
+ * silent block, since they're sometimes exactly what's wanted.
+ *
+ * Fails open on any error reading stdin or resolving the current branch —
+ * this hook should never be the reason a command is blocked when there's
+ * no real signal behind it.
  */
 
 const { execSync } = require('child_process');
-
-const PROTECTED_BRANCHES = (process.env.PROTECTED_BRANCHES || 'main,master')
-  .split(',')
-  .map(b => b.trim())
-  .filter(Boolean);
 
 function getInput() {
   return new Promise((resolve) => {
@@ -34,109 +38,145 @@ function getInput() {
 
 function extractCommand(input) {
   if (!input) return '';
-  const cmd = input.tool_input?.command || input.input?.command || '';
-  return cmd.toLowerCase().trim();
+  return (input.tool_input?.command || input.input?.command || '').trim();
 }
 
-function getCurrentBranch() {
+function protectedBranches() {
+  const raw = process.env.PROTECTED_BRANCHES || 'main,master';
+  return raw.split(',').map((b) => b.trim()).filter(Boolean);
+}
+
+function getCurrentBranch(cwd) {
   try {
-    return execSync('git rev-parse --abbrev-ref HEAD', {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim();
+    return execSync('git branch --show-current', { cwd, encoding: 'utf8' }).trim() || null;
   } catch {
-    return '';
+    return null;
   }
 }
 
-function checkBranchProtection(cmd) {
-  const branchPattern = PROTECTED_BRANCHES
-    .map(b => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('|');
+function tokenize(cmd) {
+  return cmd.split(/\s+/).filter(Boolean);
+}
 
-  // Block: git push --force/-f to protected branches
-  if (/git\s+push\s+.*(-f|--force)/.test(cmd)) {
-    const targetsBranch = new RegExp(
-      `(origin|upstream)\\s+(${branchPattern})\\b`
-    ).test(cmd);
-    const noExplicitBranch =
-      !/origin\s+\S+/.test(cmd) && /git\s+push\s+(-f|--force)/.test(cmd);
-    if (targetsBranch || noExplicitBranch) {
-      return {
-        decision: 'block',
-        reason:
-          'Force-push to protected branch blocked. Use a feature branch or regular push.',
-      };
-    }
+function detectForcePush(cmd, currentBranch, protected_) {
+  if (!/\bgit\s+push\b/.test(cmd)) return null;
+  if (!/(--force\b|(^|\s)-f\b)/.test(cmd)) return null;
+
+  const tokens = tokenize(cmd);
+  const pushIdx = tokens.findIndex((t) => t === 'push');
+  const args = tokens.slice(pushIdx + 1).filter((t) => !t.startsWith('-'));
+  // args[0] is typically the remote, args[1] the refspec/branch.
+  let target = args[1] || null;
+  if (target) {
+    target = target.split(':').pop(); // handle "HEAD:main" style refspecs
   }
-
-  // Block: git reset --hard on protected branches
-  if (/git\s+reset\s+--hard/.test(cmd)) {
-    const branch = getCurrentBranch();
-    if (PROTECTED_BRANCHES.includes(branch)) {
-      return {
-        decision: 'block',
-        reason: `Hard reset blocked on protected branch (${branch}). Switch to a feature branch first, or ask the user to confirm.`,
-      };
-    }
-  }
-
-  // Block: git branch -D on protected branches
-  if (/git\s+branch\s+-(D|d)\s+/.test(cmd)) {
-    const deletesProtected = new RegExp(
-      `git\\s+branch\\s+-(D|d)\\s+(${branchPattern})\\b`
-    ).test(cmd);
-    if (deletesProtected) {
-      return {
-        decision: 'block',
-        reason: `Deletion of protected branch blocked. Protected branches: ${PROTECTED_BRANCHES.join(', ')}.`,
-      };
-    }
-  }
-
-  // Warn: git checkout . / git restore . on protected branches
-  if (/git\s+(checkout|restore)\s+(--\s+)?\./.test(cmd)) {
-    const branch = getCurrentBranch();
-    if (PROTECTED_BRANCHES.includes(branch)) {
-      return {
-        decision: 'block',
-        reason: `Discarding all changes on protected branch (${branch}) blocked as a safety measure. Ask the user to confirm before proceeding.`,
-      };
-    }
-  }
-
-  // Warn: git clean with -f (any branch — removes untracked files irreversibly)
-  if (/git\s+clean\s+/.test(cmd) && /\s-[a-z]*f|--force/.test(cmd)) {
+  const effectiveTarget = target || currentBranch;
+  if (effectiveTarget && protected_.includes(effectiveTarget)) {
     return {
-      decision: 'block',
-      reason:
-        'git clean blocked as a safety measure — this removes untracked files irreversibly. Ask the user to confirm before proceeding.',
+      decision: 'deny',
+      reason: `Branch protection: force-push to protected branch "${effectiveTarget}" is blocked. Force-pushing rewrites shared history — use a non-protected branch or ask the user to run this themselves.`,
     };
   }
+  return null;
+}
 
+function detectHardReset(cmd, currentBranch, protected_) {
+  if (!/\bgit\s+reset\s+--hard\b/.test(cmd)) return null;
+  if (currentBranch && protected_.includes(currentBranch)) {
+    return {
+      decision: 'deny',
+      reason: `Branch protection: "git reset --hard" on protected branch "${currentBranch}" is blocked — it destroys uncommitted work. Stash or commit first, or run this on a feature branch.`,
+    };
+  }
+  return null;
+}
+
+function detectBranchDelete(cmd, protected_) {
+  const match = cmd.match(/\bgit\s+branch\s+(?:-D|--delete\s+--force|-d\s+-f|-f\s+-d)\s+(\S+)/);
+  if (!match) return null;
+  const branch = match[1];
+  if (protected_.includes(branch)) {
+    return {
+      decision: 'deny',
+      reason: `Branch protection: deleting protected branch "${branch}" is blocked.`,
+    };
+  }
+  return null;
+}
+
+function detectCheckoutRestoreDot(cmd, currentBranch, protected_) {
+  if (!/\bgit\s+(checkout|restore)\s+\.\s*$/.test(cmd.trim())) return null;
+  if (currentBranch && protected_.includes(currentBranch)) {
+    return {
+      decision: 'ask',
+      reason: `Branch protection: "git ${cmd.includes('restore') ? 'restore' : 'checkout'} ." on protected branch "${currentBranch}" discards all uncommitted changes. Confirm this is intended before proceeding.`,
+    };
+  }
+  return null;
+}
+
+function detectClean(cmd) {
+  const match = cmd.match(/\bgit\s+clean\s+([^\s]+(?:\s+-{1,2}\S+)*)/);
+  if (!match) return null;
+  const flagPart = cmd.slice(match.index);
+  const flagTokens = tokenize(flagPart).filter((t) => t.startsWith('-'));
+  const shortFlags = flagTokens
+    .filter((t) => t.startsWith('-') && !t.startsWith('--'))
+    .map((t) => t.slice(1))
+    .join('');
+  const hasLongForce = flagTokens.includes('--force');
+  const hasLongDirs = flagTokens.includes('-d') || flagTokens.includes('--directories') || shortFlags.includes('d');
+  const hasForce = shortFlags.includes('f') || hasLongForce;
+  const isDryRun = shortFlags.includes('n') || flagTokens.includes('--dry-run');
+  if (isDryRun) return null;
+  if (hasForce && hasLongDirs) {
+    return {
+      decision: 'ask',
+      reason: 'Branch protection: "git clean" with -f and -d removes untracked files and directories permanently. Confirm this is intended before proceeding.',
+    };
+  }
   return null;
 }
 
 async function main() {
   const input = await getInput();
   const cmd = extractCommand(input);
-
-  if (!cmd) {
+  if (!cmd || !/\bgit\b/.test(cmd)) {
     process.exit(0);
   }
 
-  const result = checkBranchProtection(cmd);
+  const cwd = (input && input.cwd) || process.cwd();
+  const protected_ = protectedBranches();
+  const currentBranch = getCurrentBranch(cwd);
+
+  const result =
+    detectForcePush(cmd, currentBranch, protected_) ||
+    detectHardReset(cmd, currentBranch, protected_) ||
+    detectBranchDelete(cmd, protected_) ||
+    detectCheckoutRestoreDot(cmd, currentBranch, protected_) ||
+    detectClean(cmd);
+
   if (result) {
-    console.log(JSON.stringify(result));
-    process.exit(0);
+    console.log(JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: result.decision,
+        permissionDecisionReason: result.reason,
+      },
+    }));
   }
-
   process.exit(0);
 }
 
-// Allow testing when required as a module
 if (require.main === module) {
   main();
 }
 
-module.exports = { checkBranchProtection, extractCommand, getCurrentBranch, PROTECTED_BRANCHES };
+module.exports = {
+  detectForcePush,
+  detectHardReset,
+  detectBranchDelete,
+  detectCheckoutRestoreDot,
+  detectClean,
+  protectedBranches,
+};

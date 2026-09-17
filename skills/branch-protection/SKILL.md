@@ -51,7 +51,7 @@ export PROTECTED_BRANCHES="main,master,production"
 
 ## Warn vs Block
 
-The hook protocol only supports `block` and passthrough. "Warn"-level operations are implemented as blocks with a softer confirmation-style message — the agent is told to ask the user before retrying.
+Hard-destructive operations (force-push, hard-reset, branch delete on a protected branch) return a `deny` decision. Softer operations (`checkout .`/`restore .`/`clean -fd` that discard uncommitted or untracked work) return an `ask` decision instead — the user is prompted to confirm rather than being silently blocked.
 
 ## Feature-Branch Safety Reminder
 
