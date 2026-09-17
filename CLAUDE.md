@@ -111,9 +111,9 @@ npx skills add ./ai-assistant-starter -s commit
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
 | `/init` | Bootstrap project configuration |
-| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs, circuit-breaker/cost-guardrail hooks, and cost-saving settings.json env vars |
+| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs, circuit-breaker/cost-guardrail/prompt-context-router hooks, and cost-saving settings.json env vars |
 
-### Background Skills (25 total)
+### Background Skills (26 total)
 
 Auto-loaded when relevant — no slash command needed:
 
@@ -135,6 +135,7 @@ Auto-loaded when relevant — no slash command needed:
 | `destructive-command-protection` | Runtime hook: blocks rm -rf, DROP DATABASE, and other destructive commands |
 | `context-circuit-breaker` | Runtime hook: warns (never blocks) on subagent fan-out and expensive-call loops |
 | `cost-guardrail` | Runtime hook: warns/blocks Agent spawns and Bash calls whose historical cost is disproportionate, using cost-audit-derived baselines |
+| `prompt-context-router` | Runtime hook: classifies each prompt by task class and topic-pivot, advising standalone treatment (and subagent delegation for cheap asides) instead of re-deriving from full session history |
 
 **Guideline Skills** (category: guideline)
 

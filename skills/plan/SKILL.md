@@ -18,6 +18,8 @@ triggers:
 > **Mode:** Read-only — no code changes
 > **Usage:** `/plan [scope flags] <task description>`
 
+See also: `prompt-context-router` (background hook) nudges the assistant to call `EnterPlanMode` — which this workflow is meant to run inside — when it classifies an incoming prompt as architecture- or extreme-scoped.
+
 ## Iron Laws
 
 1. **NO CODE IN PLANNING** — This is a read-only skill. Do not write, edit, or modify any source files. Planning only.

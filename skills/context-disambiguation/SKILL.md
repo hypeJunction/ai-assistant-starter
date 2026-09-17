@@ -9,6 +9,8 @@ user-invocable: false
 
 Ambiguity is cheap to resolve with a question and expensive to resolve by reading. Default to asking when resolving ambiguity yourself would require pulling a large, uncertain slice of the codebase into context; default to just doing it when one targeted lookup would settle the question.
 
+See also: `prompt-context-router` (background hook) surfaces this same guidance automatically when it can't confidently classify an incoming prompt's task class.
+
 ## Why this exists
 
 Most agent failures trace back to bad context, not a bad model — and the biggest avoidable context tax is spent *guessing*: launching an Explore agent "to see what's there," grepping the whole repo, or reading several files speculatively before even knowing what the user meant. The same discipline shows up at the infrastructure level — loading every tool definition up front before it's known which will be used burns a large share of the context budget for near-zero benefit, versus discovering and loading on demand. Apply that logic to exploration: don't front-load a search across the codebase to disambiguate what a one-line question would settle in one turn.

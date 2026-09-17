@@ -16,7 +16,7 @@
 //
 // Usage:
 //   node merge-settings-hook.js <target-settings.json> [--apply]
-//   node merge-settings-hook.js <target-settings.json> --command <cmd> --matcher <matcher> [--apply]
+//   node merge-settings-hook.js <target-settings.json> --command <cmd> --matcher <matcher> [--event <event>] [--apply]
 //   node merge-settings-hook.js <target-settings.json> --env KEY=VALUE [--env KEY2=VALUE2 ...] [--apply]
 //
 // With no --command/--matcher, defaults to the context-circuit-breaker hook
@@ -26,6 +26,9 @@
 // Pass --matcher multiple times to register the same command under several
 // matchers in one call (e.g. cost-guardrail needs both "Agent" and "Bash").
 // Pass --env multiple times to merge several keys in one call.
+// --event selects which hooks.<Event> array to merge into (default
+// PreToolUse, for backward compatibility); e.g. --event UserPromptSubmit
+// for prompt-context-router.
 'use strict';
 
 const fs = require('fs');
@@ -33,10 +36,11 @@ const path = require('path');
 
 const DEFAULT_COMMAND = 'node .claude/skills/context-circuit-breaker/references/hook.js';
 const DEFAULT_MATCHERS = ['*'];
+const DEFAULT_EVENT = 'PreToolUse';
 
 function usageError() {
   console.error(
-    'usage: merge-settings-hook.js <target-settings.json> [--command <cmd>] [--matcher <matcher> ...] [--env KEY=VALUE ...] [--apply]'
+    'usage: merge-settings-hook.js <target-settings.json> [--command <cmd>] [--matcher <matcher> ...] [--event <event>] [--env KEY=VALUE ...] [--apply]'
   );
   process.exit(1);
 }
@@ -45,6 +49,7 @@ function parseArgs(argv) {
   const target = argv[0];
   if (!target || target.startsWith('--')) usageError();
   let command = null;
+  let event = null;
   const matchers = [];
   const envPairs = [];
   let apply = false;
@@ -55,6 +60,8 @@ function parseArgs(argv) {
       command = argv[++i];
     } else if (argv[i] === '--matcher') {
       matchers.push(argv[++i]);
+    } else if (argv[i] === '--event') {
+      event = argv[++i];
     } else if (argv[i] === '--env') {
       const pair = argv[++i];
       const eq = pair ? pair.indexOf('=') : -1;
@@ -69,13 +76,14 @@ function parseArgs(argv) {
     target,
     wantsHookMerge,
     command: command || DEFAULT_COMMAND,
+    event: event || DEFAULT_EVENT,
     matchers: matchers.length ? matchers : DEFAULT_MATCHERS,
     envPairs,
     apply,
   };
 }
 
-const { target, wantsHookMerge, command, matchers, envPairs, apply } = parseArgs(process.argv.slice(2));
+const { target, wantsHookMerge, command, event, matchers, envPairs, apply } = parseArgs(process.argv.slice(2));
 
 let settings = {};
 let existed = false;
@@ -95,10 +103,10 @@ const notes = [];
 
 if (wantsHookMerge) {
   settings.hooks = settings.hooks || {};
-  settings.hooks.PreToolUse = Array.isArray(settings.hooks.PreToolUse) ? settings.hooks.PreToolUse : [];
+  settings.hooks[event] = Array.isArray(settings.hooks[event]) ? settings.hooks[event] : [];
 
   const hasCommandUnderMatcher = (matcher) =>
-    settings.hooks.PreToolUse.some(
+    settings.hooks[event].some(
       (entry) =>
         entry.matcher === matcher &&
         Array.isArray(entry.hooks) &&
@@ -108,20 +116,20 @@ if (wantsHookMerge) {
   let hookChanged = false;
   for (const matcher of matchers) {
     if (hasCommandUnderMatcher(matcher)) continue;
-    const existingEntry = settings.hooks.PreToolUse.find((entry) => entry.matcher === matcher);
+    const existingEntry = settings.hooks[event].find((entry) => entry.matcher === matcher);
     if (existingEntry) {
       existingEntry.hooks = Array.isArray(existingEntry.hooks) ? existingEntry.hooks : [];
       existingEntry.hooks.push({ type: 'command', command });
     } else {
-      settings.hooks.PreToolUse.push({ matcher, hooks: [{ type: 'command', command }] });
+      settings.hooks[event].push({ matcher, hooks: [{ type: 'command', command }] });
     }
     hookChanged = true;
   }
   if (hookChanged) {
     changed = true;
-    notes.push(`PreToolUse hook for "${command}" under matcher(s) ${matchers.join(', ')}`);
+    notes.push(`${event} hook for "${command}" under matcher(s) ${matchers.join(', ')}`);
   } else {
-    notes.push(`PreToolUse hook already present under matcher(s) ${matchers.join(', ')} (no change)`);
+    notes.push(`${event} hook already present under matcher(s) ${matchers.join(', ')} (no change)`);
   }
 }
 

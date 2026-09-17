@@ -300,12 +300,58 @@ passed, and re-running is idempotent.
 > `docs/cost-optimization.md`'s "Fork mode" section once installed for the
 > full explanation before presenting this option to the user.
 
+### Step 5.8: Offer the prompt-context-router hook
+
+Ask the user (`AskUserQuestion`, options **Install** / **Skip**) whether to
+install the `prompt-context-router` hook — a `UserPromptSubmit` hook that
+classifies each incoming prompt by task class and topic-pivot, and advises
+(never blocks) treating clear asides as standalone — with a delegation
+suggestion for cheap ones. See `skills/prompt-context-router/SKILL.md` for
+what it does and doesn't do, including that it's stateless and purely
+advisory.
+
+**GATE: only proceed on explicit "Install."** This step touches
+`settings.json`'s `hooks.UserPromptSubmit` array — same caution as Steps
+5.5/5.6.
+
+If installed:
+
+1. Copy the hook script:
+   ```bash
+   mkdir -p <target>/.claude/skills/prompt-context-router/references
+   cp skills/prompt-context-router/references/hook.js \
+     <target>/.claude/skills/prompt-context-router/references/hook.js
+   ```
+2. Back up any existing target settings file the same way Steps 5.5/5.6 do
+   (`backup-claude-md.sh <target>/.claude/settings.json`).
+3. Dry-run the merge — this hook needs `--event UserPromptSubmit` since it
+   binds a different hook event than the `PreToolUse` default:
+   ```bash
+   node skills/apply-template/scripts/merge-settings-hook.js \
+     <target>/.claude/settings.json \
+     --command "node .claude/skills/prompt-context-router/references/hook.js" \
+     --matcher "*" --event UserPromptSubmit
+   ```
+4. Only after confirmation, apply it:
+   ```bash
+   node skills/apply-template/scripts/merge-settings-hook.js \
+     <target>/.claude/settings.json \
+     --command "node .claude/skills/prompt-context-router/references/hook.js" \
+     --matcher "*" --event UserPromptSubmit --apply
+   ```
+
+Same idempotency guarantee as Steps 5.5/5.6: re-running only confirms
+presence under `hooks.UserPromptSubmit`, never duplicates an entry, and
+every other key in `settings.json` (including `hooks.PreToolUse`) is left
+untouched.
+
 ### Step 6: Report
 
 Summarize: what was backed up, which sections were applied/refreshed, which
-companion READMEs were installed, whether the circuit-breaker and/or
-cost-guardrail hooks were installed, and which (if any) env vars were added.
-Do not commit — leave staging/committing to the user or a follow-up `/commit`.
+companion READMEs were installed, whether the circuit-breaker, cost-guardrail,
+and/or prompt-context-router hooks were installed, and which (if any) env
+vars were added. Do not commit — leave staging/committing to the user or a
+follow-up `/commit`.
 
 ## Security Notes
 
