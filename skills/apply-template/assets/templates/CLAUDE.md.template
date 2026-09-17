@@ -22,6 +22,35 @@ Rules:
   into an API redesign is now "architecture").
 <!-- ai-assistant-starter:end:task-classification -->
 
+<!-- ai-assistant-starter:begin:delegation-default -->
+## Delegation as Default
+
+Treat delegation as the default for atomic, well-scoped, low-judgment steps
+— not something reserved for tasks that are already "big enough" (many
+files, a full verification run). The question to ask is "does this step
+need my own judgment," not "is this step big enough to bother delegating."
+
+- **No thinking for deterministic work.** Classification itself, lookups,
+  boilerplate, relaying a command's output, and applying an already-decided
+  pattern to one target are all mechanical — route them to the cheapest
+  capable model (the `mechanical` tier above), never to your own reasoning
+  because it felt quicker to just do it inline.
+- **Escalate on signal, not by default.** Start every delegated task at the
+  cheapest tier that could plausibly handle it. Escalate the model tier
+  only when the worker itself signals it's out of depth — ambiguous scope,
+  an unanticipated judgment call, contradictory instructions — never
+  pre-assign a top-tier model as a precaution.
+- **Swarm framing.** You are one orchestrator directing many single-purpose
+  specialists. Your job is to hold as little as possible in your own
+  context — routing decisions, judgment calls, and cross-cutting synthesis
+  only. Every deterministic, self-contained piece of work — one task or one
+  of many independent parts of a larger change — runs on its own worker, so
+  your context stays flat regardless of how many such pieces exist.
+- **Applies to single tasks too, not just fan-out.** A single lookup or a
+  single mechanical edit is as much a delegation candidate as twenty
+  independent ones — the trigger is atomicity and low judgment, not volume.
+<!-- ai-assistant-starter:end:delegation-default -->
+
 <!-- ai-assistant-starter:begin:search-relevance -->
 ## Search & Relevance Protocol
 
