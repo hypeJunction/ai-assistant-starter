@@ -107,9 +107,10 @@ ACTIVE_GAP_THRESHOLD_SECONDS = 1800
 def analyze(path):
     tool_calls = []  # list of dicts: name, input, ts, uuid — main loop only
     subagent_tool_calls = []  # same shape, for isSidechain events
-    user_turns = []  # list of dicts: ts, text
+    user_turns = []  # list of dicts: ts, text, prompt_est_tokens
     usage_totals = collections.Counter()
     per_message_cache_read = []  # one entry per main-loop assistant message, for the growth check below
+    per_message_context = []  # list of dicts: ts, context_tokens — one entry per main-loop assistant message, for _prompt_context_correlation below
     tool_result_sizes = []  # list of dicts: tool_use_id, size, ts — matched to a tool name below
     message_count = 0
     all_ts = []
@@ -158,19 +159,25 @@ def analyze(path):
                 message_count += 1
                 if usage:
                     usage_lines_counted += 1
-                usage_totals["input_tokens"] += usage.get("input_tokens", 0) or 0
+                input_tokens = usage.get("input_tokens", 0) or 0
+                usage_totals["input_tokens"] += input_tokens
                 usage_totals["output_tokens"] += usage.get("output_tokens", 0) or 0
                 cache_read = usage.get("cache_read_input_tokens", 0) or 0
                 usage_totals["cache_read_input_tokens"] += cache_read
-                usage_totals["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0) or 0
+                cache_creation = usage.get("cache_creation_input_tokens", 0) or 0
+                usage_totals["cache_creation_input_tokens"] += cache_creation
                 if cache_read:
                     per_message_cache_read.append(cache_read)
+                if usage:
+                    per_message_context.append({"ts": ts, "context_tokens": input_tokens + cache_read + cache_creation})
             tool_calls.extend(calls_for_this_event)
 
         elif etype == "user" and not is_sidechain:
             text = _extract_user_text(message.get("content"))
             if text and not _is_synthetic_user_text(text):
-                user_turns.append({"ts": ts, "text": text})
+                # chars/4 matches the estimation convention used elsewhere in this
+                # codebase's static-footprint tooling (no tokenizer dependency available).
+                user_turns.append({"ts": ts, "text": text, "prompt_est_tokens": len(text) // 4})
             content = message.get("content")
             if isinstance(content, list):
                 for block in content:
@@ -198,6 +205,7 @@ def analyze(path):
         "message_count": message_count,
         "avg_cache_read_per_message": avg_cache_read_per_message,
     }
+    prompt_context_outliers = _prompt_context_correlation(user_turns, per_message_context)
 
     wall_clock_seconds = None
     active_duration_seconds = None
@@ -256,6 +264,7 @@ def analyze(path):
         "correction_points": corrections,
         "context_multiplication_signal": context_multiplication_signal,
         "largest_tool_results": largest_tool_results,
+        "prompt_context_outliers": prompt_context_outliers,
     }
 
 
@@ -338,6 +347,16 @@ def _summarize_input(name, input_json):
 REEDIT_MAX_CALLS_BETWEEN = 20
 REEDIT_MAX_SECONDS_BETWEEN = 300
 
+# Defaults for _prompt_context_correlation, matched to the cost-audit skill's
+# Langfuse-side equivalent so a session flagged there and drilled into here uses the
+# same bar: a short prompt (<=300 est. tokens, ~1200 chars) answered by a call whose
+# total context (fresh input + cache read + cache creation) is both large in absolute
+# terms (>=20000 tokens) and disproportionate relative to the prompt (>=5x) means the
+# turn is paying for context the user's own message didn't ask for.
+PROMPT_CONTEXT_MISMATCH_FACTOR = 5.0
+PROMPT_CONTEXT_MISMATCH_MIN_CONTEXT_TOKENS = 20000
+PROMPT_CONTEXT_MISMATCH_MIN_PROMPT_TOKENS = 300
+
 
 def _find_reedit_reads(tool_calls):
     """Flag a Read that immediately follows an Edit/Write to the same file_path,
@@ -379,6 +398,53 @@ def _find_corrections(user_turns, tool_calls):
                     "ts": turn["ts"],
                     "user_text": turn["text"][:300],
                     "preceding_tool_calls": preceding,
+                }
+            )
+    return findings
+
+
+def _prompt_context_correlation(
+    user_turns,
+    per_message_context,
+    factor=PROMPT_CONTEXT_MISMATCH_FACTOR,
+    min_context_tokens=PROMPT_CONTEXT_MISMATCH_MIN_CONTEXT_TOKENS,
+    min_prompt_tokens=PROMPT_CONTEXT_MISMATCH_MIN_PROMPT_TOKENS,
+):
+    """Flag user turns whose own prompt was small but whose answering assistant
+    call(s) carried disproportionate context. `turn_context_tokens` sums
+    `per_message_context` entries timestamped between this turn and the next (or end
+    of transcript) — the same fresh-input + cache-read + cache-creation quantity
+    `context_depth_per_call` uses, just scoped to one turn instead of averaged across
+    the whole session. This is the transcript-side counterpart to `/cost-audit`'s
+    per-trace context-vs-prompt check; a turn flagged here is direct evidence for the
+    "Oversized skill footprint" / "Inline exploration that should be delegated"
+    structural findings, pinned to the exact prompt that triggered the cost.
+    """
+    findings = []
+    for idx, turn in enumerate(user_turns):
+        turn_ts = turn["ts"]
+        next_ts = user_turns[idx + 1]["ts"] if idx + 1 < len(user_turns) else None
+        turn_context_tokens = sum(
+            m["context_tokens"]
+            for m in per_message_context
+            if m["ts"] and turn_ts and m["ts"] >= turn_ts and (next_ts is None or m["ts"] < next_ts)
+        )
+        prompt_est_tokens = turn["prompt_est_tokens"]
+        ratio = turn_context_tokens / max(prompt_est_tokens, 1)
+        if (
+            prompt_est_tokens <= min_prompt_tokens
+            and turn_context_tokens >= min_context_tokens
+            and ratio >= factor
+        ):
+            findings.append(
+                {
+                    "turn_index": idx,
+                    "ts": turn_ts,
+                    "prompt_chars": len(turn["text"]),
+                    "prompt_est_tokens": prompt_est_tokens,
+                    "turn_context_tokens": turn_context_tokens,
+                    "ratio": round(ratio, 2),
+                    "prompt_excerpt": turn["text"][:80],
                 }
             )
     return findings

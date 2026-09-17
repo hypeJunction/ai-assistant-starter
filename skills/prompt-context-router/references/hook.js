@@ -52,10 +52,26 @@
  * already been nudged once; every prompt after that only gets the advisory
  * `additionalContext`, never another deny.
  *
+ * A fourth, fully independent concern: context ballast. This is the live
+ * counterpart to `/cost-audit`'s `prompt_context_mismatch` and
+ * `/session-retro`'s `prompt_context_outliers` — same idea (a short new
+ * prompt riding on a disproportionately large paid context), just checked at
+ * submit time instead of after the fact. It reads `input.transcript_path`
+ * (the session's own local `.jsonl`), tails it for the last main-loop
+ * (non-sidechain) assistant message's `usage.cache_read_input_tokens` +
+ * `usage.cache_creation_input_tokens` + `usage.input_tokens`, and compares
+ * that to this prompt's estimated size (chars/4, no tokenizer available).
+ * Same default thresholds as the two audit-side checks (>=20k context
+ * tokens, >=5x ratio, prompt itself <=300 est. tokens) so a session flagged
+ * live here and one flagged retrospectively there apply the same bar. This
+ * can only ever advise (`additionalContext`) — a hook cannot remove tokens
+ * already in the context window, only suggest delegating the next step or
+ * checkpointing with `/clear`.
+ *
  * Hook protocol: reads the UserPromptSubmit event from stdin as JSON
- * (`input.prompt`, `input.permission_mode`, `input.session_id`), outputs
- * `hookSpecificOutput` JSON to stdout when there's something worth
- * surfacing, nothing otherwise.
+ * (`input.prompt`, `input.permission_mode`, `input.session_id`,
+ * `input.transcript_path`), outputs `hookSpecificOutput` JSON to stdout when
+ * there's something worth surfacing, nothing otherwise.
  */
 
 const fs = require('fs');
@@ -115,6 +131,16 @@ const CONTINUATION_PRONOUNS = [
 ];
 
 const PIVOT_LENGTH_THRESHOLD = 160;
+
+// Same defaults as /cost-audit's prompt_context_mismatch and /session-retro's
+// prompt_context_outliers, so a session flagged live here and one flagged
+// retrospectively there use the same bar.
+const CONTEXT_BALLAST_FACTOR = Number(process.env.PROMPT_CONTEXT_ROUTER_BALLAST_FACTOR) || 5.0;
+const CONTEXT_BALLAST_MIN_CONTEXT_TOKENS = Number(process.env.PROMPT_CONTEXT_ROUTER_BALLAST_MIN_TOKENS) || 20000;
+const CONTEXT_BALLAST_MIN_PROMPT_TOKENS = 300;
+// A tail read is enough to find the most recent assistant usage line without
+// paying to parse a multi-MB transcript on every single prompt submit.
+const TRANSCRIPT_TAIL_BYTES = 262144;
 
 function getInput() {
   return new Promise((resolve) => {
@@ -220,6 +246,76 @@ function buildAdditionalContext({ taskClass, isPivot }) {
   );
 }
 
+// Reads only the last `maxBytes` of the transcript file — cheap even on a
+// multi-MB session history. The first line of the slice may be a partial
+// fragment cut mid-JSON; callers must tolerate/skip a parse failure on it.
+function readTranscriptTail(transcriptPath, maxBytes = TRANSCRIPT_TAIL_BYTES) {
+  let fd;
+  try {
+    const size = fs.statSync(transcriptPath).size;
+    const start = Math.max(0, size - maxBytes);
+    const length = size - start;
+    const buffer = Buffer.alloc(length);
+    fd = fs.openSync(transcriptPath, 'r');
+    fs.readSync(fd, buffer, 0, length, start);
+    return buffer.toString('utf8');
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) {
+      try { fs.closeSync(fd); } catch { /* best-effort close */ }
+    }
+  }
+}
+
+// Walks the tail backward for the most recent main-loop (non-sidechain)
+// assistant message's usage, mirroring `_context_tokens()` in
+// `cost-audit/references/langfuse_queries.py` and `per_message_context` in
+// `session-retro/references/session_transcript_analyzer.py`: fresh input +
+// cache read + cache creation, the actual paid-context total for that call.
+function lastMainLoopContextTokens(transcriptPath) {
+  const tail = readTranscriptTail(transcriptPath);
+  if (!tail) return null;
+  const lines = tail.split('\n').filter(Boolean);
+  for (let i = lines.length - 1; i >= 1; i--) {
+    let event;
+    try {
+      event = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+    if (event.type !== 'assistant' || event.isSidechain) continue;
+    const usage = event.message && event.message.usage;
+    if (!usage) continue;
+    const contextTokens =
+      (usage.cache_read_input_tokens || 0) +
+      (usage.cache_creation_input_tokens || 0) +
+      (usage.input_tokens || 0);
+    if (contextTokens > 0) return contextTokens;
+  }
+  return null;
+}
+
+function buildContextBallastAdvisory(prompt, transcriptPath) {
+  if (!transcriptPath) return null;
+  const promptEstTokens = Math.ceil(prompt.trim().length / 4);
+  if (promptEstTokens > CONTEXT_BALLAST_MIN_PROMPT_TOKENS) return null;
+
+  const contextTokens = lastMainLoopContextTokens(transcriptPath);
+  if (contextTokens === null || contextTokens < CONTEXT_BALLAST_MIN_CONTEXT_TOKENS) return null;
+
+  const ratio = contextTokens / Math.max(promptEstTokens, 1);
+  if (ratio < CONTEXT_BALLAST_FACTOR) return null;
+
+  const contextK = Math.round(contextTokens / 1000);
+  return (
+    `This prompt is short (~${promptEstTokens} est. tokens) but the session is currently ` +
+    `carrying ~${contextK}k tokens of accumulated context (cache read/write) — a ~${Math.round(ratio)}x ` +
+    `ratio. Before continuing in the main thread, consider whether this step could run in a ` +
+    `subagent instead, or whether a /clear checkpoint is due.`
+  );
+}
+
 const PLAN_WORKFLOW_NOTE =
   `this matches the plan skill's phased workflow (explore, design, review, approval).`;
 
@@ -306,6 +402,7 @@ async function main() {
 
   const permissionMode = (input && typeof input.permission_mode === 'string' && input.permission_mode) || null;
   const sessionId = (input && typeof input.session_id === 'string' && input.session_id) || null;
+  const transcriptPath = (input && typeof input.transcript_path === 'string' && input.transcript_path) || null;
   const extremeMode = process.env.PROMPT_CONTEXT_ROUTER_EXTREME_MODE || 'enforce';
   const planGuidance = buildPlanModeGuidance({
     taskClass: result.taskClass,
@@ -313,6 +410,7 @@ async function main() {
     sessionId,
     extremeMode,
   });
+  const ballastContext = buildContextBallastAdvisory(prompt, transcriptPath);
 
   if (planGuidance && planGuidance.permissionDecision === 'deny') {
     console.log(JSON.stringify({
@@ -325,7 +423,7 @@ async function main() {
     process.exit(0);
   }
 
-  const contexts = [pivotContext, planGuidance && planGuidance.additionalContext].filter(Boolean);
+  const contexts = [pivotContext, planGuidance && planGuidance.additionalContext, ballastContext].filter(Boolean);
   if (contexts.length) {
     console.log(JSON.stringify({
       hookSpecificOutput: {
@@ -350,4 +448,7 @@ module.exports = {
   statePath,
   loadState,
   saveState,
+  readTranscriptTail,
+  lastMainLoopContextTokens,
+  buildContextBallastAdvisory,
 };

@@ -53,7 +53,7 @@ Three steps: **classify** every trace worth looking at, **identify** which class
 python3 references/langfuse_queries.py all --out-dir ./cost_audit_out
 ```
 
-This writes `summary.json` (**read this one first**), `trace_outliers.json`, `duplicate_tool_calls.json`, `tool_usage.json`, `error_pct.json`, `token_economics.json`, `exporter_health.json`, `payload_profile.json`, `underuse_profile.json`, `reconcile.json`, `session_sequences.json`, `classified_findings.json`, and `ranked_findings.json`:
+This writes `summary.json` (**read this one first**), `trace_outliers.json`, `duplicate_tool_calls.json`, `tool_usage.json`, `error_pct.json`, `token_economics.json`, `exporter_health.json`, `payload_profile.json`, `underuse_profile.json`, `reconcile.json`, `session_sequences.json`, `classified_findings.json`, `ranked_findings.json`, and `prompt_context_mismatch.json`:
 
 0. `summary` — cost shares by token class, the churn ratio, the exporter warning, the top 10 traces by `recoverable_cost`, and the window's total recoverable cost. Small on purpose: it answers "where did the money go" without loading the detail files into context. Open the others only to substantiate what this one points at.
 1. `trace_outliers` — every **trace** (not session) that exceeds 3x the window's median (the `--factor` default) on at least one of: cost, tool-call count, input tokens, output tokens, **`context_depth_per_call`**. Each entry lists which metric(s) tripped and by what ratio. This is trace-first rather than session-first on purpose: a session aggregates many turns, so ranking by session cost buries a single runaway trace inside an otherwise-cheap session, and misses a trace that's a tool-call/token outlier without yet being a cost outlier.
@@ -71,6 +71,7 @@ This writes `summary.json` (**read this one first**), `trace_outliers.json`, `du
 10. `session_sequences` — every **session** with 2+ traces, traces ordered chronologically, flagged for patterns invisible to any single-trace view: the same `(tool, input)` signature repeated across separate traces in the session (`cross_trace_duplicates`), a jump in input tokens from one trace to the next without proportional new tool work (`context_growth`), and a trace with an error immediately followed by a retry on a pricier model tier (`escalation_after_failure`). A session only appears here if at least one of these three fired — this is explicitly the "does a prompt's cost trace back to something an earlier trace in the same session already established" check the trace-only view can't do.
 11. `classified_findings` — every within-trace duplicate-call group (repeat count ≥2), each already assigned a `pattern` label deterministically from timing/error/sequence signatures — no drill-and-eyeball needed for the common cases. See "Automated classification" below.
 12. `ranked_findings` — `classified_findings` merged with each finding's trace-level outlier data (`outlier_reasons`, ratio, excess cost) and a `session_flagged_cross_trace` boolean, sorted by outlier-metric count → outlier ratio → excess cost → repeat count. This is the shortlist source for Step 1b — read its top entries directly instead of re-deriving the ranking by eye.
+13. `prompt_context_mismatch` — every **GENERATION**-type call where `usageDetails.input` (the fresh, uncached tokens that specific call added — not cache read/write) was small but `_context_tokens()` (fresh input + cache read + cache write — the actual billed total) was large: `context_tokens >= --prompt-context-min-tokens` (default 20,000) **and** `context_tokens / fresh_input_tokens >= --prompt-context-factor` (default 5.0). Distinct from `context_depth_per_call` in `trace_outliers`: that metric is a **trace-wide average** across every model call in the trace, so one call with a cheap-looking prompt riding on a huge context bill can sit inside an otherwise-unremarkable average and never trip it. This isolates the individual call. Capped at the top 20 by `context_tokens`.
 
 **Automated classification.** `classified_findings.json` assigns one of these labels to each group purely from call timestamps, ERROR-level adjacency, and tool-name matching — this is deterministic code, not an LLM guess:
 
@@ -166,6 +167,7 @@ For a shortlisted **session** (from `session_sequences`), drill separately into 
 | **Unbounded search payload** | `underuse_profile` shows Bash search/dump calls with zero or near-zero Grep/Glob, and `payload_profile` shows large `Bash` text results. `grep`/`find`/`cat` return unbounded output into context; Grep/Glob answer the same question with bounded results. |
 | **Undelegated wide read** | `payload_profile` shows oversized results in the parent trace and `underuse_profile.delegation_pct_of_tool_calls` is ~0. A payload of P tokens admitted at call *i* of *n* is re-sent (n−i) times; a subagent returns a summary instead. |
 | **Image payload churn** | `payload_profile.oversized_image_share_pct` is high — screenshots or PDFs entering context via `Read` during verification work. These cannot be grepped or paginated, so the only remedy is fewer/smaller captures or asserting via DOM/console instead. |
+| **Prompt/context mismatch** | A single call's fresh input tokens are small (a short follow-up prompt) but its `_context_tokens()` total is large — the call's cost is almost entirely re-paid accumulated context, not new content the prompt added. Distinct from Context-multiplication in that it isolates one call rather than requiring a flat pattern across `generation_count` calls. |
 | Stuck poll / runaway loop | Same tool + same input repeated dozens to thousands of times with no error in between |
 | Re-verification read | Same `Read` on a file immediately after an `Edit`/`Write` to that same file |
 | Retry-after-error | Duplicate calls clustered around ERROR-level observations |
@@ -186,6 +188,14 @@ Extend this list if a finding doesn't fit — don't force-fit a label.
 - **Delegation**: was a broad, multi-step exploration (audit sweep, multi-file investigation) run inline in the main thread instead of as a subagent? A subagent's tool-call loop pays cache-read against its own (smaller, shorter-lived) context and returns one compact result — dispatching it keeps those turns' cost from compounding against the main thread's already-large baseline for the rest of the session.
 
 This is the same context-growth idea `session_sequences.context_growth` catches *across* traces in a session — Context-multiplication is the *within*-trace version, driven by turn count rather than a jump between traces.
+
+**1d. Diagnose prompt/context mismatches (inference pass).** Take the top entries from `prompt_context_mismatch.json` (cap at 3, same "keep the offender list short" discipline as the rest of Step 1b). For each, dispatch ONE subagent via the `Agent` tool — a cheap/mid-tier model, since this is a bounded, well-scoped read-and-diagnose task, not open-ended reasoning; do not default to the most capable model. Give the subagent the flagged call's `traceId`, `sessionId`, and `startTime`, and instruct it to:
+
+- Read the local transcript at `~/.claude/projects/<project-slug>/<sessionId>.jsonl` (the same sessionId↔transcript join documented above) around that timestamp.
+- Identify what specific prior tool result, skill load, or accumulated turn history is responsible for the bulk of `context_tokens` on that call.
+- Recommend ONE concrete decoupling action: delegating a step to a subagent, inserting a `/clear` boundary, narrowing a search, or splitting an oversized skill's reference docs.
+
+The subagent's diagnosis and recommendation feed the report's "Prompt/Context Mismatches" section (see Output Format below) — same handoff treatment as Context-multiplication findings, which go to `/session-retro`'s structural step rather than becoming a Proposed Correction diff directly.
 
 ### Step 2: Identify What Drives Cost or Loops
 
@@ -253,6 +263,14 @@ Rank the labeled traces by `recoverable_cost` and keep only the ones worth fixin
 - **Root cause**: [what was actually happening — confirmed via `drill` and/or the local transcript]
 
 [repeat per session-level finding, max 3; omit this section entirely if `session_sequences.json` produced no candidates worth root-causing]
+
+## Prompt/Context Mismatches
+
+### [traceId] (session [sessionId]) — ratio [X]x, [X]k context tokens on [X] fresh input tokens
+- **Diagnosis**: [Step 1d subagent's finding — the specific prior tool result, skill load, or accumulated history responsible for the bulk of `context_tokens`]
+- **Recommended decoupling action**: [delegate to a subagent / insert a `/clear` boundary / narrow a search / split an oversized skill's reference docs]
+
+[repeat per flagged call, max 3; omit this section entirely if `prompt_context_mismatch.json` produced no candidates]
 
 ## Proposed Corrections
 
@@ -326,3 +344,4 @@ the agent reruns queries on request, never on an unattended timer.
 | CA-T8 | Positive | "This audit run cost $16 — where did that actually go?" | Skill triggers; agent checks `generation_count`/`context_depth_per_call` on the trace, not just cost/output-token totals, and reports whether it's duplication- or multiplication-driven |
 | CA-T9 | Positive | "How big is our context window footprint, and can we shrink it?" | Skill triggers; agent runs `static_footprint.py`, reports CLAUDE.md/skill-index token totals as a floor (not the full per-turn baseline), and compares against any observed `context_depth_per_call`/`avg_cache_read_per_message` rather than treating the static number alone as the answer |
 | CA-T10 | Positive | "Audit this week's traces" (offender includes a 340-repeat `Tool: Read` with regular ~4s spacing and no adjacent errors) | Skill triggers; agent reads the `stuck-poll-or-runaway-loop` label straight from `classified_findings.json` instead of re-deriving it from raw `drill` output, and uses `drill` only to pull the actual file path/content for the report's evidence line |
+| CA-T11 | Positive | "Audit this week's traces" (`prompt_context_mismatch.json` has one entry: a GENERATION call with 300 fresh input tokens and 180,000 context tokens, ratio 600x) | Skill triggers; agent reads the flagged entry from `prompt_context_mismatch.json`, dispatches one Step 1d subagent on a cheap/mid-tier model to read the local transcript and diagnose the cause, and reports the diagnosis + recommended decoupling action in the "Prompt/Context Mismatches" report section — not as a Proposed Corrections/CLAUDE.md policy line |

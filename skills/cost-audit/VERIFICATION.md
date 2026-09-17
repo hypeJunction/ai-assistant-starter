@@ -50,6 +50,7 @@ The harder case, and the one the first scenario cannot catch. Same invocation, d
 | 7 | Depth is checked even when duplication is clean | `summary.total_recoverable_cost` is read and reported. "No significant waste patterns found" is only acceptable when all four stop conditions hold, including negligible recoverable depth |
 | 8 | Dollar figures are reconciled | `reconcile.json` is checked before any cost is quoted; a `(null model)` row or a >5% delta is surfaced rather than ignored |
 | 9 | Baseline recorded for follow-up | After applying an approved diff, the agent records the specific numbers so a later `/cost-audit` run can check whether the pattern's rate dropped |
+| 10 | Prompt/context mismatch flagged and diagnosed, not policy-lined | Given a `prompt_context_mismatch.json` entry (e.g. one GENERATION call with 300 fresh input tokens against 180,000 `_context_tokens()`, ratio 600x), the agent takes the top entries (capped at 3), dispatches one Step 1d subagent per entry on a cheap/mid-tier model to read the local transcript around `startTime` and diagnose the cause, and reports the diagnosis + recommended decoupling action under "Prompt/Context Mismatches" — it does not turn the finding directly into a Proposed Corrections/CLAUDE.md diff |
 
 ## Anti-patterns
 

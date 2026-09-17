@@ -53,6 +53,7 @@ This surfaces: tool-call histogram, exact-duplicate tool calls, `Read` calls tha
 
 - `context_multiplication_signal` — `message_count` (main-loop turns) and `avg_cache_read_per_message` (mean `cache_read_input_tokens` per assistant message). This is the transcript-side view of `/cost-audit`'s `generation_count`/`avg_cache_read_per_generation` fields — a high `message_count` with a large, roughly flat `avg_cache_read_per_message` means every turn in this session re-paid cache-read on the same large accumulated context.
 - `largest_tool_results` — the 8 largest tool_result payloads in the session (size in characters, which tool produced them, and a one-line input summary), e.g. a `Skill` invocation's own `SKILL.md`/`references/*.md` body, a verbose command dump (a full `gh pr view` across several PRs, an unfiltered test run), or a large file read. These are candidate contributors to the baseline `context_multiplication_signal` measures — evidence for *what* is inflating the per-turn cost, which Langfuse alone can't show.
+- `prompt_context_outliers` — per-turn mismatch between what the user actually typed and what the assistant call(s) answering it paid for. For each user turn, the script sums the context tokens (fresh input + cache read + cache creation) of the assistant message(s) that answer it before the next user turn, and flags the turn when its own prompt is small (`prompt_est_tokens <= 300`, i.e. `len(text) // 4`) but `turn_context_tokens >= 20000` **and** the ratio between them is `>= 5x` (`PROMPT_CONTEXT_MISMATCH_FACTOR`/`_MIN_CONTEXT_TOKENS`/`_MIN_PROMPT_TOKENS` in the script — the same defaults `/cost-audit`'s Langfuse-side check uses, so a session flagged there and drilled into here applies the same bar). Each entry carries `turn_index`, `ts`, `prompt_est_tokens`, `turn_context_tokens`, `ratio`, and an 80-char `prompt_excerpt` — enough to identify the turn without re-opening the transcript. This is a *static* signal (it flags the correlation, not the cause) — Step 1c's inference pass below is what turns a flagged turn into an actual diagnosis.
 
 The script only reports which skills **were** invoked (`skills_invoked`) — it has no notion of what skills exist to compare against. To check for a missed trigger, separately enumerate the available skills yourself (see Prerequisites — all three locations) and compare their descriptions/triggers against each user request in the transcript.
 
@@ -77,6 +78,14 @@ Drop false positives. Keep only genuine friction.
 | Oversized skill footprint | `largest_tool_results` shows a `Skill` invocation's own `SKILL.md`/`references/*.md` body among the biggest payloads in the session, loaded in full regardless of which part of the skill's workflow actually applied to this request | Structural (see Step 3a-structural) — split the skill's reference docs for progressive disclosure |
 | Inline exploration that should be delegated | `context_multiplication_signal.message_count` is high (dozens+) with a large, flat `avg_cache_read_per_message`, and the tool histogram shows a long run of `Read`/`Bash`/`Grep`-type calls doing a broad investigative sweep with no `Agent`/`Task`/`Workflow` delegation in between | Structural (see Step 3a-structural) — delegate the sweep to a subagent instead of running it inline in the main thread |
 
+**1d. Inference pass on `prompt_context_outliers`:** a flagged turn only says *that* a mismatch happened, not *why*. For each flagged turn — cap at the 3 highest-`ratio` entries — dispatch ONE subagent per turn via the `Agent` tool to diagnose it. Run these on a cheap/mid-tier model: this is a bounded read-and-diagnose task over a handful of already-known tool calls, not open-ended reasoning, so do not default to the most capable model. Give each subagent's prompt:
+
+- The flagged turn's `ts`, `turn_index`, and `prompt_excerpt`.
+- The main-loop (non-sidechain) tool calls immediately preceding that `ts` — pull these from the same `tool_calls` the script already parsed, not a fresh re-read of the transcript.
+- Instructions to identify which specific prior tool result, skill load, or accumulated history accounts for the bulk of `turn_context_tokens`, and to recommend ONE concrete decoupling action: delegate a step to a subagent, insert a `/clear` boundary, narrow a search, or split an oversized skill's reference docs.
+
+Fold each subagent's diagnosis into whichever of the two structural categories above it actually points to (see 3a-structural) — a flagged turn is evidence for "Oversized skill footprint" or "Inline exploration that should be delegated," not a category of its own. If a diagnosis clearly doesn't map to either — e.g. the cause is a one-off large file read with no skill or exploration pattern behind it — say so explicitly and treat it as its own minimal structural finding rather than forcing it into one of the two.
+
 ### Step 2: Identify What Actually Caused Friction
 
 For each classified finding, judge impact:
@@ -99,7 +108,7 @@ Keep only findings with real impact (a correction, or a pattern with real turn/t
 - **Oversized skill footprint** → propose splitting the skill's `references/` doc(s) so the always-loaded body is an index (which procedure/section applies to which situation) and the full procedure text is only pulled in — via a targeted `Read` with `offset`/`limit`, or a second-tier `references/<procedure>.md` — once the relevant one is identified. Name the exact file(s) and current size (from `largest_tool_results`), and what the split would look like.
 - **Inline exploration that should be delegated** → propose the specific phase of the skill's workflow that should spawn a subagent (`Agent`/`Explore`/`dispatch`) instead of running inline, and what that subagent should return (a compact digest, not raw tool output) so the main thread's context doesn't carry the full exploration. Name the skill, the workflow step, and the evidence (`message_count`, `avg_cache_read_per_message`, the run of tool calls in question).
 
-Cite `largest_tool_results`/`context_multiplication_signal` evidence for each. These changes touch a skill's structure (splitting files, rewriting a workflow step to delegate), not a single line — describe the restructuring precisely enough that the user can approve or reject the shape of it, not just wording.
+Cite `largest_tool_results`/`context_multiplication_signal` evidence for each, plus any `prompt_context_outliers` entry and its Step 1d subagent diagnosis that points to this same fix — a flagged turn's diagnosis is often the most concrete evidence available, since it names the specific tool result or skill load behind the number rather than just the aggregate. These changes touch a skill's structure (splitting files, rewriting a workflow step to delegate), not a single line — describe the restructuring precisely enough that the user can approve or reject the shape of it, not just wording.
 
 **If a `/cost-audit` run flagged this session or trace as "Context-multiplication"**, that finding is a pointer to root-cause here — this step is where it gets an actual structural fix, since `/cost-audit`'s own Langfuse data can tell you *that* a trace multiplied cost by turn count but not *what* specifically to restructure.
 
@@ -153,7 +162,7 @@ Example shape:
 ### 1. [target skill] — [oversized skill footprint | inline exploration that should be delegated]
 - **Current structure**: [file(s)/size, or the workflow step and its inline call sequence]
 - **Proposed change**: [the specific split, or the specific delegation — which step, what the subagent should return]
-- **Justification**: [`largest_tool_results` / `context_multiplication_signal` evidence, or the cross-referenced `/cost-audit` trace]
+- **Justification**: [`largest_tool_results` / `context_multiplication_signal` evidence, a `prompt_context_outliers` entry + its Step 1d subagent diagnosis, or the cross-referenced `/cost-audit` trace]
 
 [repeat per recommendation; omit this section entirely if no structural finding survived Step 2]
 

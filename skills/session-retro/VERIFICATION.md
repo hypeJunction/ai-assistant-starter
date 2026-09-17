@@ -30,6 +30,29 @@ A developer just finished a long session where they asked "fix the bug" early on
 | 8 | Correction points are real user text, not synthetic events | None of the reported `correction_points` are `<task-notification>`, `<local-command-stdout>`/`<local-command-caveat>`, `<system-reminder>`, or hook-feedback blocks — the analyzer filters these before they reach `user_turns` |
 | 9 | Missed-skill-trigger check covers all skill locations | The agent checked project (`.claude/skills`), user-global (`~/.claude/skills`), and plugin-supplied skills before concluding a trigger was or wasn't missed — not project skills alone |
 
+## Scenario 2: Prompt/context mismatch
+
+A developer asks a two-word follow-up ("fix it") mid-session. The assistant's response to that exact turn re-pays a large accumulated context — a previously-loaded skill's reference body plus several prior tool results still sitting in the cache-read total — even though the prompt itself carried almost no information. The developer wants to know whether that specific turn was disproportionately expensive and, if so, why.
+
+**Invocation:** `/session-retro`
+
+**Expected Outcome:**
+
+1. The agent runs `references/session_transcript_analyzer.py` and the report's `prompt_context_outliers` list contains one entry for the "fix it" turn: `prompt_est_tokens` at or below 300, `turn_context_tokens` at or above 20000, and `ratio` at or above 5.0 (e.g. `prompt_est_tokens: 1`, `turn_context_tokens: 25000`, `ratio: 25000.0`).
+2. Per Step 1d, the agent dispatches exactly one subagent for this flagged turn (capped at 3 flagged turns total, so one subagent here), on a cheap/mid-tier model, with the turn's `ts`/`turn_index`/`prompt_excerpt` and the preceding main-loop tool calls in its prompt — not a fresh re-read of the whole transcript.
+3. The subagent's diagnosis names a specific contributor (e.g. a `Skill` invocation's `SKILL.md`/`references/*.md` body still counted in cache-read, or a long unrelegated exploration run) and recommends one concrete decoupling action (delegate to a subagent, insert a `/clear` boundary, narrow a search, or split a reference doc).
+4. The agent folds this finding and its diagnosis into whichever of the two existing structural categories the diagnosis actually points to ("Oversized skill footprint" or "Inline exploration that should be delegated") in the Structural / Agentification Recommendations section — it does not invent a third category unless the diagnosis genuinely doesn't fit either, in which case it says so explicitly.
+5. The report's Structural / Agentification Recommendations entry cites the `prompt_context_outliers` entry (ts, ratio) alongside `largest_tool_results`/`context_multiplication_signal` as justification.
+
+## Key Checkpoints (Scenario 2)
+
+| # | Checkpoint | What to verify |
+|---|-----------|----------------|
+| 10 | Mismatch is flagged only when all three static thresholds hold | The flagged entry has `prompt_est_tokens <= 300`, `turn_context_tokens >= 20000`, and `ratio >= 5.0` — not just a large context total alone |
+| 11 | Exactly one subagent per flagged turn, capped at 3 | The agent does not dispatch more than 3 inference subagents even if more turns are flagged, and dispatches one (not zero, not a bulk combined call) per turn under the cap |
+| 12 | Inference subagent runs on a cheap/mid-tier model | The dispatch does not default to the most capable model for this bounded read-and-diagnose task |
+| 13 | Diagnosis is folded into an existing structural category, not a new one | The Structural / Agentification Recommendations section labels the finding as "Oversized skill footprint" or "Inline exploration that should be delegated" unless the diagnosis genuinely doesn't fit, which is stated explicitly |
+
 ## Anti-patterns
 
 | Anti-pattern | Why it fails |

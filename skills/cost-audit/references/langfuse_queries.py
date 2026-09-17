@@ -25,6 +25,7 @@ Usage:
     python3 langfuse_queries.py drill --trace <id> --tool <name> --limit 5
     python3 langfuse_queries.py session_sequences --growth-factor 2.0
     python3 langfuse_queries.py classify
+    python3 langfuse_queries.py prompt_context_mismatch --prompt-context-factor 5.0
     python3 langfuse_queries.py all --out-dir ./cost_audit_out
 
 Reading the output: start with `summary.json`. Cost concentrates in context
@@ -354,6 +355,50 @@ def _flag_outlier_traces(traces, factor=3.0):
     outliers = [t for t in traces if t["outlier_reasons"]]
     outliers.sort(key=lambda t: (-t["recoverable_cost"], -t["excess_cost"], -len(t["outlier_reasons"])))
     return outliers
+
+
+def _flag_prompt_context_mismatch(observations, factor=5.0, min_context_tokens=20000):
+    """Flag a GENERATION call whose fresh input was small but whose total paid context was huge.
+
+    `usage[USAGE_FRESH_INPUT]` is the tokens THIS call actually added — a short follow-up prompt is
+    cheap by that measure alone. `_context_tokens(usage)` is what was actually billed: fresh input +
+    cache read + cache write. `context_depth_per_call` in `trace_outliers` averages this ratio across
+    a whole trace, which can wash out a single call where the gap between "new content" and "total
+    bill" spikes while the trace's other calls stay unremarkable — this isolates that one call instead.
+    """
+    flagged = []
+    for obs in observations:
+        usage = _usage_of(obs)
+        fresh_input = usage[USAGE_FRESH_INPUT]
+        context_tokens = _context_tokens(usage)
+        ratio = context_tokens / max(fresh_input, 1)
+        if context_tokens >= min_context_tokens and ratio >= factor:
+            flagged.append(
+                {
+                    "traceId": obs.get("traceId"),
+                    "sessionId": obs.get("sessionId"),
+                    "observationId": obs.get("id"),
+                    "startTime": obs.get("startTime"),
+                    "model": obs.get("model"),
+                    "fresh_input_tokens": fresh_input,
+                    "context_tokens": context_tokens,
+                    "ratio": round(ratio, 2),
+                }
+            )
+    flagged.sort(key=lambda f: -f["context_tokens"])
+    return flagged[:20]
+
+
+def cmd_prompt_context_mismatch(base_url, headers, from_ts, to_ts, prompt_context_factor=5.0,
+                                 prompt_context_min_tokens=20000, **_):
+    """Pull GENERATION-type observations and flag prompt/context mismatches — see
+    `_flag_prompt_context_mismatch` for the flagging condition.
+    """
+    generation_filter = [{"type": "string", "column": "type", "operator": "=", "value": "GENERATION"}]
+    observations = pull_observations(base_url, headers, "core,basic,usage,model", from_ts, to_ts, generation_filter)
+    return _flag_prompt_context_mismatch(
+        observations, factor=prompt_context_factor, min_context_tokens=prompt_context_min_tokens
+    )
 
 
 def cmd_combined_metrics(base_url, headers, from_ts, to_ts, factor=3.0, cache_key="cache_read_input_tokens", **_):
@@ -1219,6 +1264,7 @@ COMMANDS = {
     "drill": cmd_drill,
     "session_sequences": cmd_session_sequences,
     "classify": cmd_classify,
+    "prompt_context_mismatch": cmd_prompt_context_mismatch,
 }
 
 
@@ -1251,6 +1297,14 @@ def main():
     parser.add_argument(
         "--reverify-window-seconds", type=float, default=120,
         help="seconds after an Edit/Write to look for a Read on the same file, for `classify`"
+    )
+    parser.add_argument(
+        "--prompt-context-factor", type=float, default=5.0,
+        help="min context_tokens / fresh_input_tokens ratio to flag, for `prompt_context_mismatch`"
+    )
+    parser.add_argument(
+        "--prompt-context-min-tokens", type=int, default=20000,
+        help="min context_tokens for a call to be eligible for flagging, for `prompt_context_mismatch`"
     )
     parser.add_argument("--out-dir", default="./cost_audit_out", help="output dir for `all`")
     parser.add_argument(
@@ -1304,6 +1358,16 @@ def main():
                 json.dump(result, f, indent=2)
             print(f"wrote {out_path}")
 
+        prompt_context_mismatch = cmd_prompt_context_mismatch(
+            base_url, headers, from_ts, to_ts,
+            prompt_context_factor=args.prompt_context_factor,
+            prompt_context_min_tokens=args.prompt_context_min_tokens,
+        )
+        out_path = os.path.join(args.out_dir, "prompt_context_mismatch.json")
+        with open(out_path, "w") as f:
+            json.dump(prompt_context_mismatch, f, indent=2)
+        print(f"wrote {out_path}")
+
         # Read this first: it is the one file that says where the money went, and it is
         # small enough not to cost meaningful context to load.
         summary = {
@@ -1324,6 +1388,15 @@ def main():
                 for t in combined["trace_outliers"][:10]
             ],
             "total_recoverable_cost": round(sum(t["recoverable_cost"] for t in combined["trace_outliers"]), 4),
+            "prompt_context_mismatch_count": len(prompt_context_mismatch),
+            "worst_prompt_context_mismatch": (
+                {
+                    "ratio": prompt_context_mismatch[0]["ratio"],
+                    "context_tokens": prompt_context_mismatch[0]["context_tokens"],
+                }
+                if prompt_context_mismatch
+                else None
+            ),
         }
         out_path = os.path.join(args.out_dir, "summary.json")
         with open(out_path, "w") as f:
@@ -1371,6 +1444,8 @@ def main():
         stuck_poll_regularity_cv=args.stuck_poll_regularity_cv,
         error_window_seconds=args.error_window_seconds,
         reverify_window_seconds=args.reverify_window_seconds,
+        prompt_context_factor=args.prompt_context_factor,
+        prompt_context_min_tokens=args.prompt_context_min_tokens,
     )
     print(json.dumps(result, indent=2))
 

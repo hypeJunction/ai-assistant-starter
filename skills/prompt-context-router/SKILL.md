@@ -1,6 +1,6 @@
 ---
 name: prompt-context-router
-description: Runtime enforcement hook that classifies each incoming prompt by task class and topic-pivot, then advises the assistant to treat clear asides as standalone (and delegate cheap ones to a subagent), and to consider entering Plan Mode for architecture/extreme-scope prompts — denying the first extreme-scope prompt per session outright. Auto-loaded for every user prompt.
+description: Runtime enforcement hook that classifies each incoming prompt by task class and topic-pivot, then advises the assistant to treat clear asides as standalone (and delegate cheap ones to a subagent), to consider entering Plan Mode for architecture/extreme-scope prompts — denying the first extreme-scope prompt per session outright — and to flag when a short prompt is riding on a disproportionately large accumulated context. Auto-loaded for every user prompt.
 category: enforcement
 user-invocable: false
 ---
@@ -69,6 +69,36 @@ denies the prompt — pure advisory otherwise, matching
 pivot *and* an architecture-classified prompt), both notes are concatenated
 into one `additionalContext` string — neither is dropped.
 
+## Context Ballast Advisory (fourth, independent axis)
+
+The live counterpart to `/cost-audit`'s `prompt_context_mismatch` and
+`/session-retro`'s `prompt_context_outliers` — same signal (a short new
+prompt riding on a disproportionately large paid context), checked at submit
+time instead of after the fact. Runs independently of task class and pivot;
+any of the four axes can fire together, and their `additionalContext`
+strings are concatenated, none dropped.
+
+**How it's computed:** the hook estimates this prompt's size (chars/4, no
+tokenizer available) and, if that's small (`<=300` est. tokens), tails
+`input.transcript_path` (the session's own local `.jsonl`) for the last
+main-loop (non-sidechain) assistant message's `usage.cache_read_input_tokens`
++ `usage.cache_creation_input_tokens` + `usage.input_tokens` — the same
+fresh-input + cache-read + cache-write total `_context_tokens()` computes on
+the Langfuse side. If that total is at least 20,000 tokens **and** at least
+5x the prompt's own estimated size, it adds an `additionalContext` note
+suggesting the next step run in a subagent, or that a `/clear` checkpoint is
+due.
+
+**Why this can only ever advise:** a hook cannot remove tokens already
+committed to the context window — it can only shape what the assistant does
+with the *next* turn, same limitation as the rest of this hook.
+
+**Why the tail read, not the full transcript:** this hook runs on every
+single prompt submit, so parsing a multi-MB session history in full each
+time would add real latency to every turn. Reading the last 256KB is enough
+to reach the most recent assistant usage line in practice; if the tail slice
+happens to start mid-JSON, that one line just fails to parse and is skipped.
+
 ## Relationship to Other Skills
 
 This hook deliberately points at existing skills instead of reimplementing
@@ -111,12 +141,21 @@ snippet by hand.
 | Env var | Default | Meaning |
 |---|---|---|
 | `PROMPT_CONTEXT_ROUTER_EXTREME_MODE` | `enforce` | `enforce` denies the first `extreme`-classified prompt per session (then downgrades to advisory); `warn-only` never denies, always advisory-only |
+| `PROMPT_CONTEXT_ROUTER_BALLAST_FACTOR` | `5.0` | Min `context_tokens / prompt_est_tokens` ratio to trigger the context ballast advisory — same default as `/cost-audit`'s `--prompt-context-factor` |
+| `PROMPT_CONTEXT_ROUTER_BALLAST_MIN_TOKENS` | `20000` | Min accumulated context tokens (from the last main-loop assistant message) for a prompt to be eligible for the ballast advisory — same default as `/cost-audit`'s `--prompt-context-min-tokens` |
 
 ## What This Does Not Do
 
 - **Doesn't reduce tokens sent to the model.** It cannot remove prior turns
   from the context window — only `additionalContext` can be added, nothing
-  can be subtracted.
+  can be subtracted. The context ballast advisory is no exception: it can
+  flag that this turn is about to re-pay a large accumulated context, not
+  shrink it.
+- **Ballast estimate is approximate.** `prompt_est_tokens` is chars/4, not a
+  real tokenizer count, and the transcript's own `usage.input_tokens` field
+  is not always populated on every line — the advisory leans on
+  `cache_read_input_tokens`/`cache_creation_input_tokens`, which are the
+  reliable part of that total, same caveat the audit-side scripts document.
 - **Not a model router.** It doesn't touch `/model` or `/effort` — for
   automatic model-tier routing on prompt submission, see the
   `claude-model-router-hook` option in `docs/cost-optimization.md`.
@@ -145,3 +184,7 @@ snippet by hand.
 | PCR-T8 | Second `extreme`-classified prompt in the same session | `additionalContext` only, never denies again |
 | PCR-T9 | Any of the above with `permission_mode: "plan"` already set | Silent — no plan-mode guidance at all |
 | PCR-T10 | `extreme`-classified prompt, `PROMPT_CONTEXT_ROUTER_EXTREME_MODE=warn-only` | `additionalContext` only, never denies |
+| PCR-T11 | Short prompt (`<=300` est. tokens), `transcript_path` tail shows a last main-loop assistant message with `cache_read_input_tokens` + `cache_creation_input_tokens` >= 20,000 and >= 5x the prompt's estimated size | `additionalContext` context-ballast advisory, concatenated with any other axis that also fired |
+| PCR-T12 | Short prompt, but the last main-loop assistant message's accumulated context is below 20,000 tokens or below the 5x ratio | No context-ballast `additionalContext` (other axes may still fire independently) |
+| PCR-T13 | Prompt itself is long (`>300` est. tokens), regardless of accumulated context | No context-ballast `additionalContext` — only short prompts are eligible |
+| PCR-T14 | `transcript_path` missing, unreadable, or the last main-loop assistant message has no `usage` | Silent on this axis (fail-open), no crash |
