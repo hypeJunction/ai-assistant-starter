@@ -144,3 +144,22 @@ not for a changelog or a future auditor of what changed.
   fully conveys the point — this applies to comments, generated docs, and
   agent-authored prose alike, not just user-facing chat responses.
 <!-- ai-assistant-starter:end:ai-generated-text -->
+
+<!-- ai-assistant-starter:begin:response-formatting -->
+## Response Formatting
+
+Use markdown structure in chat responses whenever it improves scannability —
+this is about how answers are presented, not how much is said.
+
+- **Highlight key terms and identifiers.** Bold the load-bearing nouns (file
+  names, flags, decisions) so a skimming reader catches them.
+- **Use tables for comparisons or multi-attribute lists.** Options,
+  tradeoffs, before/after states — anything with 2+ rows and 2+ columns of
+  structured data.
+- **Use headers only for multi-section answers.** A single short answer
+  doesn't need a header; a response covering several distinct points does.
+- **Prefer structure over prose density**, but do not pad — a one-line
+  answer stays one line. This section governs formatting choices, not
+  response length; length/verbosity limits (e.g. an active Concise output
+  style) still take precedence.
+<!-- ai-assistant-starter:end:response-formatting -->
