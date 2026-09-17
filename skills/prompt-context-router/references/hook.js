@@ -10,7 +10,11 @@
  * Axis 1 — task class: the same mechanical/implementation/debugging/
  * architecture/extreme/abstain taxonomy already used for model-tier
  * routing (see CLAUDE.md's Task Classification table), reapplied here via
- * keyword/structural heuristics.
+ * a single ordered rule table (`RULES`) of { class, keyword, weight }
+ * entries. Keywords match on word boundaries (not plain substring, so
+ * "fix" doesn't match inside "prefix") and a short negation lookback
+ * discounts hits preceded by "don't"/"not"/"no need to"/etc. within the
+ * last few words.
  *
  * Axis 2 — pivot: does this prompt look like a standalone aside rather than
  * a continuation of the immediately preceding turn? Heuristic only (short
@@ -58,31 +62,45 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MECHANICAL_KEYWORDS = [
-  'rename', 'bump version', 'look up', 'lookup', 'format', 'typo',
-  'git status', 'git log', 'file move', 'move the file', 'what version',
-  'quick lookup', 'list the', 'find the file',
+const NEGATION_MARKERS = [
+  "don't", 'do not', "doesn't need to", 'no need to', 'not', 'without',
+  'never mind', 'nevermind', 'skip',
 ];
+const NEGATION_LOOKBACK_WORDS = 4;
 
-const DEBUGGING_KEYWORDS = [
-  'bug', 'fix', 'race', 'flaky', 'crash', 'broken', 'error', 'exception',
-  'stack trace', 'regression', 'failing test', 'traceback', "doesn't work",
-  'not working',
-];
+// Ordered rule table: one row per keyword, grouped by class. Add or retune a
+// rule here — the class weight lives next to the keywords it applies to
+// instead of being hardcoded separately in classifyTaskClass.
+const RULES = [
+  ...[
+    'rename', 'bump version', 'look up', 'lookup', 'format', 'typo',
+    'git status', 'git log', 'file move', 'move the file', 'what version',
+    'quick lookup', 'list the', 'find the file', 'version bump',
+    'clean up whitespace', 'reformat',
+  ].map((keyword) => ({ class: 'mechanical', keyword, weight: 1 })),
 
-const ARCHITECTURE_KEYWORDS = [
-  'redesign', 'tradeoff', 'trade-off', 'architecture', 'rearchitect',
-  'design decision', 'approach should we', 'refactor the whole',
-];
+  ...[
+    'implement', 'add a feature', 'add feature', 'write a test', 'add tests',
+    'build a component', 'create an api', 'add an endpoint', 'add an index',
+    'consolidate', 'clean up',
+  ].map((keyword) => ({ class: 'implementation', weight: 1, keyword })),
 
-const EXTREME_KEYWORDS = [
-  'migrate the whole', 'codebase-wide', 'rewrite the entire', 'rfc',
-  'platform-scale', 'multi-system migration',
-];
+  ...[
+    'bug', 'fix', 'race', 'flaky', 'crash', 'broken', 'error', 'exception',
+    'stack trace', 'regression', 'failing test', 'traceback', "doesn't work",
+    'not working', 'flaky test', 'optimize', 'performance', 'slow query',
+    'memory leak',
+  ].map((keyword) => ({ class: 'debugging', keyword, weight: 2 })),
 
-const IMPLEMENTATION_KEYWORDS = [
-  'implement', 'add a feature', 'add feature', 'write a test', 'add tests',
-  'build a component', 'create an api', 'add an endpoint',
+  ...[
+    'redesign', 'tradeoff', 'trade-off', 'architecture', 'rearchitect',
+    'design decision', 'approach should we', 'refactor the whole',
+  ].map((keyword) => ({ class: 'architecture', keyword, weight: 2 })),
+
+  ...[
+    'migrate the whole', 'codebase-wide', 'rewrite the entire', 'rfc',
+    'platform-scale', 'multi-system migration',
+  ].map((keyword) => ({ class: 'extreme', keyword, weight: 3 })),
 ];
 
 const ASIDE_MARKERS = [
@@ -113,18 +131,37 @@ function getInput() {
   });
 }
 
-function countHits(text, keywords) {
-  return keywords.reduce((n, kw) => (text.includes(kw) ? n + 1 : n), 0);
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Single-word keywords get \b word-boundary matching so short entries like
+// "fix" don't match inside "prefix"/"suffix". Multi-word phrases keep plain
+// substring matching — they're specific enough to not need it.
+function findMatches(text, keyword) {
+  const isSingleWord = !keyword.includes(' ') && !keyword.includes('-');
+  const pattern = isSingleWord
+    ? new RegExp(`\\b${escapeRegExp(keyword)}\\b`, 'g')
+    : new RegExp(escapeRegExp(keyword), 'g');
+  return [...text.matchAll(pattern)].map((m) => m.index);
+}
+
+function isNegated(text, matchIndex) {
+  const before = text.slice(0, matchIndex);
+  const words = before.trim().split(/\s+/).filter(Boolean);
+  const window = words.slice(-NEGATION_LOOKBACK_WORDS).join(' ');
+  return NEGATION_MARKERS.some((marker) => window.includes(marker));
+}
+
+function countHits(text, keyword) {
+  return findMatches(text, keyword).filter((idx) => !isNegated(text, idx)).length;
 }
 
 function classifyTaskClass(promptLower) {
-  const scores = {
-    extreme: countHits(promptLower, EXTREME_KEYWORDS) * 3,
-    architecture: countHits(promptLower, ARCHITECTURE_KEYWORDS) * 2,
-    debugging: countHits(promptLower, DEBUGGING_KEYWORDS) * 2,
-    implementation: countHits(promptLower, IMPLEMENTATION_KEYWORDS),
-    mechanical: countHits(promptLower, MECHANICAL_KEYWORDS),
-  };
+  const scores = { extreme: 0, architecture: 0, debugging: 0, implementation: 0, mechanical: 0 };
+  for (const rule of RULES) {
+    scores[rule.class] += countHits(promptLower, rule.keyword) * rule.weight;
+  }
   let best = 'abstain';
   let bestScore = 0;
   for (const [cls, score] of Object.entries(scores)) {
@@ -137,7 +174,7 @@ function classifyTaskClass(promptLower) {
 }
 
 function looksLikePivot(prompt, promptLower) {
-  if (countHits(promptLower, ASIDE_MARKERS) > 0) return true;
+  if (ASIDE_MARKERS.some((marker) => promptLower.includes(marker))) return true;
   const hasContinuationPronoun = CONTINUATION_PRONOUNS.some((p) => promptLower.includes(p));
   if (hasContinuationPronoun) return false;
   const hasFileOrSymbolRef = /[.\/][a-zA-Z0-9_-]+\.(ts|tsx|js|jsx|py|go|rs|md|json|yml|yaml)|[a-zA-Z_][a-zA-Z0-9_]*\(\)/.test(prompt);
