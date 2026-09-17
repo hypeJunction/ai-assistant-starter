@@ -36,6 +36,7 @@ Just proceed, no question, when disambiguation costs one cheap targeted action:
 - Ground options in what's already cheaply known — file/directory names glimpsed in the request, prior conversation, `git status` — not in an enumeration built by exploring first.
 - Prefer 2-4 concrete options over an open-ended "what did you mean?"
 - If nothing is known yet, ask the narrower question first: scope (which file/module/directory) before intent (what outcome).
+- Ask one question at a time — never combine multiple clarifying questions into a single turn, even if related. See `ai-assistant-protocol`'s "Asking Questions" section for the general rule this specializes.
 
 ## Interaction with Auto Mode
 

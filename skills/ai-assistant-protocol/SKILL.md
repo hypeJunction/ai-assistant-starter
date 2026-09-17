@@ -280,14 +280,21 @@ Use task tracking for complex tasks (3+ steps). Skip for trivial tasks.
 | Medium | 6-15 | Confirm with user, suggest `/refactor` if structural |
 | Large | 16+ | **Must use refactor workflow** |
 
+## Asking Questions
+
+- Any question directed at the user — not just approval gates — is asked via the `AskUserQuestion` tool. Never end a long explanatory response with a question typed into the prose; stop the prose and ask with the tool instead.
+- Ask exactly one question per turn. Never bundle multiple questions together, and never stack yes/no questions — a single "yes" can't disambiguate which question it answers.
+- If more than one thing is unclear, ask the single highest-priority question first and defer the rest to a follow-up turn.
+- Reserve free-text prompts (no tool) for genuinely open-ended answers with no fixed option set (e.g., "what commit message?").
+
 ## Gate Enforcement
 
-Workflows with approval gates require explicit approval before proceeding.
+Workflows with approval gates require explicit approval before proceeding. This is the fixed-choice special case of "Asking Questions" above.
 
 **Valid approval:** `yes`, `y`, `approved`, `proceed`, `lgtm`, `looks good`, `go ahead`
 **Invalid (NOT approval):** Silence, questions, "I see", "okay", "hmm"
 
-**Presenting a gate:** When the choice is a fixed set of options (approve/edit/cancel, pick one of N, yes/no), use the `AskUserQuestion` tool instead of printing a markdown prompt and waiting for typed text — it renders as a selectable widget and the response still counts as explicit approval per the terms above. Reserve free-text prompts for genuinely open-ended answers (e.g., "what commit message?") where there's no fixed option set.
+**Presenting a gate:** When the choice is a fixed set of options (approve/edit/cancel, pick one of N, yes/no), use the `AskUserQuestion` tool — it renders as a selectable widget and the response still counts as explicit approval per the terms above.
 
 Individual skills may accept domain-specific terms (e.g., `commit` in the commit workflow). These supplement — never replace — the list above.
 
