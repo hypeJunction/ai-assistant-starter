@@ -115,8 +115,8 @@ This applies to every test run, typecheck, lint, build, coverage run, security s
 
 ### How to Delegate
 
-1. **Dispatch a subagent** via the `Agent` tool to run the command(s). Use `dispatch` for a single mechanical command; use a scoped `general-purpose`/domain agent when the run needs judgment (e.g., triaging failures).
-2. **Give it the exact command(s)** to run, and size the requested report to the outcome — not uniformly to "everything":
+1. **Dispatch one subagent per check** — typecheck, lint, and test each get their own `Agent` call, not one subagent running all three. A failing check's raw output then stays isolated to that call instead of accumulating alongside the others, and independent checks can run in parallel (send them in a single message with multiple tool uses). Use `dispatch` for a single mechanical command; use a scoped `general-purpose`/domain agent when the run needs judgment (e.g., triaging failures). Exception: a scoped test run that is itself one logical command (e.g., `test -- ComponentName`) stays one call — the one-check-per-subagent rule splits by check type, not by sub-invocation.
+2. **Give it the exact command** to run, and size the requested report to the outcome — not uniformly to "everything":
    - **On any failure, error, or ambiguous/mixed result**: require the complete raw output (stdout/stderr, exit code) for that case — no paraphrasing, no summarizing away the detail needed to diagnose.
    - **On a clean pass**: require only the command(s) run, the exit code, a one-line result per scenario, and one representative full raw-output sample per distinct scenario tested — not one per repeated call. A passing loop or threshold test needs one piece of concrete evidence per scenario, not a near-duplicate dump for every repetition.
 3. **Read the raw output yourself** before making any claim. A subagent's "tests pass" summary is not evidence — the output it returns is.

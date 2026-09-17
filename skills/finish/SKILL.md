@@ -88,19 +88,19 @@ Ensure changed code has test coverage.
 
 Self-review before validation. Fixes made here will be validated in Phase 4.
 
-1. **Get the diff:**
+1. **Delegate the scan** — the diff and checklist scan are read-only and don't need the main session's context. Dispatch a subagent (via the `Agent` tool) to run `git diff HEAD` and `git diff --staged` and check the diff against the review checklist below, returning only a findings list (file, line, issue) — not the raw diff.
    ```bash
    git diff HEAD
    git diff --staged
    ```
 
-2. **Review checklist:**
+2. **Review checklist (applied by the subagent):**
    - [ ] No `any` types
    - [ ] Proper TypeScript patterns
    - [ ] Tests have test plans
    - [ ] No `console.log` statements
 
-3. **`any` type handling:** If `any` types are found, fix them with proper types before proceeding. Common replacements:
+3. **`any` type handling:** Using the subagent's findings, fix any `any` types with proper types before proceeding. Common replacements:
    - `any` -> `unknown` for truly unknown types (e.g., error handlers, generic middleware)
    - `any` -> specific interface/type for known shapes (e.g., API responses, props)
    - `any` -> generic type parameter (`<T>`) for reusable utilities
@@ -136,12 +136,12 @@ Self-review before validation. Fixes made here will be validated in Phase 4.
 
 Run checks in order — stop and fix if any fail. This phase runs AFTER review to ensure review fixes have not introduced new issues.
 
-**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require raw output sized to the outcome; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+**Delegate each check to its own subagent** — typecheck, lint, and scoped test each run via a separate `Agent` call, never directly in the main agent's shell and never bundled into one call. Send independent checks in a single message with multiple tool uses so they run concurrently. Read each subagent's raw output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
 
 ```bash
-npm run typecheck
-npm run lint
-npm run test -- "path/to/changed/"
+npm run typecheck                    # subagent 1
+npm run lint                          # subagent 2
+npm run test -- "path/to/changed/"    # subagent 3
 ```
 
 **Re-validation loop:** If any check fails, fix the issue and re-run all validation checks from the beginning. Maximum 3 iterations. If validation still fails after 3 iterations, report the remaining failures to the user and ask how to proceed.

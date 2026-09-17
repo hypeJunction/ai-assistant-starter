@@ -83,12 +83,12 @@ git log $MAIN..HEAD --oneline
 
 Run full validation before creating PR. If issues are found, fix them and re-validate. Maximum 3 iterations. All checks must pass before proceeding.
 
-**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+**Delegate each check to its own subagent** — typecheck, lint, and test each run via a separate `Agent` call, never directly in the main agent's shell and never bundled into one call. Send independent checks in a single message with multiple tool uses so they run concurrently. Read each subagent's raw output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
 
 ```bash
-npm run typecheck
-npm run lint
-npm run test
+npm run typecheck   # subagent 1
+npm run lint         # subagent 2
+npm run test         # subagent 3
 ```
 
 **Iteration loop:**
@@ -114,11 +114,11 @@ Report format:
 
 **Do not proceed until all checks pass.**
 
-### Step 4: Security Scan
+### Step 4: Delegate Security Scan + Mixed-Concern Check
 
-Run concrete security scan commands against the changed files (see also `../commit/references/pre-commit-verification.md` and `../validate/references/security-scan-patterns.md` for detailed pattern guidance):
+Both checks are read-only and don't need the main session's context — dispatch a single subagent (via the `Agent` tool) to run the scan and classify the diff, rather than pulling the full diff into the main agent. (See also `../commit/references/pre-commit-verification.md` and `../validate/references/security-scan-patterns.md` for detailed pattern guidance.)
 
-Run as a single grep pass (not one invocation per category — the match text itself tells you which category it is) and cap the output so an unbounded diff can't flood context:
+Give the subagent the commands below and instructions to return only the digest format — not raw diff text (except for grep matches, which must be quoted in full):
 
 ```bash
 MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
@@ -131,9 +131,11 @@ grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" 
   -e "(child_process|exec\(|execSync\(|spawn\(|execFile\()" \
   -e "(rejectUnauthorized:\s*false|NODE_TLS_REJECT_UNAUTHORIZED|--no-verify)" \
   -E $CHANGED_FILES | head -100
+
+git diff $MAIN...HEAD
 ```
 
-**Interpreting results:**
+**Interpreting results (the subagent applies these, then reports its conclusion — not just raw matches):**
 - Secrets in non-test files: **BLOCKER** — do not proceed
 - `eval`/`innerHTML`/`dangerouslySetInnerHTML`: Requires justification — flag for review
 - Raw SQL with interpolation: **BLOCKER** unless using tagged template literals
@@ -142,9 +144,19 @@ grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" 
 
 Exclude test files and example/documentation files from blocking — flag as informational only.
 
-### Step 5: Check for Mixed Concerns
+**Required digest format returned by the subagent:**
 
-Review the diff for mixed-concern changes. If commits include both feature work and refactoring, or both bug fixes and cleanup, suggest splitting into separate PRs for faster review.
+```markdown
+## Security Scan
+[Clean, or the specific file/line/pattern for each finding, quoted in full, marked BLOCKER or informational]
+
+## Mixed-Concern Check
+[None detected, or:]
+- **Feature:** [files related to new behavior]
+- **Refactor/other:** [files with structural or unrelated changes]
+```
+
+Read the digest before proceeding. If it reports a BLOCKER, stop and resolve it (fix and re-dispatch this step, or escalate to the user) before Step 5. If it flags mixed concerns, suggest splitting into separate PRs for faster review.
 
 ### Step 6: Check for Existing PR
 

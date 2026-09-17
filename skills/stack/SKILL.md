@@ -110,7 +110,7 @@ Cherry-pick only that bucket's commits into its worktree — no opportunistic ex
 
 ## Phase 3: Validate Per Bucket
 
-**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+**Delegate each check to its own subagent** — run every distinct command via a separate `Agent` call, never directly in the main agent's shell and never bundled into one call. Send independent checks in a single message with multiple tool uses so they run concurrently. Give each subagent its exact command and require full raw output back; read every subagent's output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
 
 ```bash
 npm run typecheck

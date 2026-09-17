@@ -67,47 +67,17 @@ MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remo
 
 **If on main/master:** Warn and suggest creating a feature branch. **Wait for response.**
 
-### Step 1: Review Changes
+### Step 1: Delegate Analysis
+
+The diff, mixed-concern classification, and security scan are all read-only and don't require the main session's context — dispatch a single subagent (via the `Agent` tool) to gather all three and return a structured digest, rather than pulling the raw diff into the main agent.
+
+Give the subagent: the scope paths, the commands below, and instructions to return only the digest format — not raw diff text (except for any grep matches from the security scan, which must be quoted in full).
 
 ```bash
 git diff $MAIN...HEAD -- [scope-paths]
 git diff -- [scope-paths]
 git diff --staged -- [scope-paths]
-```
 
-**Unstaged changes:** If `git status` shows unstaged changes not related to the current commit, leave them alone. Note them in the review output as "out of scope" so the user is aware, but do NOT stage them. Do NOT run `git add .` or `git add -A`. Only stage files that are part of the intended commit. If the user asks to include additional files, stage them explicitly by name.
-
-```markdown
-## Changes to Commit
-
-**Branch:** `[current branch]`
-
-**Modified:** `path/to/file.ts` — [brief description]
-**Added:** `path/to/new.ts` — [purpose]
-**Deleted:** `path/to/old.ts` — [reason]
-
-**Stats:** X files changed, +Y insertions, -Z deletions
-
-**Out of scope (unstaged):** `path/to/other.ts`, `path/to/another.ts` — not included in this commit
-```
-
-### Step 2: Mixed-Concern Check
-
-If changes include different concern types (feature + refactor, or feature + config), flag it:
-
-```markdown
-These changes appear to mix concerns:
-- **Feature:** [files related to new behavior]
-- **Refactor:** [files with structural changes only]
-
-Split into separate commits? (yes / no)
-```
-
-### Step 3: Security Scan (Always Runs)
-
-Scan changed files for security issues before committing:
-
-```bash
 # Secrets detection — generic assignment patterns
 grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
   -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" [scope-paths]
@@ -136,31 +106,63 @@ grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
 | Bearer token in code | `Bearer eyJ...` | Auth bypass |
 | Password in string | `password = "hunter2"` | Credential leak |
 
-**If secrets detected:** **STOP.** Warn the user with the specific file, line number, and secret type. Do NOT proceed to commit.
+Exclude test files and example/documentation files from blocking — the subagent should flag them as informational only, not as findings.
+
+**Required digest format returned by the subagent:**
+
+```markdown
+## Changes to Commit
+
+**Branch:** `[current branch]`
+
+**Modified:** `path/to/file.ts` — [brief description]
+**Added:** `path/to/new.ts` — [purpose]
+**Deleted:** `path/to/old.ts` — [reason]
+
+**Stats:** X files changed, +Y insertions, -Z deletions
+
+**Out of scope (unstaged):** `path/to/other.ts`, `path/to/another.ts` — not included in this commit
+
+## Mixed-Concern Check
+[None detected, or:]
+- **Feature:** [files related to new behavior]
+- **Refactor:** [files with structural changes only]
+
+## Security Scan
+[Clean, or the specific file/line/pattern for each finding, quoted in full]
+```
+
+**Unstaged changes:** the subagent must leave unstaged changes alone and never run `git add .` / `git add -A` — it only reads, it does not stage.
+
+### Step 2: Act on the Digest
+
+Read the subagent's digest before proceeding.
+
+**Mixed concerns:** If the digest flags mixed concerns, ask the user via `AskUserQuestion`:
+
+```markdown
+These changes appear to mix concerns:
+- **Feature:** [files related to new behavior]
+- **Refactor:** [files with structural changes only]
+
+Split into separate commits? (yes / no)
+```
+
+**Security findings:** **If secrets detected:** **STOP.** Warn the user with the specific file, line number, and secret type. Do NOT proceed to commit.
 **If insecure patterns detected:** Flag for review — ask user to confirm these are intentional before proceeding.
 
-Exclude test files and example/documentation files from blocking — flag them as informational only.
-
-#### Re-Scan After Secret Fix
-
-If a secret is detected and fixed (moved to environment variable, removed, etc.):
-
-1. Re-run the full security scan on staged changes
-2. If new issues are found, fix and re-scan
-3. Continue until the scan is clean
-4. **Maximum 3 iterations** — if secrets persist after 3 fix-and-rescan cycles, stop and escalate to the user with a summary of remaining issues
-5. Do NOT proceed to Step 4 until the security scan passes with zero findings
+**Re-scan after a secret fix:** If a secret is found and fixed (moved to environment variable, removed, etc.), dispatch a fresh Step 1 analysis subagent to re-scan. Continue until the scan is clean. **Maximum 3 iterations** — if secrets persist after 3 fix-and-rescan cycles, stop and escalate to the user with a summary of remaining issues. Do NOT proceed to Step 4 until the security scan passes with zero findings.
 
 ### Step 4: Validate (Optional)
 
 Validation scales by change tier. See `references/pre-commit-verification.md` for tier-specific requirements and evidence freshness rules.
 
-**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+**Delegate each check to its own subagent** — typecheck, lint, and scoped test each run via a separate `Agent` call, never directly in the main agent's shell and never bundled into one call. Send independent checks in a single message with multiple tool uses so they run concurrently. Read each subagent's raw output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
 
 ```bash
-npm run typecheck
-npm run lint
-npm run test -- [affected]
+npm run typecheck        # subagent 1
+npm run lint              # subagent 2
+npm run test -- [affected] # subagent 3
 ```
 
 ### Step 5: Confirm

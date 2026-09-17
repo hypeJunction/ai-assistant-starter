@@ -101,6 +101,8 @@ Categorize files by risk tier:
 | **Medium risk** | Business logic, data processing, external API calls | Review second |
 | **Low risk** | UI components, utilities, config, types | Review if time permits |
 
+**Delegate per tier** — Phases 2-4 below (attack surface mapping, data flow tracing, scanning, mitigation research) require reading full file contents and are the expensive part of the audit. Dispatch one subagent per risk tier in scope (via the `Agent` tool) to perform Phases 2-4 for that tier's files and return findings in the Phase 5 finding format — not raw file contents. Send tiers in a single message with multiple tool uses so they run concurrently. The main agent aggregates the returned findings in Phase 5; it does not re-read the files itself.
+
 If scope is large (>50 files), present tiers and ask user which to focus on.
 
 ### Context-Aware Reference Loading
@@ -233,6 +235,8 @@ Adjust confidence:
 - No mitigation found → confirm as HIGH
 
 ### Phase 5: Generate Report
+
+Aggregate the findings returned by each tier's Phase 2-4 subagent — do not re-derive them by re-reading files yourself.
 
 ```markdown
 ## Security Review: [scope description]

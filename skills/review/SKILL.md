@@ -78,8 +78,9 @@ gh pr view --json number,title,body,baseRefName,url 2>/dev/null
 
 ```bash
 git diff $MAIN_BRANCH...HEAD --stat
-git diff $MAIN_BRANCH...HEAD
 ```
+
+The stat-only summary is enough to plan scope. The full diff and file contents are read inside the delegated review subagent(s) in Step 4, not pulled into the main agent here.
 
 ### Step 3: Validate Scope
 
@@ -92,9 +93,9 @@ git diff $MAIN_BRANCH...HEAD
   5. Summarize findings per group before moving to the next
 - **Mixed-concern changes** (feature + refactor + config) → Flag as candidate for splitting into separate PRs
 
-### Step 4: Review Each File
+### Step 4: Delegate File Review
 
-For each changed file, read the full file for context. Use `references/review-checklist.md` for a comprehensive domain-organized checklist (correctness, security, performance, testing, maintainability, TypeScript/React/API-specific checks).
+Reading every changed file's full content is the expensive part of a review and doesn't need to happen in the main session. Dispatch one subagent (via the `Agent` tool) per group identified in Step 3 (or a single subagent for the whole diff when it wasn't split into groups) to read the diff and each file's full content, apply the checklist below (including `references/review-checklist.md` for the comprehensive domain-organized checklist), and return only structured findings — never file contents or raw diffs. Send independent groups in a single message with multiple tool uses so they review concurrently.
 
 #### Context-Aware Checklist Loading
 
@@ -140,6 +141,22 @@ If a mitigation exists, adjust confidence accordingly (HIGH to MEDIUM) and note 
 **Performance:** No obvious bottlenecks, efficient data fetching
 **General:** No `console.log` in prod, error handling present, no dead code
 
+**Required digest format returned by each subagent:**
+
+```markdown
+### Findings — [group name]
+- **[Pn]** [Issue] — `file.ts:line` — Confidence: HIGH/MEDIUM
+  - Evidence: [why real]
+  - Fix: [remediation]
+
+### Positive Notes — [group name]
+### Files Reviewed — [group name]
+| File | Status | Notes |
+|------|--------|-------|
+```
+
+Read every subagent's digest before proceeding to Step 5.
+
 ### Escalation Flags
 
 Flag for explicit discussion even if no bug is found:
@@ -150,6 +167,8 @@ Flag for explicit discussion even if no bug is found:
 - Infrastructure or CI/CD config changes
 
 ### Step 5: Generate Report
+
+Aggregate the digests returned by each Step 4 subagent — do not re-derive findings by re-reading files yourself.
 
 ```markdown
 ## Code Review: [Branch Name]

@@ -84,7 +84,7 @@ Determine refactor type, file count, risk level:
 
 ### Step 2.1: Find All Occurrences
 
-Search for all instances of the pattern. Present findings (see `references/refactor-templates.md` — Pattern Analysis).
+Searching the codebase for every occurrence is read-only and can produce a large volume of raw output — dispatch a subagent (via the `Agent` tool) to run the search and return a structured occurrence list (file, line, surrounding context) rather than pulling raw search output into the main agent. Present the subagent's findings (see `references/refactor-templates.md` — Pattern Analysis).
 
 ### Step 2.2: Surface Edge Cases
 
@@ -157,7 +157,7 @@ For each batch:
 3. Run affected tests
 4. Report progress
 
-**Delegate to a subagent** — Run this via the `Agent` tool (an independent subagent), never directly in the main agent's shell. Give the subagent the exact command(s) and require full raw output back; read that output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
+**Delegate each check to its own subagent** — run every distinct command via a separate `Agent` call, never directly in the main agent's shell and never bundled into one call. Send independent checks in a single message with multiple tool uses so they run concurrently. Give each subagent its exact command and require full raw output back; read every subagent's output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
 
 **If tests fail after a batch:** Revert the batch (`git checkout -- [affected-files]`), reassess the approach, and try again with a corrected strategy. Do not debug individual file changes within a broken batch.
 
