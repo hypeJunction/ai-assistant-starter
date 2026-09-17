@@ -171,15 +171,21 @@ Recommend: Update existing PR.
 
 **Wait for user response.** If updating, use `gh pr edit` instead of `gh pr create`.
 
-### Step 7: Determine Ticket Number
+### Step 7: Determine Ticket Number(s)
 
-Ask the user which ticket number this PR should reference:
+Ask the user which ticket number(s) this PR should reference:
 
 ```markdown
-Which ticket number should this PR reference (e.g. T-1234)? Say "none" if there isn't one.
+Which ticket number(s) should this PR reference (e.g. T-1234)? List multiple separated by commas if more than one applies. Say "none" if there isn't one.
 ```
 
-**Wait for user response.** Use their answer as `[TICKET]` in the title and description below. If they say there's no ticket, drop the `[TICKET]` suffix from both the title and the body — do not invent one.
+**Wait for user response.** If the user's request already lists ticket numbers explicitly (e.g. pasted issue links or `[CORE-4639] [CORE-4641]`), treat that as the answer instead of asking again.
+
+Use the resulting set as `[TICKETS]` in the title and description below:
+
+- **Title suffix** stays plain text regardless of ticket count (titles don't render markdown links) — e.g. `[T-1234]` or `[T-1234][T-1240]`. Every ticket must appear; never collapse to one or silently drop any.
+- **Body ticket section** is one line per ticket, each rendered as a markdown link when a URL is known — `[TICKET](URL)`. A URL is known when the user pasted it (as issue links, or via a reference like `[CORE-4639]: https://...`) or it's otherwise established for this project (e.g. a tracker base URL already used in this session). If no URL is known for a ticket, list it as plain text (`TICKET`) on its own line rather than inventing a URL.
+- **No tickets:** drop the ticket suffix from the title and omit the body's ticket section entirely — do not invent one.
 
 ### Step 8: Confirm Before Pushing
 
@@ -210,20 +216,20 @@ git push -u origin HEAD
 
 Write for a reviewer who has no idea what problem is being solved or what the solution is — spell out context, don't assume shared background.
 
-- `## Summary` is one short paragraph (2-4 sentences) of plain prose describing the overall direction and motivation — not a changelog, not a list of edits.
-- `## What changed` bullets describe user-visible or behavioral outcomes — never file names, function/variable names, or line-level detail (that's what the diff is for). Cap it at ~5 bullets; group related changes under one higher-level bullet rather than enumerating every commit.
+- `## Summary` is one short paragraph (2-4 sentences) of plain prose describing the overall direction and motivation — not a changelog, not a list of edits. When the PR spans multiple tickets, the paragraph must synthesize one coherent narrative covering all of them (what they collectively accomplish), not a per-ticket recap or a paragraph per ticket.
+- `## What changed` bullets describe user-visible or behavioral outcomes — never file names, function/variable names, or line-level detail (that's what the diff is for). Cap it at ~5 bullets; group related changes under one higher-level bullet rather than enumerating every commit. When multiple tickets are involved, group bullets by outcome, not by ticket — don't label bullets with ticket numbers.
 - Include `## Test Plan` only when verification is non-obvious or hard to reproduce (special data setup, a race condition, a multi-step manual flow). Omit it entirely when existing tests or standard manual QA obviously cover the change.
 - Include `## Security` only when the change actually touches something security-relevant (auth, secrets, input handling, permissions, new dependencies). Omit it entirely otherwise — don't pad every PR with an always-N/A checklist.
-- Title format is `[component]: [description] [TICKET]` — a component/scope name (the area of the codebase affected), not a conventional-commit type. Omit the ` [TICKET]` suffix entirely if there's no ticket (Step 7).
-- Add the ticket as a standalone `[TICKET]` line at the very end of the body, after every other section. Omit it entirely if there's no ticket.
+- Title format is `[component]: [description] [TICKETS]` — a component/scope name (the area of the codebase affected), not a conventional-commit type. With multiple tickets, list every ticket back-to-back, e.g. `[T-1234][T-1240]`. Omit the ticket suffix entirely if there's no ticket (Step 7).
+- Add the ticket(s) at the very end of the body, after every other section — one ticket per line, each a markdown link (`[TICKET](URL)`) when its URL is known, plain text otherwise. Never combine multiple tickets on one line, and never omit one. Omit the section entirely if there's no ticket.
 
 **If creating a new PR:**
 
 ```bash
-gh pr create --title "[component]: Brief description [TICKET]" --body "$(cat <<'EOF'
+gh pr create --title "[component]: Brief description [TICKETS]" --body "$(cat <<'EOF'
 ## Summary
 
-[One paragraph: what this PR does and why, in plain language, for a reviewer with no prior context.]
+[One paragraph: what this PR does and why, in plain language, for a reviewer with no prior context. If multiple tickets are involved, synthesize one narrative covering all of them.]
 
 ## What changed
 
@@ -242,15 +248,22 @@ gh pr create --title "[component]: Brief description [TICKET]" --body "$(cat <<'
 
 [Add screenshots for UI changes]
 
-[TICKET]
+[TICKETS]
 EOF
 )"
+```
+
+`[TICKETS]` is every referenced ticket, one per line, each a markdown link when its URL is known, e.g.:
+
+```markdown
+[T-1234](https://tracker.example.com/browse/T-1234)
+[T-1240](https://tracker.example.com/browse/T-1240)
 ```
 
 **If updating an existing PR:**
 
 ```bash
-gh pr edit [number] --title "[component]: Brief description [TICKET]" --body "$(cat <<'EOF'
+gh pr edit [number] --title "[component]: Brief description [TICKETS]" --body "$(cat <<'EOF'
 [same body template as above]
 EOF
 )"
@@ -287,10 +300,11 @@ EOF
 | PR-T7 | Boundary | "Commit and create a PR" | Triggers (PR is the final intent) |
 | PR-T8 | Early-exit | No commits ahead of base branch | Reports "Nothing to push" and exits |
 | PR-T9 | Positive | "Fix the description on PR #123" | Skill triggers, jumps to Step 6 (existing PR) then Step 9 with `gh pr edit`, not a standalone `gh` call |
+| PR-T10 | Boundary | Request lists two ticket links, e.g. "[CORE-4639] [CORE-4641]" with URLs | Step 7 treats both as given (no re-ask); title suffix is `[CORE-4639][CORE-4641]`; body lists each as its own markdown-link line; Summary synthesizes one narrative, not two |
 
 ## PR Title Conventions
 
-Format: `component: brief description [TICKET]` — the component is the area of the codebase the change affects, not a conventional-commit type. Drop the `[TICKET]` suffix if there's no ticket.
+Format: `component: brief description [TICKETS]` — the component is the area of the codebase the change affects, not a conventional-commit type. Drop the ticket suffix if there's no ticket. With multiple tickets, list each one back-to-back — never drop any.
 
 ```
 auth: add user authentication [T-1204]
@@ -298,6 +312,7 @@ login: resolve issue with special characters [T-1198]
 validation: extract shared validation logic [T-1310]
 docs: update API documentation [T-1322]
 deps: update dependencies
+auth: add login and session refresh [T-1204][T-1207]
 ```
 
 ## Example PR Body
