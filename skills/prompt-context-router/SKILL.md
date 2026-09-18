@@ -1,6 +1,6 @@
 ---
 name: prompt-context-router
-description: Runtime enforcement hook that classifies each incoming prompt by task class and topic-pivot, then advises the assistant to treat clear asides as standalone (and delegate cheap ones to a subagent), to consider entering Plan Mode for architecture/extreme-scope prompts — denying the first extreme-scope prompt per session outright — and to flag when a short prompt is riding on a disproportionately large accumulated context. Auto-loaded for every user prompt.
+description: Runtime enforcement hook that classifies each incoming prompt by task class and topic-pivot, then advises the assistant to treat clear asides as standalone (and delegate cheap ones to a subagent), to consider entering Plan Mode for architecture/extreme-scope prompts — denying the first extreme-scope prompt per session outright, with an opt-in extension to pivot+architecture — flags when a short prompt is riding on a disproportionately large accumulated context, warns when a turn is likely to miss the prompt cache due to elapsed time, and flags when a pivot lands on a large accumulated context. Auto-loaded for every user prompt.
 category: enforcement
 user-invocable: false
 ---
@@ -60,14 +60,16 @@ so this is advisory except for one deliberate exception:
 | `architecture` | no | `additionalContext` suggesting the assistant call `EnterPlanMode` — matches the `plan` skill's phased workflow |
 | `extreme`, first time this session | no | `permissionDecision: "deny"` — forces engagement before proceeding (see "Relationship to other skills" below) |
 | `extreme`, any later prompt this session | no | Downgrades to the same `additionalContext` nudge as `architecture` — never denies twice |
+| `architecture` **and** pivot | no | Strengthened `additionalContext` wording (a pivot into architecture scope has less contextual justification than an in-thread request). With `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE=enforce` (opt-in, default off), also extends the one-per-session deny pattern to this case, using its own independent session-state key |
+| `extreme` **and** pivot | no | Same strengthened wording layered on top of the existing `extreme` deny/downgrade behavior (unchanged mechanics, stronger text) |
 | any of the above | yes (`"plan"`) | Silent — already there |
 | `mechanical` / `implementation` / `debugging` | (n/a) | No plan-mode guidance — only the pivot axis applies |
 
-This hook only ever adds `additionalContext` or, for that one exception,
+This hook only ever adds `additionalContext` or, for those exceptions,
 denies the prompt — pure advisory otherwise, matching
-`context-circuit-breaker`'s warn-only precedent. When both axes fire (e.g. a
-pivot *and* an architecture-classified prompt), both notes are concatenated
-into one `additionalContext` string — neither is dropped.
+`context-circuit-breaker`'s warn-only precedent. When multiple axes fire
+(e.g. a pivot *and* an architecture-classified prompt), all applicable notes
+are concatenated into one `additionalContext` string — neither is dropped.
 
 ## Context Ballast Advisory (fourth, independent axis)
 
@@ -98,6 +100,36 @@ single prompt submit, so parsing a multi-MB session history in full each
 time would add real latency to every turn. Reading the last 256KB is enough
 to reach the most recent assistant usage line in practice; if the tail slice
 happens to start mid-JSON, that one line just fails to parse and is skipped.
+
+**Cross-reference with the pivot axis:** when a prompt is both a pivot and
+sitting on `>=20,000` accumulated context tokens (independently configurable
+from the ratio-based ballast check above, since a pivot has no "prompt is
+short" precondition), the plain pivot message from the table above is left
+completely unchanged, and a second, separate note is concatenated after it
+suggesting subagent delegation or a `/clear` checkpoint. The two are kept as
+distinct sentences rather than merged into one, since they're independently
+actionable signals (treat-as-standalone vs. the thread itself being
+expensive) and merging them risked drifting the plain pivot wording that
+PCR-T2/T3 assert exactly.
+
+## Cache TTL-Miss Warning (fifth, additive axis)
+
+Anthropic's prompt cache expires after a TTL — 5 minutes by default, up to
+1 hour on extended-cache sessions. This hook cannot see which TTL was
+actually requested on the prior API call (only cache-read/cache-write usage
+counters are visible in the transcript, no TTL metadata), so it compares the
+wall-clock gap since the last main-loop assistant message's `timestamp`
+against an operator-configured assumption
+(`PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS`, default 300s). If that gap has
+likely exceeded the TTL and the accumulated context is large enough to
+matter (`>=20,000` tokens by default), it adds an `additionalContext` note
+that this turn is about to pay full/cache-write pricing due to timing, not
+prompt content — purely informational, distinct from the ballast and pivot
+axes, and never interacts with the deny path.
+
+Operators on a 1-hour extended-cache session should set
+`PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS=3600` to match; the default (300s)
+assumes the standard short-lived cache.
 
 ## Relationship to Other Skills
 
@@ -143,6 +175,10 @@ snippet by hand.
 | `PROMPT_CONTEXT_ROUTER_EXTREME_MODE` | `enforce` | `enforce` denies the first `extreme`-classified prompt per session (then downgrades to advisory); `warn-only` never denies, always advisory-only |
 | `PROMPT_CONTEXT_ROUTER_BALLAST_FACTOR` | `5.0` | Min `context_tokens / prompt_est_tokens` ratio to trigger the context ballast advisory — same default as `/cost-audit`'s `--prompt-context-factor` |
 | `PROMPT_CONTEXT_ROUTER_BALLAST_MIN_TOKENS` | `20000` | Min accumulated context tokens (from the last main-loop assistant message) for a prompt to be eligible for the ballast advisory — same default as `/cost-audit`'s `--prompt-context-min-tokens` |
+| `PROMPT_CONTEXT_ROUTER_PIVOT_CONTEXT_MIN_TOKENS` | `20000` | Min accumulated context tokens for a pivot to also get the pivot+ballast cross-reference note, independent of the ratio-based ballast check |
+| `PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS` | `300` | Assumed cache TTL in seconds; elapsed time since the last main-loop assistant message beyond this triggers the TTL-miss advisory. Set to `3600` for extended-cache (1hr) sessions |
+| `PROMPT_CONTEXT_ROUTER_CACHE_TTL_MIN_TOKENS` | `20000` | Min accumulated context tokens for the TTL-miss advisory to be worth surfacing |
+| `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE` | `warn-only` | `enforce` extends the one-per-session deny pattern (normally exclusive to `extreme`) to pivot+`architecture` prompts too, using an independent session-state key; `warn-only` never denies for this case, advisory only |
 
 ## What This Does Not Do
 
@@ -169,6 +205,12 @@ snippet by hand.
   hooks — this hook can only deny a prompt or add `additionalContext`
   suggesting the assistant call `EnterPlanMode`; it can never flip the mode
   directly.
+- **TTL-miss detection assumes a configured value, it doesn't observe the
+  real one.** Anthropic's transcript usage fields report cache-read/
+  cache-write token counts, not which TTL (5min vs 1hr extended) was
+  actually requested on a given call — this hook can only compare elapsed
+  time to an operator-set assumption (`PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS`),
+  which will be wrong if that assumption doesn't match actual usage.
 
 ## Acceptance Tests
 
@@ -188,3 +230,12 @@ snippet by hand.
 | PCR-T12 | Short prompt, but the last main-loop assistant message's accumulated context is below 20,000 tokens or below the 5x ratio | No context-ballast `additionalContext` (other axes may still fire independently) |
 | PCR-T13 | Prompt itself is long (`>300` est. tokens), regardless of accumulated context | No context-ballast `additionalContext` — only short prompts are eligible |
 | PCR-T14 | `transcript_path` missing, unreadable, or the last main-loop assistant message has no `usage` | Silent on this axis (fail-open), no crash |
+| PCR-T15 | Last main-loop assistant `timestamp` is older than `PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS` ago, `contextTokens >= PROMPT_CONTEXT_ROUTER_CACHE_TTL_MIN_TOKENS` | `additionalContext` TTL-miss advisory fires |
+| PCR-T16 | Same as PCR-T15 but `contextTokens` below the min | No TTL-miss `additionalContext` |
+| PCR-T17 | Last main-loop assistant `timestamp` within the TTL window | No TTL-miss `additionalContext` |
+| PCR-T18 | `timestamp` field missing/unparseable on the last main-loop assistant message | Silent on this axis (fail-open), no crash |
+| PCR-T19 | Pivot-shaped prompt, `contextTokens >= PROMPT_CONTEXT_ROUTER_PIVOT_CONTEXT_MIN_TOKENS` | Today's plain pivot `additionalContext` (PCR-T2/T3 wording, unchanged) plus a second, separate pivot+context note concatenated after it |
+| PCR-T20 | Pivot-shaped prompt, `contextTokens` below `PROMPT_CONTEXT_ROUTER_PIVOT_CONTEXT_MIN_TOKENS` | Only today's plain pivot `additionalContext` — no second note |
+| PCR-T21 | Pivot-shaped prompt classified `architecture`, `permission_mode` not `"plan"`, `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE=warn-only` (default) | Strengthened `additionalContext` wording, never denies |
+| PCR-T22 | Same as PCR-T21 but `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE=enforce`, first occurrence this session | `permissionDecision: "deny"`, independent `architecturePivotNudged` state key written (doesn't affect `extremeNudged`) |
+| PCR-T23 | Same as PCR-T22, second occurrence in the same session | Downgrades to the strengthened `additionalContext`, never denies again |

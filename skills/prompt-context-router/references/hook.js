@@ -68,6 +68,34 @@
  * already in the context window, only suggest delegating the next step or
  * checkpointing with `/clear`.
  *
+ * A fifth, additive concern: cache-TTL-miss. Anthropic's prompt cache expires
+ * after a TTL (5 min by default, up to 1hr on extended-cache sessions). This
+ * hook cannot observe which TTL was actually requested on the prior call —
+ * only Anthropic's cache-write/cache-read usage counters, no TTL metadata —
+ * so it compares the wall-clock gap since the last main-loop assistant
+ * message's timestamp against an operator-configured TTL assumption
+ * (`PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS`). When that gap has likely
+ * expired the cache and the context is large enough to matter, it warns that
+ * this turn is about to pay full/cache-write pricing due to timing, not
+ * content. Purely informational — never interacts with the deny path.
+ *
+ * A sixth concern cross-references axis 2 (pivot) with axis 4 (ballast):
+ * when a prompt is both a pivot and sitting on a large accumulated context,
+ * the plain pivot advisory is left untouched (regression safety for its
+ * exact wording) and a ballast-style note is concatenated after it, so the
+ * assistant sees both "treat this as standalone" and "the thread itself is
+ * now expensive" as two distinct, independently-actionable signals rather
+ * than one merged sentence.
+ *
+ * Finally, pivot cross-references axis 3 (Plan Mode guidance) too: a pivot
+ * into architecture/extreme scope has less contextual justification than an
+ * in-thread request reaching the same class, so it gets strengthened wording
+ * urging EnterPlanMode. This is advisory-only by default; an operator can
+ * opt into extending the one-per-session deny (today exclusive to `extreme`)
+ * to pivot+architecture too via `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE=enforce`,
+ * using its own independent session-state key so it never interferes with
+ * the existing `extremeNudged` flag.
+ *
  * Hook protocol: reads the UserPromptSubmit event from stdin as JSON
  * (`input.prompt`, `input.permission_mode`, `input.session_id`,
  * `input.transcript_path`), outputs `hookSpecificOutput` JSON to stdout when
@@ -141,6 +169,16 @@ const CONTEXT_BALLAST_MIN_PROMPT_TOKENS = 300;
 // A tail read is enough to find the most recent assistant usage line without
 // paying to parse a multi-MB transcript on every single prompt submit.
 const TRANSCRIPT_TAIL_BYTES = 262144;
+
+// Anthropic's default short-lived cache TTL is 5 minutes; operators running
+// extended-cache (1hr) sessions should set this to 3600 to match.
+const CACHE_TTL_SECONDS = Number(process.env.PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS) || 300;
+const CACHE_TTL_MIN_CONTEXT_TOKENS = Number(process.env.PROMPT_CONTEXT_ROUTER_CACHE_TTL_MIN_TOKENS) || 20000;
+
+// Independently tunable from the ballast ratio check — this gate has no
+// prompt-length ratio component, since a pivot's large prior context is
+// worth flagging regardless of how long the new prompt itself is.
+const PIVOT_CONTEXT_MIN_TOKENS = Number(process.env.PROMPT_CONTEXT_ROUTER_PIVOT_CONTEXT_MIN_TOKENS) || 20000;
 
 function getInput() {
   return new Promise((resolve) => {
@@ -269,11 +307,13 @@ function readTranscriptTail(transcriptPath, maxBytes = TRANSCRIPT_TAIL_BYTES) {
 }
 
 // Walks the tail backward for the most recent main-loop (non-sidechain)
-// assistant message's usage, mirroring `_context_tokens()` in
+// assistant message's usage + timestamp, mirroring `_context_tokens()` in
 // `cost-audit/references/langfuse_queries.py` and `per_message_context` in
 // `session-retro/references/session_transcript_analyzer.py`: fresh input +
 // cache read + cache creation, the actual paid-context total for that call.
-function lastMainLoopContextTokens(transcriptPath) {
+// Computed once per prompt and shared across the ballast/TTL/pivot axes
+// below, instead of re-tailing the transcript per axis.
+function lastMainLoopUsageSnapshot(transcriptPath) {
   const tail = readTranscriptTail(transcriptPath);
   if (!tail) return null;
   const lines = tail.split('\n').filter(Boolean);
@@ -291,17 +331,21 @@ function lastMainLoopContextTokens(transcriptPath) {
       (usage.cache_read_input_tokens || 0) +
       (usage.cache_creation_input_tokens || 0) +
       (usage.input_tokens || 0);
-    if (contextTokens > 0) return contextTokens;
+    if (contextTokens > 0) {
+      return { contextTokens, timestamp: typeof event.timestamp === 'string' ? event.timestamp : null };
+    }
   }
   return null;
 }
 
-function buildContextBallastAdvisory(prompt, transcriptPath) {
-  if (!transcriptPath) return null;
+function lastMainLoopContextTokens(transcriptPath) {
+  const snapshot = lastMainLoopUsageSnapshot(transcriptPath);
+  return snapshot ? snapshot.contextTokens : null;
+}
+
+function buildContextBallastAdvisory(prompt, contextTokens) {
   const promptEstTokens = Math.ceil(prompt.trim().length / 4);
   if (promptEstTokens > CONTEXT_BALLAST_MIN_PROMPT_TOKENS) return null;
-
-  const contextTokens = lastMainLoopContextTokens(transcriptPath);
   if (contextTokens === null || contextTokens < CONTEXT_BALLAST_MIN_CONTEXT_TOKENS) return null;
 
   const ratio = contextTokens / Math.max(promptEstTokens, 1);
@@ -313,6 +357,39 @@ function buildContextBallastAdvisory(prompt, transcriptPath) {
     `carrying ~${contextK}k tokens of accumulated context (cache read/write) — a ~${Math.round(ratio)}x ` +
     `ratio. Before continuing in the main thread, consider whether this step could run in a ` +
     `subagent instead, or whether a /clear checkpoint is due.`
+  );
+}
+
+// Distinct from buildContextBallastAdvisory: fires on pivot + large context
+// regardless of the new prompt's own length/ratio, since a pivot's lack of
+// continuation with prior work is the trigger, not the new prompt's size.
+function buildPivotContextAdvisory(contextTokens) {
+  if (contextTokens === null || contextTokens < PIVOT_CONTEXT_MIN_TOKENS) return null;
+  const contextK = Math.round(contextTokens / 1000);
+  return (
+    `This pivot also lands on ~${contextK}k tokens of accumulated context. Consider ` +
+    `delegating it to a subagent (fresh, small context) or treating this as a /clear ` +
+    `checkpoint if the pivot doesn't need the prior thread's context.`
+  );
+}
+
+// This hook can't observe which TTL (5 min default vs 1hr extended) was
+// actually requested on the prior call — only a configured assumption via
+// PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS. Fails open on missing/unparseable
+// timestamps or clock skew rather than guessing.
+function buildCacheTtlMissAdvisory(contextTokens, timestamp) {
+  if (!timestamp || contextTokens === null || contextTokens < CACHE_TTL_MIN_CONTEXT_TOKENS) return null;
+  const elapsedMs = Date.now() - Date.parse(timestamp);
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 0) return null;
+  if (elapsedMs < CACHE_TTL_SECONDS * 1000) return null;
+
+  const elapsedMin = Math.round(elapsedMs / 60000);
+  const contextK = Math.round(contextTokens / 1000);
+  return (
+    `It's been ~${elapsedMin} min since the last turn, likely past this session's assumed ` +
+    `cache TTL (~${Math.round(CACHE_TTL_SECONDS / 60)} min). This turn will likely pay full/` +
+    `cache-write pricing on the ~${contextK}k tokens of accumulated context instead of a cheap ` +
+    `cache-read, due to timing rather than content.`
   );
 }
 
@@ -328,9 +405,9 @@ function loadState(filePath) {
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
     const parsed = JSON.parse(raw);
-    return { extremeNudged: !!parsed.extremeNudged };
+    return { extremeNudged: !!parsed.extremeNudged, architecturePivotNudged: !!parsed.architecturePivotNudged };
   } catch {
-    return { extremeNudged: false };
+    return { extremeNudged: false, architecturePivotNudged: false };
   }
 }
 
@@ -342,7 +419,7 @@ function saveState(filePath, state) {
   }
 }
 
-function buildPlanModeGuidance({ taskClass, permissionMode, sessionId, extremeMode }) {
+function buildPlanModeGuidance({ taskClass, isPivot, permissionMode, sessionId, extremeMode, pivotArchitectureMode }) {
   if (permissionMode === 'plan') return null;
 
   if (taskClass === 'abstain') {
@@ -356,6 +433,31 @@ function buildPlanModeGuidance({ taskClass, permissionMode, sessionId, extremeMo
   }
 
   if (taskClass === 'architecture') {
+    if (isPivot) {
+      const pivotAdvisory =
+        `This prompt pivots into architecture-level scope (redesign/tradeoff-shaped) with less ` +
+        `contextual justification than an in-thread request reaching the same class. Call ` +
+        `EnterPlanMode before any exploration — ${PLAN_WORKFLOW_NOTE}`;
+
+      if (pivotArchitectureMode !== 'enforce') {
+        return { additionalContext: pivotAdvisory };
+      }
+
+      const filePath = statePath(sessionId);
+      const state = loadState(filePath);
+      if (state.architecturePivotNudged) {
+        return { additionalContext: pivotAdvisory };
+      }
+      saveState(filePath, { ...state, architecturePivotNudged: true });
+      return {
+        permissionDecision: 'deny',
+        permissionDecisionReason:
+          `This prompt pivots into architecture-level scope with less contextual justification ` +
+          `than an in-thread request. Enter Plan Mode (EnterPlanMode) before proceeding, or ` +
+          `resend this prompt to proceed anyway — this is a one-time check per session.`,
+      };
+    }
+
     return {
       additionalContext:
         `This prompt looks architecture-level (redesign/tradeoff-shaped). Consider calling ` +
@@ -364,9 +466,12 @@ function buildPlanModeGuidance({ taskClass, permissionMode, sessionId, extremeMo
   }
 
   if (taskClass === 'extreme') {
-    const advisory =
-      `This prompt looks like an extreme-scope task (codebase-wide rewrite, multi-system ` +
-      `migration). Consider calling EnterPlanMode before making changes — ${PLAN_WORKFLOW_NOTE}`;
+    const advisory = isPivot
+      ? `This prompt pivots into an extreme-scope task (codebase-wide rewrite, multi-system ` +
+        `migration) with less contextual justification than an in-thread request. Call ` +
+        `EnterPlanMode before making changes — ${PLAN_WORKFLOW_NOTE}`
+      : `This prompt looks like an extreme-scope task (codebase-wide rewrite, multi-system ` +
+        `migration). Consider calling EnterPlanMode before making changes — ${PLAN_WORKFLOW_NOTE}`;
 
     if (extremeMode !== 'enforce') {
       return { additionalContext: advisory };
@@ -377,7 +482,7 @@ function buildPlanModeGuidance({ taskClass, permissionMode, sessionId, extremeMo
     if (state.extremeNudged) {
       return { additionalContext: advisory };
     }
-    saveState(filePath, { extremeNudged: true });
+    saveState(filePath, { ...state, extremeNudged: true });
     return {
       permissionDecision: 'deny',
       permissionDecisionReason:
@@ -404,13 +509,22 @@ async function main() {
   const sessionId = (input && typeof input.session_id === 'string' && input.session_id) || null;
   const transcriptPath = (input && typeof input.transcript_path === 'string' && input.transcript_path) || null;
   const extremeMode = process.env.PROMPT_CONTEXT_ROUTER_EXTREME_MODE || 'enforce';
+  const pivotArchitectureMode = process.env.PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE || 'warn-only';
   const planGuidance = buildPlanModeGuidance({
     taskClass: result.taskClass,
+    isPivot: result.isPivot,
     permissionMode,
     sessionId,
     extremeMode,
+    pivotArchitectureMode,
   });
-  const ballastContext = buildContextBallastAdvisory(prompt, transcriptPath);
+
+  const snapshot = transcriptPath ? lastMainLoopUsageSnapshot(transcriptPath) : null;
+  const contextTokens = snapshot ? snapshot.contextTokens : null;
+  const timestamp = snapshot ? snapshot.timestamp : null;
+  const ballastContext = buildContextBallastAdvisory(prompt, contextTokens);
+  const pivotContextAdvisory = result.isPivot ? buildPivotContextAdvisory(contextTokens) : null;
+  const ttlContext = buildCacheTtlMissAdvisory(contextTokens, timestamp);
 
   if (planGuidance && planGuidance.permissionDecision === 'deny') {
     console.log(JSON.stringify({
@@ -423,7 +537,13 @@ async function main() {
     process.exit(0);
   }
 
-  const contexts = [pivotContext, planGuidance && planGuidance.additionalContext, ballastContext].filter(Boolean);
+  const contexts = [
+    pivotContext,
+    pivotContextAdvisory,
+    planGuidance && planGuidance.additionalContext,
+    ballastContext,
+    ttlContext,
+  ].filter(Boolean);
   if (contexts.length) {
     console.log(JSON.stringify({
       hookSpecificOutput: {
@@ -449,6 +569,9 @@ module.exports = {
   loadState,
   saveState,
   readTranscriptTail,
+  lastMainLoopUsageSnapshot,
   lastMainLoopContextTokens,
   buildContextBallastAdvisory,
+  buildPivotContextAdvisory,
+  buildCacheTtlMissAdvisory,
 };
