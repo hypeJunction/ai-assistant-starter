@@ -1,0 +1,8 @@
+{
+  "name": "session-workflow",
+  "description": "A context-bound, atomic session lifecycle: start -> plan -> implement -> validate -> pivot -> done/trash.",
+  "version": "0.1.0",
+  "author": { "name": "ai-assistant-starter" },
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json"
+}

@@ -1,0 +1,13 @@
+{
+  "plugins": [
+    {
+      "name": "session-workflow",
+      "description": "A context-bound, atomic session lifecycle: start -> plan -> implement -> validate -> pivot -> done/trash.",
+      "version": "0.1.0",
+      "author": "ai-assistant-starter",
+      "path": "./plugins/session-workflow",
+      "category": "workflow",
+      "tags": ["session", "lifecycle", "planning", "implementation", "validation"]
+    }
+  ]
+}
