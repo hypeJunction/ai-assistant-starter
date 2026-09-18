@@ -243,14 +243,30 @@ def transcript_path(root, session_id):
     """Locate this session's local JSONL transcript, written by Claude Code itself.
 
     Claude Code writes it to ~/.claude/projects/<slug>/<session_id>.jsonl, where
-    <slug> is the absolute cwd path with every path separator replaced by "-"
-    (the convention the session-retro skill documents and relies on). This
-    assumes `root` is the cwd Claude Code was launched from — true for the
-    /start-scoped worktree flow this script is built for.
+    <slug> is the absolute cwd path Claude Code was *launched* with (every path
+    separator replaced by "-"), not necessarily `root` — a session started in
+    the main checkout and later working inside a /start-created worktree still
+    writes its transcript under the launch-cwd slug. Try the `root`-derived
+    slug first (the common case), then fall back to scanning every project dir
+    for a `<session_id>.jsonl` file, since the launch cwd isn't reliably known
+    to this script.
     """
     base = os.path.expanduser(os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude")
+    projects_dir = os.path.join(base, "projects")
     slug = os.path.abspath(root).replace(os.sep, "-")
-    return os.path.join(base, "projects", slug, session_id + ".jsonl")
+    candidate = os.path.join(projects_dir, slug, session_id + ".jsonl")
+    if os.path.isfile(candidate):
+        return candidate
+
+    try:
+        entries = os.listdir(projects_dir)
+    except OSError:
+        return candidate
+    for entry in entries:
+        found = os.path.join(projects_dir, entry, session_id + ".jsonl")
+        if os.path.isfile(found):
+            return found
+    return candidate
 
 
 def session_cost_local(root, session_id):

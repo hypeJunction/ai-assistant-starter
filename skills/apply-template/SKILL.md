@@ -158,6 +158,17 @@ with `--apply`. **If no READMEs were selected or copied, skip this
 sub-step entirely** — do not add a "Further Reading" section pointing at
 docs that don't exist.
 
+> **Note on redundancy with plugin install:** `claude plugin install
+> ai-assistant-starter` already registers `context-circuit-breaker`,
+> `cost-guardrail`, and `prompt-context-router` globally via the plugin's own
+> `hooks/hooks.json` — those are active immediately with no setup step. Steps
+> 5.5, 5.6, and 5.8 below install a **second, project-local copy** of each
+> (a pinned `hook.js` under `<target>/.claude/skills/...` plus its own
+> `settings.json` entry), independent of whatever version the plugin ships.
+> Only offer these if the user wants a version-pinned copy that won't shift
+> when the plugin updates — not because the hooks would otherwise be
+> inactive.
+
 ### Step 5.5: Offer the circuit-breaker hook
 
 Ask the user (`AskUserQuestion`, options **Install** / **Skip**) whether to
