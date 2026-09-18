@@ -15,56 +15,24 @@ This project uses **Vitest** as the test runner.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 ```
 
-## Test Plan Format
-
-**CRITICAL:** All test files MUST include a test plan as a comment at the top.
-
-### Gherkin Format
-
-```typescript
-/**
- * Test Plan: ComponentName
- *
- * Scenario: User can submit the form
- *   Given the form is displayed with empty fields
- *   When the user fills in all required fields
- *   And clicks the submit button
- *   Then the form data is sent to the server
- *   And a success message is displayed
- *
- * Scenario: Validation prevents invalid submission
- *   Given the form is displayed with empty fields
- *   When the user clicks submit without filling required fields
- *   Then validation errors are displayed
- *   And the form is not submitted
- */
-```
-
-### Mapping Test Plans to Tests
+## Test Structure
 
 ```typescript
 describe('ComponentName', () => {
-    describe('Scenario: User can submit the form', () => {
-        it('sends form data to server when all fields are valid', async () => {
-            // Given
-            const { getByRole, getByLabelText } = render(FormComponent);
+    it('sends form data to server when all fields are valid', async () => {
+        const { getByRole, getByLabelText } = render(FormComponent);
 
-            // When
-            await userEvent.type(getByLabelText('Name'), 'John Doe');
-            await userEvent.type(getByLabelText('Email'), 'john@example.com');
-            await userEvent.click(getByRole('button', { name: 'Submit' }));
+        await userEvent.type(getByLabelText('Name'), 'John Doe');
+        await userEvent.type(getByLabelText('Email'), 'john@example.com');
+        await userEvent.click(getByRole('button', { name: 'Submit' }));
 
-            // Then
-            expect(mockSubmit).toHaveBeenCalledWith({
-                name: 'John Doe',
-                email: 'john@example.com'
-            });
+        expect(mockSubmit).toHaveBeenCalledWith({
+            name: 'John Doe',
+            email: 'john@example.com'
         });
     });
 });
 ```
-
-## Test Structure
 
 ### AAA Pattern (Arrange-Act-Assert)
 
@@ -81,21 +49,6 @@ it('calculates the correct total', () => {
 
     // Assert
     expect(result).toBe(35);
-});
-```
-
-### Given-When-Then (for BDD style)
-
-```typescript
-it('disables submit button when form is invalid', () => {
-    // Given
-    const { getByRole } = render(FormComponent);
-
-    // When
-    // (form is in initial empty state)
-
-    // Then
-    expect(getByRole('button', { name: 'Submit' })).toBeDisabled();
 });
 ```
 
@@ -215,5 +168,4 @@ it('debounces input', async () => {
 
 ## Additional References
 
-- [Browser-Based Test Plans](references/browser-test-plans.md) — Agent-browser compatible test plan format with locator, action, and assertion mapping tables
 - [Test Patterns](references/test-patterns.md) — Testing Library query details, async testing, user interactions, test isolation, test data, snapshots, and coverage

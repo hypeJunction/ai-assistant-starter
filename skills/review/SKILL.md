@@ -49,7 +49,7 @@ triggers:
 |------|-------------|
 | `--files=<paths>` | Review specific files instead of full branch diff |
 | `--pr=<number>` | Review a specific PR by number |
-| `--quick` | Fast review of uncommitted + staged changes only. Runs in-context with shortened checklist (no `any` types, no `console.log`, no hardcoded secrets/obvious security patterns, test plans). Terser output — P0-P3 findings only. |
+| `--quick` | Fast review of uncommitted + staged changes only. Runs in-context with shortened checklist (no `any` types, no `console.log`, no hardcoded secrets/obvious security patterns). Terser output — P0-P3 findings only. |
 
 ## Severity + Confidence
 
@@ -117,7 +117,7 @@ The stat-only summary is enough to plan scope. The full diff and file contents a
   - No raw SQL with string interpolation — must use parameterized queries or ORM
   - No hardcoded secrets (API keys, tokens, credentials) in source files
   - No `child_process.exec()` with user-controlled input
-- **Tests have test plans** — Meaningful descriptions and async handling verified
+- **Tests are meaningful** — Descriptive test names and async handling verified
 - **General:** Obvious dead code, missing error handling
 - **No other checks** — Ignore style, naming, performance, and domain-specific guidelines (those are for full review)
 

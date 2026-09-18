@@ -24,19 +24,6 @@ Storybook is used for:
 import type { Meta, StoryObj } from '@storybook/react';
 import { MyComponent } from './MyComponent';
 
-/**
- * Test Plan: MyComponent
- *
- * Scenario: Default rendering
- *   Given the component is mounted with default props
- *   Then it should display correctly
- *
- * Scenario: User interaction
- *   Given the component is mounted
- *   When the user clicks the button
- *   Then the state should update
- */
-
 const meta: Meta<typeof MyComponent> = {
   title: 'Category/Subcategory/MyComponent',
   component: MyComponent,
@@ -161,10 +148,6 @@ export const UserFlow: Story = {
 export const Story1: Story = { ... };
 export const Test: Story = { ... };
 ```
-
-### Test Plan Alignment
-
-Every story with a `play()` function should have a corresponding test plan (see Meta Configuration example above for format).
 
 ## Common Pitfalls
 

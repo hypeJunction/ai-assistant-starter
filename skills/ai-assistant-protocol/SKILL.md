@@ -211,21 +211,6 @@ npm run test -- ComponentName
 npm run test -- "src/components/"
 ```
 
-### Test Plan Requirement
-
-All test files MUST include a test plan comment in Gherkin format:
-
-```typescript
-/**
- * Test Plan: ComponentName
- *
- * Scenario: Brief description
- *   Given [initial state]
- *   When [action]
- *   Then [expected outcome]
- */
-```
-
 ## Project Commands
 
 Skills reference commands generically (e.g., "run the project's test command"). Resolve the actual command as follows:

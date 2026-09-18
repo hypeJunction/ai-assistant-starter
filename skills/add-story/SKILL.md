@@ -1,6 +1,6 @@
 ---
 name: add-story
-description: Create comprehensive Storybook stories with test plans, play functions, and validated tests for a component. Use when a component needs Storybook coverage or story files.
+description: Create comprehensive Storybook stories with play functions and validated tests for a component. Use when a component needs Storybook coverage or story files.
 category: meta
 model: sonnet
 effort: medium
@@ -13,7 +13,7 @@ triggers:
 
 # Add Story
 
-> **Purpose:** Create comprehensive Storybook stories with test plans, play functions, and validated passing tests
+> **Purpose:** Create comprehensive Storybook stories with play functions and validated passing tests
 > **Usage:** `/add-story <ComponentName or path>`
 
 ## Prerequisites
@@ -29,7 +29,6 @@ triggers:
 - **Do not run full test suites** (`npm test`) -- scope to the component
 - **Do not use querySelector** in tests -- use Testing Library queries
 - **Do not skip waitFor** for async assertions
-- **Test plan must be included** at top of story file
 - **Create play functions for all interactive scenarios**
 - **Run tests and ensure they pass**
 - **Use Testing Library queries** (getByRole, getByLabelText, etc.)
@@ -50,9 +49,9 @@ Mechanical check — delegate to the `dispatch` subagent (haiku) rather than run
 - Note any conditional rendering or dynamic behavior
 - List dependencies (API calls, stores, context providers)
 
-### Step 2: Create a Test Plan
+### Step 2: Identify States to Cover
 
-Document all meaningful component states to cover using Given/When/Then format. Include the test plan as a block comment at the top of the story file. See `references/story-patterns.md` for the test plan template.
+Identify the meaningful component states to cover (default, disabled, loading, error, etc.) before writing stories.
 
 ### Step 3: Review Existing Patterns
 
@@ -119,7 +118,6 @@ Delegate the run itself to `dispatch` (mechanical): "Run `$PKG_MGR run test-stor
 
 Before completing:
 
-- [ ] Test plan documented at top of file
 - [ ] Meta configuration complete (title, component, parameters)
 - [ ] Default story exists
 - [ ] All visual states covered (disabled, loading, error, etc.)
@@ -140,5 +138,5 @@ Before completing:
 
 ## References
 
-- `references/story-patterns.md` - Story templates, play functions, factory pattern, test plan format
+- `references/story-patterns.md` - Story templates, play functions, factory pattern
 - `references/testing-best-practices.md` - MSW mocking, Testing Library queries, async handling, example workflow

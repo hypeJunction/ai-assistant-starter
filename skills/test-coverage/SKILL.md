@@ -1,6 +1,6 @@
 ---
 name: test-coverage
-description: Analyze branch changes and ensure adequate test coverage. Creates missing tests with test plans, runs them, and reports results. Use after implementing changes to add tests.
+description: Analyze branch changes and ensure adequate test coverage. Creates missing tests, runs them, and reports results. Use after implementing changes to add tests.
 category: process
 model: sonnet
 effort: medium
@@ -42,7 +42,6 @@ triggers:
 - Create test files (`.spec.ts`, `.test.ts`) freely
 - Do not modify non-test source files without approval
 - Scope tests to changes — don't run full suites unless necessary
-- Every test file MUST include a test plan as a comment
 
 > **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
 
@@ -173,18 +172,6 @@ For each file needing tests:
 ```
 
 ### Step 6: Write Tests
-
-**Required test plan (Gherkin) as comment:**
-```typescript
-/**
- * Test Plan: ModuleName
- *
- * Scenario: Brief description
- *   Given [initial state]
- *   When [action]
- *   Then [expected outcome]
- */
-```
 
 **Test structure (default — override with patterns discovered in Step 3):**
 ```typescript

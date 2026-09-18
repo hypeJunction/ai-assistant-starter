@@ -201,7 +201,7 @@ Invoke `/review --quick` for the checklist pass (unused imports, `any` types, ha
 
 **Steps:**
 1. Categorize changed files by verification type (utility → unit tests, component → component tests, types → skip)
-2. Write tests with Gherkin test plans as comments
+2. Write tests covering the changed behavior
 3. Run tests: `npm run test -- [changed-files-pattern]`
 
 **GATE: All tests must pass.**

@@ -44,7 +44,6 @@ triggers:
 - Create test files freely in the appropriate test directory
 - Do not modify API source files without approval
 - Do not call external/production APIs -- mock or use test server
-- Every test file MUST include a test plan as a comment
 - Tests must be safe to run in CI (no side effects on real data)
 
 ## Gate Enforcement
@@ -253,13 +252,6 @@ Before writing tests, verify test infrastructure is in place:
 Create or reuse API test helpers:
 
 ```typescript
-/**
- * Test Plan: API Test Utilities
- *
- * Provides authenticated request helpers, response validators,
- * and test data factories for API endpoint testing.
- */
-
 // Helper for making authenticated requests
 function authRequest(method: string, path: string, token?: string) {
   const req = request(app)[method](path);

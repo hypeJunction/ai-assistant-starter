@@ -88,27 +88,3 @@ export const WithPlay: Story = createStory({}, {
   play: async ({ canvasElement }) => { ... },
 });
 ```
-
-## Test Plan Format
-
-Document all meaningful component states at the top of the story file:
-
-```typescript
-/**
- * Test Plan: ComponentName
- *
- * Scenario: Default rendering
- *   Given the component is mounted with default props
- *   Then it should display correctly
- *
- * Scenario: User interaction
- *   Given the component is mounted
- *   When the user clicks the button
- *   Then the state should update
- *
- * Scenario: Error state
- *   Given invalid input
- *   When validation runs
- *   Then error message appears
- */
-```

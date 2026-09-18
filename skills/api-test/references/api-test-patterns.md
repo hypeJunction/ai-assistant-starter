@@ -406,15 +406,6 @@ import { createTestDatabase, destroyTestDatabase } from './helpers/db';
 import { generateToken } from './helpers/auth';
 import { createUser } from './factories/user';
 
-/**
- * Test Plan: Users API
- *
- * Scenario: CRUD operations on /api/users
- *   Given a running test server with seeded data
- *   When various HTTP methods are called with different auth states
- *   Then correct status codes and response shapes are returned
- */
-
 let app: Express;
 let db: TestDatabase;
 let adminToken: string;

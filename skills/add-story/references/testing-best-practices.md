@@ -100,12 +100,12 @@ Re-run tests until all pass.
    - States: default, loading, error, success
    - Behavior: validates email, submits form
 
-3. Create test plan:
-   - Scenario 1: Default rendering
-   - Scenario 2: Submit with valid credentials
-   - Scenario 3: Submit with invalid credentials
-   - Scenario 4: Loading state
-   - Scenario 5: Error state
+3. Identify states to cover:
+   - Default rendering
+   - Submit with valid credentials
+   - Submit with invalid credentials
+   - Loading state
+   - Error state
 
 4. Write LoginForm.stories.tsx:
    - Import component and types

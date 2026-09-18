@@ -35,8 +35,6 @@ quality:
   test_required: true
   # Run security scan before commits
   security_scan: true
-  # Require test plan comments in Gherkin format
-  require_test_plans: true
 
 # --- Display ---
 display:

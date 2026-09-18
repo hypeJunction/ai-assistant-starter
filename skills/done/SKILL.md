@@ -57,7 +57,7 @@ Ensure changed code has test coverage.
 
 1. **Identify changed files:** `git diff --name-only $MAIN..HEAD` and `git diff --name-only`
 2. **Check for missing tests:** each changed `.ts`/`.tsx` file should have a corresponding test file.
-3. **Create missing tests** with Gherkin test plans. If a test cannot be created (no testing framework configured, untestable code pattern, missing test utilities), report this to the user with the reason rather than silently skipping — let them decide whether to proceed without coverage for that file.
+3. **Create missing tests** covering the changed behavior. If a test cannot be created (no testing framework configured, untestable code pattern, missing test utilities), report this to the user with the reason rather than silently skipping — let them decide whether to proceed without coverage for that file.
 4. **Run and fix:** `npm run test -- ChangedComponent`; investigate and fix any failures, then re-run to confirm.
 
 **Exit criteria:** all changed code has tests (or gaps reported to the user), all tests pass.

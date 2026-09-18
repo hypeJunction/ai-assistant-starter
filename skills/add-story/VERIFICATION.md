@@ -14,7 +14,7 @@ A developer runs `/add-story src/components/UserProfile.tsx` on a React componen
 
 ## Expected Outcome
 
-The agent verifies Storybook is installed, reads the component file, creates a test plan covering all visual states, discovers the existing story convention (`__stories__/` directory, `.stories.tsx` suffix), writes stories covering default, loading, and error states with play functions for interactions (edit button click), mocks the `/api/users/:id/preferences` endpoint with MSW, wraps all stories in a ThemeContext decorator, creates the file at `src/components/__stories__/UserProfile.stories.tsx`, and runs tests with `pnpm run test-storybook`.
+The agent verifies Storybook is installed, reads the component file, identifies the visual states to cover, discovers the existing story convention (`__stories__/` directory, `.stories.tsx` suffix), writes stories covering default, loading, and error states with play functions for interactions (edit button click), mocks the `/api/users/:id/preferences` endpoint with MSW, wraps all stories in a ThemeContext decorator, creates the file at `src/components/__stories__/UserProfile.stories.tsx`, and runs tests with `pnpm run test-storybook`.
 
 ## Key Checkpoints
 
@@ -46,19 +46,7 @@ The agent searches for existing story files and discovers the `__stories__/` dir
 
 **Pass criteria:** Agent identifies the `__stories__/` directory convention and plans to use it for the new story file.
 
-### 4. Test plan documented as block comment at top of story file
-
-**Phase:** Step 2 (Create a Test Plan)
-
-The agent writes a Given/When/Then test plan as a block comment at the top of the story file, covering:
-- Default rendering with user data
-- Loading state (skeleton)
-- Error state (API failure)
-- Edit button interaction
-
-**Pass criteria:** Block comment exists at top of file with all scenarios in Given/When/Then format.
-
-### 5. Default story renders profile content with mock user data
+### 4. Default story renders profile content with mock user data
 
 **Phase:** Step 4 (Write Stories for Visual States)
 
@@ -66,7 +54,7 @@ The Default story provides mock `user` data, `onEdit` callback, and `isLoading: 
 
 **Pass criteria:** Default story has complete args with realistic mock data.
 
-### 6. Loading story renders skeleton with isLoading=true
+### 5. Loading story renders skeleton with isLoading=true
 
 **Phase:** Step 4 (Write Stories for Visual States)
 
@@ -74,7 +62,7 @@ The Loading story sets `isLoading: true` to render the skeleton state instead of
 
 **Pass criteria:** Loading story exists with `isLoading: true` in args.
 
-### 7. ThemeContext decorator wraps all stories via meta.decorators
+### 6. ThemeContext decorator wraps all stories via meta.decorators
 
 **Phase:** Step 4 (Write Stories for Visual States)
 
@@ -82,7 +70,7 @@ Since the component uses `ThemeContext`, the meta configuration includes a decor
 
 **Pass criteria:** `meta.decorators` array contains a ThemeContext/ThemeProvider wrapper.
 
-### 8. MSW handler mocks /api/users/:id/preferences endpoint
+### 7. MSW handler mocks /api/users/:id/preferences endpoint
 
 **Phase:** Step 6 (Add Mocking If Required)
 
@@ -90,7 +78,7 @@ The agent adds MSW handlers in story parameters to mock the `/api/users/:id/pref
 
 **Pass criteria:** MSW handler exists for `/api/users/:id/preferences` with both success and error variants.
 
-### 9. Play function tests edit button click with userEvent.click() and assertion
+### 8. Play function tests edit button click with userEvent.click() and assertion
 
 **Phase:** Step 5 (Write Play Functions for Interactions)
 
@@ -98,7 +86,7 @@ A story with a play function simulates clicking the edit button using `userEvent
 
 **Pass criteria:** Play function uses Testing Library queries (not querySelector), userEvent.click(), and step() blocks.
 
-### 10. Story file created at correct location
+### 9. Story file created at correct location
 
 **Phase:** Step 4 (Write Stories for Visual States)
 
@@ -106,7 +94,7 @@ The story file is created at `src/components/__stories__/UserProfile.stories.tsx
 
 **Pass criteria:** File path is `src/components/__stories__/UserProfile.stories.tsx`, not colocated at `src/components/UserProfile.stories.tsx`.
 
-### 11. Tests run with correct package manager
+### 10. Tests run with correct package manager
 
 **Phase:** Step 7 (Run Tests and Validate)
 
@@ -134,13 +122,7 @@ The component imports and uses `ThemeContext`. Without the provider decorator, a
 
 The project has `pnpm-lock.yaml`, indicating pnpm is the package manager. Using npm may fail (missing node_modules structure) or produce different dependency resolution. The agent must detect and use the correct package manager.
 
-### 4. Skipping the test plan comment
-
-**Wrong:** Agent jumps straight to writing stories without documenting the test plan as a block comment at the top of the file.
-
-The test plan serves as living documentation of what the stories cover and why. Without it, future developers cannot quickly understand the coverage intent or identify missing scenarios.
-
-### 5. Using querySelector instead of Testing Library queries in play functions
+### 4. Using querySelector instead of Testing Library queries in play functions
 
 **Wrong:** Agent writes `canvasElement.querySelector('.edit-btn')` instead of `canvas.getByRole('button', { name: 'Edit' })`.
 
