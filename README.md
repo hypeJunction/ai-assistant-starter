@@ -38,6 +38,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 
 | Skill | Purpose |
 |-------|---------|
+| `/start` | Scope a new work session to a ticket, worktree, and goal, auto-triggering on session start |
 | `/explore` | Understand code (read-only) |
 | `/plan` | Design approach before coding |
 | `/implement` | Full workflow: explore → plan → code → test → commit |
@@ -68,6 +69,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/iterate-pr` | Iterate on PR until CI passes and feedback addressed |
 | `/pr` | Create pull request |
 | `/finish` | End-of-session: test → validate → review → commit |
+| `/done` | Close out a session opened by /start — commit, create or update the PR, record the session outcome, and nudge context compaction |
 | `/hotfix` | Emergency bug fix with abbreviated validation |
 | `/release` | Version bump, changelog, and tagging |
 

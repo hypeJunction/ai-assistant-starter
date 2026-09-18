@@ -37,6 +37,11 @@ This skill performs lightweight end-of-session versions of these workflows:
 
 For more thorough execution of any phase, use the individual skill.
 
+If the session was opened with `/start` and the goal is to also push, open
+or update the PR, and close out the session (not just commit), run `/done`
+after this skill instead of working through Phase 7's push/PR options
+ad hoc.
+
 ## Workflow
 
 ### Phase 1: Assess Current State

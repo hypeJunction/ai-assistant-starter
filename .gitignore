@@ -43,6 +43,10 @@ temp/
 .claude/settings.local.json
 .cursor/settings.local.json
 
+# /start + /done session state (per worktree, per session)
+.claude/worktree.json
+.claude/sessions/
+
 # Python
 __pycache__/
 *.pyc
