@@ -184,7 +184,11 @@ Compare implementation against the approved plan:
 | [Step 1] | ✓ / ✗ | [deviations] |
 ```
 
-Invoke `/review --quick` for the checklist pass (unused imports, `any` types, hardcoded values, inconsistent patterns, and the security checklist — secrets, `eval`/`innerHTML`, raw SQL interpolation, `child_process` with unsanitized input, disabled security controls, missing input validation/authz at boundaries). Fix issues it flags before proceeding.
+Ask via `AskUserQuestion`:
+- Run `/review --quick` now (recommended) — for the checklist pass (unused imports, `any` types, hardcoded values, inconsistent patterns, and the security checklist — secrets, `eval`/`innerHTML`, raw SQL interpolation, `child_process` with unsanitized input, disabled security controls, missing input validation/authz at boundaries).
+- Skip self-review — proceed to Phase 4; note the skip in Completion Evidence (Phase 6.1).
+
+If run: fix issues it flags before proceeding.
 
 ---
 
@@ -210,9 +214,11 @@ Invoke `/review --quick` for the checklist pass (unused imports, `any` types, ha
 
 ## Phase 5: Validate
 
-Invoke `/validate` (full mode for medium/large tiers, quick for nano/small) rather than running checks inline.
+Ask via `AskUserQuestion`:
+- Run `/validate` now (recommended) — full mode for medium/large tiers, quick for nano/small — rather than running checks inline.
+- Skip validation — proceed to Phase 6; note the skip in Completion Evidence.
 
-**GATE: All validations must pass. If any fail, fix before proceeding.**
+**GATE: If validation ran, it must pass before proceeding — fix failures before continuing. If skipped by user choice, proceed and note the skip.**
 
 ---
 
@@ -226,10 +232,10 @@ Invoke `/validate` (full mode for medium/large tiers, quick for nano/small) rath
 ## Completion Evidence
 | Verification | Result |
 |--------------|--------|
-| Type check | ✓ Pass |
-| Lint | ✓ Pass |
+| Type check | ✓ Pass (or: Skipped — user choice) |
+| Lint | ✓ Pass (or: Skipped — user choice) |
 | Tests | ✓ Pass (N tests) |
-| Build | ✓ Pass |
+| Build | ✓ Pass (or: Skipped — user choice) |
 | Spec compliance | ✓ All plan items |
 ```
 
@@ -287,9 +293,9 @@ Remove the completed todo file. The ADR (if created) and git history preserve th
 | 0. Determine Mode | Read-only | — |
 | 1. Plan Input | Read-only | **Plan approved** (or quick nod for nano/small) |
 | 2. Code | Full access | Typecheck passes per file |
-| 3. Self-Review | Read-only | `/review --quick` issues fixed |
+| 3. Self-Review | Read-only | `/review --quick` run and issues fixed, or explicitly skipped by user |
 | 4. Test | Testing | **All tests pass** |
-| 5. Validate | Validation | **`/validate` passes** |
+| 5. Validate | Validation | `/validate` passes, or explicitly skipped by user |
 | 6. Commit | Git only | **User confirms (via `/commit`)** |
 | 7. Close | Housekeeping | Acceptance criteria met (todo-driven only) |
 

@@ -33,8 +33,8 @@ triggers:
   which owns that (`skills/pr/SKILL.md`'s own constraint says nothing else
   should call these directly).
 - Never commit without going through `/commit`'s own approval gate.
-- Never skip the Step 3 validation gate — see that step for the override
-  path if validation genuinely doesn't apply.
+- Steps 2 and 3 ask before running review/validation — never skip either
+  silently or auto-run either without asking first.
 - The compaction nudge in Step 6 is advisory, not a guarantee — Claude Code
   has no mechanism for a hook to force `/compact`.
 
@@ -64,9 +64,14 @@ Ensure changed code has test coverage.
 
 ### Step 2: Review
 
-Invoke `/review --quick` against the current diff. Fix any critical issues (any-typed code, security anti-patterns, missing input validation at boundaries) before proceeding. Warnings can be documented and deferred if the user agrees.
+Stop and ask via `AskUserQuestion`:
+- Run `/review --quick` now (recommended) — against the current diff.
+- Skip review — proceed to Step 3; note in the close-out report that
+  review was skipped by user choice.
 
-**Exit criteria:** no critical issues remaining.
+If run: fix any critical issues (any-typed code, security anti-patterns, missing input validation at boundaries) before proceeding. Warnings can be documented and deferred if the user agrees.
+
+**Exit criteria:** no critical issues remaining, or review skipped by user choice.
 
 ### Step 3: Validate Gate
 
@@ -81,10 +86,10 @@ git diff HEAD
 - **`last_validated_sha` present and matches the current `HEAD` + diff state** → validation already ran against this exact code (via `/validate` finishing cleanly, from this step or from `/implement`/`/commit`/`/pr` earlier in the session) — proceed silently to Step 4.
 - **Record missing, or stale (code has changed since it was written)** → stop and ask via `AskUserQuestion`:
   - Run `/validate --full` now (recommended) — then re-check the record and proceed.
-  - Proceed anyway — explicit override; note in the close-out report that `/done` shipped without a fresh validation record, and why the user chose to.
+  - Skip validation — proceed to Step 4; note in the close-out report that validation was skipped by user choice.
   - Cancel.
 
-**Never silently skip this gate, and never auto-run `/validate` without asking first.**
+**Never auto-run `/validate` without asking first.**
 
 ### Step 4: Commit
 
@@ -183,10 +188,12 @@ For the session exit-option decision tree, post-merge verification steps, and se
 
 ### Review
 - `/review --quick`: 0 critical issues remaining
+  (or: skipped by user choice)
 
 ### Validation
 - Gate: last_validated_sha matched current HEAD+diff — proceeded
   (or: ran `/validate --full` now — passed)
+  (or: skipped by user choice)
 
 ### Commit
 - Committed: `feat: add data export feature` (SHA abc1234)
