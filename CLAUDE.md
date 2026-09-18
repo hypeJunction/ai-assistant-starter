@@ -55,7 +55,7 @@ npx skills add ./ai-assistant-starter -s commit
 
 ## Available Skills
 
-### Workflow Skills (36 total, categories: process + meta)
+### Workflow Skills (38 total, categories: process + meta)
 
 **Development Workflows**
 
@@ -93,6 +93,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/pr` | Create pull request |
 | `/finish` | End-of-session: test → validate → review → commit |
 | `/done` | Close out a session opened by /start — commit, create or update the PR, record the session outcome, and nudge context compaction |
+| `/trash` | Abandon a session — record why, score the outcome in Langfuse, report cost |
 | `/hotfix` | Emergency bug fix with abbreviated validation |
 | `/release` | Version bump, changelog, and tagging |
 
@@ -112,6 +113,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
+| `/pivot` | Explicitly pause the current thread and re-enter Plan Mode for a new direction |
 | `/init` | Bootstrap project configuration |
 | `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs, circuit-breaker/cost-guardrail/prompt-context-router hooks, and cost-saving settings.json env vars |
 
@@ -137,7 +139,7 @@ Auto-loaded when relevant — no slash command needed:
 | `destructive-command-protection` | Runtime hook: blocks rm -rf, DROP DATABASE, and other destructive commands |
 | `context-circuit-breaker` | Runtime hook: warns (never blocks) on subagent fan-out and expensive-call loops |
 | `cost-guardrail` | Runtime hook: warns/blocks Agent spawns and Bash calls whose historical cost is disproportionate, using cost-audit-derived baselines |
-| `prompt-context-router` | Runtime hook: classifies each prompt by task class and topic-pivot, advising standalone treatment (and subagent delegation for cheap asides) instead of re-deriving from full session history |
+| `prompt-context-router` | Runtime hook: classifies each prompt by task class and topic-pivot, advising standalone treatment (and subagent delegation for cheap asides) instead of re-deriving from full session history; with a companion PostToolUse hook, denies a pivot away from a just-implemented plan until EnterPlanMode is called again |
 
 **Guideline Skills** (category: guideline)
 

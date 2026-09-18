@@ -70,6 +70,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/pr` | Create pull request |
 | `/finish` | End-of-session: test → validate → review → commit |
 | `/done` | Close out a session opened by /start — commit, create or update the PR, record the session outcome, and nudge context compaction |
+| `/trash` | Abandon a session — record why, score the outcome in Langfuse, report cost |
 | `/hotfix` | Emergency bug fix with abbreviated validation |
 | `/release` | Version bump, changelog, and tagging |
 
@@ -89,6 +90,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
+| `/pivot` | Explicitly pause the current thread and re-enter Plan Mode for a new direction |
 | `/init` | Bootstrap project configuration |
 | `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs and circuit-breaker/cost-guardrail/prompt-context-router hooks |
 

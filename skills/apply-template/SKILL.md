@@ -305,45 +305,66 @@ passed, and re-running is idempotent.
 Ask the user (`AskUserQuestion`, options **Install** / **Skip**) whether to
 install the `prompt-context-router` hook — a `UserPromptSubmit` hook that
 classifies each incoming prompt by task class and topic-pivot, and advises
-(never blocks) treating clear asides as standalone — with a delegation
+(never blocks, except for two opt-in one-shot-per-session/cycle deny checks —
+see below) treating clear asides as standalone — with a delegation
 suggestion for cheap ones. See `skills/prompt-context-router/SKILL.md` for
-what it does and doesn't do, including that it's stateless and purely
-advisory.
+what it does and doesn't do.
+
+This installs **two** hooks that share one state file: the `UserPromptSubmit`
+classifier (`hook.js`) and a companion `PostToolUse` hook
+(`post-tool-hook.js`) that watches for `ExitPlanMode` followed by a mutating
+tool call, so `hook.js` can tell when a prompt pivots away from a plan that
+was just implemented.
 
 **GATE: only proceed on explicit "Install."** This step touches
-`settings.json`'s `hooks.UserPromptSubmit` array — same caution as Steps
-5.5/5.6.
+`settings.json`'s `hooks.UserPromptSubmit` and `hooks.PostToolUse` arrays —
+same caution as Steps 5.5/5.6.
 
 If installed:
 
-1. Copy the hook script:
+1. Copy both hook scripts:
    ```bash
    mkdir -p <target>/.claude/skills/prompt-context-router/references
    cp skills/prompt-context-router/references/hook.js \
-     <target>/.claude/skills/prompt-context-router/references/hook.js
+     skills/prompt-context-router/references/post-tool-hook.js \
+     <target>/.claude/skills/prompt-context-router/references/
    ```
 2. Back up any existing target settings file the same way Steps 5.5/5.6 do
    (`backup-claude-md.sh <target>/.claude/settings.json`).
-3. Dry-run the merge — this hook needs `--event UserPromptSubmit` since it
-   binds a different hook event than the `PreToolUse` default:
+3. Dry-run the `UserPromptSubmit` merge — this hook needs
+   `--event UserPromptSubmit` since it binds a different hook event than the
+   `PreToolUse` default:
    ```bash
    node skills/apply-template/scripts/merge-settings-hook.js \
      <target>/.claude/settings.json \
      --command "node .claude/skills/prompt-context-router/references/hook.js" \
      --matcher "*" --event UserPromptSubmit
    ```
-4. Only after confirmation, apply it:
+4. Dry-run the `PostToolUse` merge — pass `--matcher` once per tool name
+   (the same pattern `cost-guardrail` uses for `Agent`/`Bash`), not a single
+   regex-alternation string:
    ```bash
    node skills/apply-template/scripts/merge-settings-hook.js \
      <target>/.claude/settings.json \
-     --command "node .claude/skills/prompt-context-router/references/hook.js" \
-     --matcher "*" --event UserPromptSubmit --apply
+     --command "node .claude/skills/prompt-context-router/references/post-tool-hook.js" \
+     --matcher ExitPlanMode --matcher Edit --matcher Write \
+     --matcher NotebookEdit --matcher Bash --event PostToolUse
    ```
+5. Only after confirmation, apply both (repeat 3 and 4 with `--apply`
+   appended).
+6. In the same `AskUserQuestion` call from Step 5.8 (or a follow-up one),
+   ask whether `PROMPT_CONTEXT_ROUTER_POST_PLAN_PIVOT_MODE` should be
+   `enforce` (recommended default if unset — a pivot away from a
+   just-implemented plan gets denied once per plan cycle until
+   `EnterPlanMode` is called again) or `warn-only` (advisory only, matching
+   `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE`'s default). Only write the
+   env var if the user picks `warn-only` — `enforce` needs no explicit
+   setting since it's the hook's own default.
 
 Same idempotency guarantee as Steps 5.5/5.6: re-running only confirms
-presence under `hooks.UserPromptSubmit`, never duplicates an entry, and
-every other key in `settings.json` (including `hooks.PreToolUse`) is left
-untouched.
+presence under `hooks.UserPromptSubmit`/`hooks.PostToolUse`, never
+duplicates an entry, and every other key in `settings.json` (including
+`hooks.PreToolUse`) is left untouched.
 
 ### Step 6: Report
 

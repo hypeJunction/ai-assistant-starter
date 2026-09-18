@@ -1,6 +1,6 @@
 ---
 name: prompt-context-router
-description: Runtime enforcement hook that classifies each incoming prompt by task class and topic-pivot, then advises the assistant to treat clear asides as standalone (and delegate cheap ones to a subagent), to consider entering Plan Mode for architecture/extreme-scope prompts — denying the first extreme-scope prompt per session outright, with an opt-in extension to pivot+architecture — flags when a short prompt is riding on a disproportionately large accumulated context, warns when a turn is likely to miss the prompt cache due to elapsed time, and flags when a pivot lands on a large accumulated context. Auto-loaded for every user prompt.
+description: Runtime enforcement hook that classifies each incoming prompt by task class and topic-pivot, then advises the assistant to treat clear asides as standalone (and delegate cheap ones to a subagent), to consider entering Plan Mode for architecture/extreme-scope prompts — denying the first extreme-scope prompt per session outright, with an opt-in extension to pivot+architecture — flags when a short prompt is riding on a disproportionately large accumulated context, warns when a turn is likely to miss the prompt cache due to elapsed time, flags when a pivot lands on a large accumulated context, and (with a companion PostToolUse hook) denies a pivot away from a plan that was just implemented until EnterPlanMode is called again. Auto-loaded for every user prompt.
 category: enforcement
 user-invocable: false
 ---
@@ -131,6 +131,38 @@ Operators on a 1-hour extended-cache session should set
 `PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS=3600` to match; the default (300s)
 assumes the standard short-lived cache.
 
+## Post-Plan Pivot Guard (seventh, independent axis)
+
+Catches the specific failure this hook was originally missing: a plan gets
+approved and implemented, then the user makes a follow-up remark that's a
+genuine pivot to a new direction — and instead of a fresh Plan Mode cycle,
+direct edits continue immediately. This axis is independent of task class
+(a pivot away from a just-shipped plan warrants re-planning regardless of
+how risky the new direction's keywords look) and is checked *before* the
+task-class-based Plan Mode guidance above.
+
+`hook.js` alone can't detect this — `UserPromptSubmit` has no view into tool
+calls made between prompts. A companion `PostToolUse` hook,
+`post-tool-hook.js` (same directory), watches for `ExitPlanMode` (starts a
+fresh cycle) followed by a mutating tool call — `Edit`, `Write`,
+`NotebookEdit`, or `Bash` (marks `implementedSincePlan: true`) — and writes
+that into the same tmpdir state file `hook.js` already reads for its
+`extremeNudged`/`architecturePivotNudged` flags.
+
+When `hook.js` then sees a pivot-shaped prompt with `implementedSincePlan`
+set, it applies the identical one-shot-per-cycle deny pattern used for
+`extreme` (its own `postPlanPivotNudged` key, reset whenever `ExitPlanMode`
+fires again — so a later, unrelated pivot in a new plan cycle gets checked
+fresh). Unlike the other opt-in enforce modes in this hook, this one
+**defaults to `enforce`**, not `warn-only` — silently continuing with direct
+edits after a pivot is exactly the failure mode this check exists to catch.
+Set `PROMPT_CONTEXT_ROUTER_POST_PLAN_PIVOT_MODE=warn-only` to soften it to
+advisory-only.
+
+The explicit, user-invoked counterpart to this automatic check is `/pivot` —
+use it to force the same Plan Mode re-entry when the automatic detection
+might miss a pivot, or proactively.
+
 ## Relationship to Other Skills
 
 This hook deliberately points at existing skills instead of reimplementing
@@ -150,7 +182,9 @@ their guidance:
 ## Installation
 
 Add to your Claude Code settings (`~/.claude/settings.json` or project
-`.claude/settings.json`):
+`.claude/settings.json`). Both hooks share the same tmpdir state file, so
+install both — `post-tool-hook.js` alone is silent, and without it
+`hook.js`'s post-plan-pivot axis never has `implementedSincePlan` set:
 
 ```json
 {
@@ -160,13 +194,35 @@ Add to your Claude Code settings (`~/.claude/settings.json` or project
         "matcher": "*",
         "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/hook.js" }]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+      },
+      {
+        "matcher": "NotebookEdit",
+        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+      }
     ]
   }
 }
 ```
 
-Install via `/apply-template`'s opt-in hook-install step, or add this
-snippet by hand.
+Install via `/apply-template`'s opt-in hook-install step (Step 5.8, installs
+both hooks together), or add this snippet by hand.
 
 ## Configuration
 
@@ -179,6 +235,7 @@ snippet by hand.
 | `PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS` | `300` | Assumed cache TTL in seconds; elapsed time since the last main-loop assistant message beyond this triggers the TTL-miss advisory. Set to `3600` for extended-cache (1hr) sessions |
 | `PROMPT_CONTEXT_ROUTER_CACHE_TTL_MIN_TOKENS` | `20000` | Min accumulated context tokens for the TTL-miss advisory to be worth surfacing |
 | `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE` | `warn-only` | `enforce` extends the one-per-session deny pattern (normally exclusive to `extreme`) to pivot+`architecture` prompts too, using an independent session-state key; `warn-only` never denies for this case, advisory only |
+| `PROMPT_CONTEXT_ROUTER_POST_PLAN_PIVOT_MODE` | `enforce` | `enforce` denies a pivot-shaped prompt once per plan cycle when `post-tool-hook.js` has recorded `implementedSincePlan: true` (then downgrades to advisory until the next `ExitPlanMode`); `warn-only` never denies, always advisory-only |
 
 ## What This Does Not Do
 
@@ -196,11 +253,18 @@ snippet by hand.
   automatic model-tier routing on prompt submission, see the
   `claude-model-router-hook` option in `docs/cost-optimization.md`.
 - **Mostly stateless.** The pivot/task-class classification itself is
-  stateless, per-prompt only. The one exception is the `extreme` deny gate,
-  which tracks a single "already nudged this session" flag in a tmpdir file
-  keyed by `session_id` — enough to avoid re-denying every continuation
-  prompt of an already-approved extreme-scope task, nothing more (no rolling
-  "current topic" fingerprint).
+  stateless, per-prompt only. The exceptions are the `extreme` deny gate and
+  the post-plan-pivot gate, each tracking a single "already nudged" flag
+  (session-scoped for `extreme`, plan-cycle-scoped — reset on the next
+  `ExitPlanMode` — for post-plan-pivot) in a tmpdir file keyed by
+  `session_id`. Neither tracks a rolling "current topic" fingerprint or the
+  actual content of the approved plan — `implementedSincePlan` only knows
+  *that* a mutating tool ran after `ExitPlanMode`, not whether it matched the
+  plan's scope.
+- **Post-plan-pivot detection needs the companion `PostToolUse` hook
+  installed too.** `hook.js` alone never sees tool calls between prompts —
+  without `post-tool-hook.js` wired in, `implementedSincePlan` never becomes
+  true and this axis never fires (silently, not an error).
 - **Can't set `permission_mode` itself.** It's a read-only input field to
   hooks — this hook can only deny a prompt or add `additionalContext`
   suggesting the assistant call `EnterPlanMode`; it can never flip the mode
@@ -239,3 +303,10 @@ snippet by hand.
 | PCR-T21 | Pivot-shaped prompt classified `architecture`, `permission_mode` not `"plan"`, `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE=warn-only` (default) | Strengthened `additionalContext` wording, never denies |
 | PCR-T22 | Same as PCR-T21 but `PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE=enforce`, first occurrence this session | `permissionDecision: "deny"`, independent `architecturePivotNudged` state key written (doesn't affect `extremeNudged`) |
 | PCR-T23 | Same as PCR-T22, second occurrence in the same session | Downgrades to the strengthened `additionalContext`, never denies again |
+| PCR-T24 | `post-tool-hook.js` receives `tool_name: "ExitPlanMode"`, then `tool_name: "Edit"`, same `session_id`; `hook.js` then receives a pivot-shaped prompt, `permission_mode` not `"plan"`, `PROMPT_CONTEXT_ROUTER_POST_PLAN_PIVOT_MODE=enforce` (default) | `permissionDecision: "deny"`, checked and returned before the task-class-based Plan Mode guidance; `postPlanPivotNudged` written to the shared state file |
+| PCR-T25 | Same session state as PCR-T24, a second pivot-shaped prompt | Downgrades to `additionalContext` only, never denies again — until the next `ExitPlanMode` resets the flag |
+| PCR-T26 | `post-tool-hook.js` receives `tool_name: "ExitPlanMode"` only (no mutating tool call yet); `hook.js` then receives a pivot-shaped prompt | Silent on this axis — `implementedSincePlan` is still false |
+| PCR-T27 | `implementedSincePlan: true` in state, but the incoming prompt is not pivot-shaped | Silent on this axis regardless of state |
+| PCR-T28 | Same as PCR-T24 but `permission_mode: "plan"` already set | Silent — no post-plan-pivot guidance while already in Plan Mode |
+| PCR-T29 | Same as PCR-T24 but `PROMPT_CONTEXT_ROUTER_POST_PLAN_PIVOT_MODE=warn-only` | `additionalContext` only, never denies |
+| PCR-T30 | `post-tool-hook.js` receives an unrelated `tool_name` (e.g. `Read`, `Grep`) | No state change — `implementedSincePlan` untouched |

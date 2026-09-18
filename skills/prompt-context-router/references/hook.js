@@ -96,6 +96,19 @@
  * using its own independent session-state key so it never interferes with
  * the existing `extremeNudged` flag.
  *
+ * A seventh, independent concern: pivoting away from a plan that was just
+ * implemented. This hook has no view into tool calls between prompts, so a
+ * companion `PostToolUse` hook (`post-tool-hook.js`) watches for
+ * `ExitPlanMode` followed by a mutating tool call (`Edit`/`Write`/
+ * `NotebookEdit`/`Bash`) and records `implementedSincePlan` into this same
+ * state file. When this hook then sees a pivot-shaped prompt with that flag
+ * set, it applies the identical one-shot-per-cycle deny pattern used for
+ * `extreme` above — its own `postPlanPivotNudged` state key, reset whenever
+ * `ExitPlanMode` fires again — except this one defaults to `enforce`
+ * (`PROMPT_CONTEXT_ROUTER_POST_PLAN_PIVOT_MODE`, `warn-only` to soften it),
+ * since silently continuing with direct edits after a pivot is exactly the
+ * failure mode this check exists to catch.
+ *
  * Hook protocol: reads the UserPromptSubmit event from stdin as JSON
  * (`input.prompt`, `input.permission_mode`, `input.session_id`,
  * `input.transcript_path`), outputs `hookSpecificOutput` JSON to stdout when
@@ -401,13 +414,27 @@ function statePath(sessionId) {
   return path.join(os.tmpdir(), `claude-prompt-context-router-${safeId}.json`);
 }
 
+// implementedSincePlan/postPlanPivotNudged are written by the companion
+// PostToolUse hook (post-tool-hook.js) into this same state file — both
+// loadState and saveState must carry every field through, or a save from
+// either hook silently drops the fields only the other one sets.
 function loadState(filePath) {
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
     const parsed = JSON.parse(raw);
-    return { extremeNudged: !!parsed.extremeNudged, architecturePivotNudged: !!parsed.architecturePivotNudged };
+    return {
+      extremeNudged: !!parsed.extremeNudged,
+      architecturePivotNudged: !!parsed.architecturePivotNudged,
+      implementedSincePlan: !!parsed.implementedSincePlan,
+      postPlanPivotNudged: !!parsed.postPlanPivotNudged,
+    };
   } catch {
-    return { extremeNudged: false, architecturePivotNudged: false };
+    return {
+      extremeNudged: false,
+      architecturePivotNudged: false,
+      implementedSincePlan: false,
+      postPlanPivotNudged: false,
+    };
   }
 }
 
@@ -495,6 +522,42 @@ function buildPlanModeGuidance({ taskClass, isPivot, permissionMode, sessionId, 
   return null;
 }
 
+// Independent of taskClass — a pivot away from a plan that was just
+// implemented in this session is the trigger, not how risky the new
+// direction looks by keyword. `implementedSincePlan` is written by the
+// companion PostToolUse hook (post-tool-hook.js), which watches for
+// ExitPlanMode followed by a mutating tool call. Modeled directly on the
+// `extreme` branch above: same one-shot-per-cycle deny, same state-file
+// pattern, just its own state key so it never interferes with the others.
+function buildPostPlanPivotGuidance({ isPivot, permissionMode, sessionId, mode }) {
+  if (permissionMode === 'plan') return null;
+  if (!isPivot) return null;
+
+  const filePath = statePath(sessionId);
+  const state = loadState(filePath);
+  if (!state.implementedSincePlan) return null;
+
+  const advisory =
+    `This prompt looks like a pivot away from a plan that was just implemented in this ` +
+    `session. Consider calling EnterPlanMode before making further edits — ${PLAN_WORKFLOW_NOTE}`;
+
+  if (mode !== 'enforce') {
+    return { additionalContext: advisory };
+  }
+
+  if (state.postPlanPivotNudged) {
+    return { additionalContext: advisory };
+  }
+  saveState(filePath, { ...state, postPlanPivotNudged: true });
+  return {
+    permissionDecision: 'deny',
+    permissionDecisionReason:
+      `This prompt looks like a pivot away from a plan that was just implemented in this ` +
+      `session. Enter Plan Mode (EnterPlanMode) before proceeding, or resend this prompt to ` +
+      `proceed anyway — this is a one-time check per plan cycle.`,
+  };
+}
+
 async function main() {
   const input = await getInput();
   const prompt = (input && typeof input.prompt === 'string' && input.prompt) || '';
@@ -510,6 +573,28 @@ async function main() {
   const transcriptPath = (input && typeof input.transcript_path === 'string' && input.transcript_path) || null;
   const extremeMode = process.env.PROMPT_CONTEXT_ROUTER_EXTREME_MODE || 'enforce';
   const pivotArchitectureMode = process.env.PROMPT_CONTEXT_ROUTER_PIVOT_ARCHITECTURE_MODE || 'warn-only';
+  const postPlanPivotMode = process.env.PROMPT_CONTEXT_ROUTER_POST_PLAN_PIVOT_MODE || 'enforce';
+
+  // Checked first — more specific and more urgent than the taskClass-based
+  // guidance below: a pivot away from a just-implemented plan warrants
+  // re-planning regardless of how risky the new direction's keywords look.
+  const postPlanPivotGuidance = buildPostPlanPivotGuidance({
+    isPivot: result.isPivot,
+    permissionMode,
+    sessionId,
+    mode: postPlanPivotMode,
+  });
+  if (postPlanPivotGuidance && postPlanPivotGuidance.permissionDecision === 'deny') {
+    console.log(JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'UserPromptSubmit',
+        permissionDecision: 'deny',
+        permissionDecisionReason: postPlanPivotGuidance.permissionDecisionReason,
+      },
+    }));
+    process.exit(0);
+  }
+
   const planGuidance = buildPlanModeGuidance({
     taskClass: result.taskClass,
     isPivot: result.isPivot,
@@ -540,6 +625,7 @@ async function main() {
   const contexts = [
     pivotContext,
     pivotContextAdvisory,
+    postPlanPivotGuidance && postPlanPivotGuidance.additionalContext,
     planGuidance && planGuidance.additionalContext,
     ballastContext,
     ttlContext,
@@ -565,6 +651,7 @@ module.exports = {
   looksLikePivot,
   buildAdditionalContext,
   buildPlanModeGuidance,
+  buildPostPlanPivotGuidance,
   statePath,
   loadState,
   saveState,
