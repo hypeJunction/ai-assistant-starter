@@ -208,7 +208,7 @@ See `references/commit-conventions.md` for extended formats (breaking changes, r
 ### Rules
 
 - Imperative mood ("add" not "added")
-- Lowercase after the type/scope prefix (`feat(auth): add login`, not `feat(auth): Add login`) — matches the lowercase convention used by Angular, Kubernetes, and most Conventional Commits adopters
+- Lowercase after the type/scope prefix (`feat(auth): add login`, not `feat(auth): Add login`) — see `git-conventions` for the full rationale
 - Subject line ≤50 characters; wrap body text at 72 characters per line (not "72 characters total")
 - No period at end of subject
 - Blank line between subject and body

@@ -319,7 +319,7 @@ EOF
 
 ## PR Title Conventions
 
-Format: `component: brief description [TICKETS]` — the component is the area of the codebase the change affects, not a conventional-commit type. Drop the ticket suffix if there's no ticket. With multiple tickets, list each one back-to-back — never drop any.
+Format per the title rule under "Push and Create/Update PR" above. Examples:
 
 ```
 auth: add user authentication [T-1204]
