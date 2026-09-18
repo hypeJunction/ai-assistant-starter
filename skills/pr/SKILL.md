@@ -91,13 +91,7 @@ Validation (typecheck/lint/test) may already have run when these changes were co
 
 Run full validation before creating PR. If issues are found, fix them and re-validate. Maximum 3 iterations. All checks must pass before proceeding.
 
-**Delegate each check to its own subagent** — typecheck, lint, and test each run via a separate `Agent` call, never directly in the main agent's shell and never bundled into one call. Send independent checks in a single message with multiple tool uses so they run concurrently. Read each subagent's raw output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
-
-```bash
-npm run typecheck   # subagent 1
-npm run lint         # subagent 2
-npm run test         # subagent 3
-```
+Invoke `/validate --full` to run the complete CI pipeline.
 
 **Iteration loop:**
 
@@ -317,7 +311,7 @@ EOF
 | PR-T3 | Positive | "Open a PR for this branch" | Skill triggers |
 | PR-T4 | Negative | "Commit my changes" | Does NOT trigger (-> /commit) |
 | PR-T5 | Negative | "Review the code" | Does NOT trigger (-> /review) |
-| PR-T6 | Negative | "Fix the CI failures on my PR" | Does NOT trigger (-> /iterate-pr) |
+| PR-T6 | Negative | "Fix the CI failures on my PR" | Does NOT trigger (-> /implement --pr-iterate) |
 | PR-T7 | Boundary | "Commit and create a PR" | Triggers (PR is the final intent) |
 | PR-T8 | Early-exit | No commits ahead of base branch | Reports "Nothing to push" and exits |
 | PR-T9 | Positive | "Fix the description on PR #123" | Skill triggers, jumps to Step 6 (existing PR) then Step 9 with `gh pr edit`, not a standalone `gh` call |

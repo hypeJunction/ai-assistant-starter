@@ -193,7 +193,7 @@ for an ADR capturing the decision, then remove the todo.
 
 Choose execution mode:
 - **`/implement`** — Execute the plan step by step (default)
-- **`/tdd`** — Test-driven execution (write tests first, then implement)
+- **`/implement --tdd`** — Test-driven execution (write tests first, then implement)
 - **Parallel dispatch** — Break independent tasks into parallel agent work (for Complex plans)
 - **Manual** — You execute, I advise
 

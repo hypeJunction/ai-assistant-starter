@@ -33,7 +33,7 @@ triggers:
 ## When NOT to Use
 
 - A single, already-reasonably-scoped PR → `/pr`
-- Fixing CI or review feedback on an existing PR → `/iterate-pr`
+- Fixing CI or review feedback on an existing PR → `/implement --pr-iterate`
 - Multi-file changes that stay in one PR → `/refactor`
 
 > **Note:** Requires `gh` (GitHub CLI) and `git worktree` support. Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.

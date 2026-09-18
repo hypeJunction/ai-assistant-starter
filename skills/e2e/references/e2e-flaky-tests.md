@@ -391,4 +391,4 @@ Always collect traces and screenshots on failure:
 
 ## See Also
 
-- [Debugging Techniques](../../debug/references/debugging-techniques.md) — Test polluter detection with bisection, race condition analysis, and general debugging methodology
+- [Debugging Techniques](../../implement/references/debug-mode.md) — Test polluter detection with bisection, race condition analysis, and general debugging methodology

@@ -39,7 +39,7 @@ triggers:
 
 - Production is broken, critical security vulnerability, data corruption, or user-blocking bug with no workaround
 
-**Do NOT use for:** Non-urgent bugs (use `/debug`), feature requests, performance improvements, or code cleanup.
+**Do NOT use for:** Non-urgent bugs (use `/implement --debug`), feature requests, performance improvements, or code cleanup.
 
 ## Scope Flags
 

@@ -36,7 +36,7 @@ triggers:
 ## When NOT to Use
 
 - You already know the answer from files in context → just answer
-- You need to fix a bug → `/debug`
+- You need to fix a bug → `/implement --debug`
 - You need to make changes → `/implement`
 - You need to review code quality → `/review`
 

@@ -202,6 +202,6 @@ Example shape:
 | SR-T2 | Positive | "Why did you keep re-reading that file?" | Skill triggers |
 | SR-T3 | Positive | "Review this conversation and tell me what went wrong" | Skill triggers |
 | SR-T4 | Negative | "Review this PR before I merge it" | Does NOT trigger (-> /review, code review not session behavior) |
-| SR-T5 | Negative | "Run the finish workflow" | Does NOT trigger (-> /finish, end-of-session test/validate/commit) |
+| SR-T5 | Negative | "Run the finish workflow" | Does NOT trigger (-> /done, end-of-session test/validate/commit) |
 | SR-T6 | Boundary | "Audit our Langfuse traces for wasted tokens across all sessions" | Does NOT trigger — cross-session/cost-focused, route to `/cost-audit` instead |
 | SR-T7 | Positive | "This audit skill cost $16 to run — should it be structured differently?" | Skill triggers; agent checks `largest_tool_results` and `context_multiplication_signal`, and if a genuine cause is found, proposes a Structural / Agentification Recommendation rather than a CLAUDE.md line |

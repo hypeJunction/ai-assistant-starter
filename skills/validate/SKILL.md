@@ -35,10 +35,11 @@ triggers:
 
 ## When NOT to Use
 
-- Writing or running specific tests → `/test-coverage` or `/tdd`
+- Writing or running specific tests → `/test-coverage` or `/implement --tdd`
 - Reviewing code quality and patterns → `/review`
-- Fixing bugs → `/debug`
+- Fixing bugs → `/implement --debug`
 - Security-specific audit → `/security-review`
+- Closing an issue/ticket against its acceptance criteria → that's a separate, non-project concern this repo doesn't cover (a global `verify`-style skill elsewhere may own it) — this skill only checks code quality, not ticket closure
 
 ## Early Exit
 

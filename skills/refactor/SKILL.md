@@ -36,7 +36,7 @@ triggers:
 ## When NOT to Use
 
 - Changing behavior (adding features) → `/implement`
-- Fixing a bug → `/debug`
+- Fixing a bug → `/implement --debug`
 - 1-5 file changes → `/implement`
 - Emergency fix → `/hotfix`
 
