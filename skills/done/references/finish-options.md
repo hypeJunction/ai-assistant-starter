@@ -129,7 +129,7 @@ git stash pop
 
 ## Session Summary Template
 
-Present this summary at the end of every `/finish` session:
+Present this summary at the end of every `/done` session:
 
 ```markdown
 ## Session Summary
