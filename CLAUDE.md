@@ -11,9 +11,17 @@ skills/                          # All skills live here
 │   ├── references/              # Optional support docs (templates, detection rules)
 │   └── assets/                  # Optional scaffolding templates (rare; mainly init)
 CLAUDE.md                        # This file (project instructions)
-CHANGELOG.md                     # Version history
 README.md                        # User-facing documentation
 ```
+
+## Change Tracking
+
+This repo does not maintain a `CHANGELOG.md`. Nobody reads it, and it goes
+stale the moment a change lands without a matching entry. Git commit
+history is the changelog: write clear, scoped commit messages, and let
+`git log` be the record of what changed and why. Never create or
+re-introduce a `CHANGELOG.md` file in this repo, and don't add
+changelog-style entries embedded in code comments or other docs either.
 
 ## Skill Format
 
@@ -53,9 +61,12 @@ npx skills add ./ai-assistant-starter
 npx skills add ./ai-assistant-starter -s commit
 ```
 
+Alternatively, the session lifecycle (`start`, `plan`, `implement`, `validate`, `review`, `commit`, `pr`, `pivot`, `done`, `trash`, `prompt-context-router`) is distributed as a Claude Code plugin at `plugins/session-workflow/`, installable via `claude --plugin-dir plugins/session-workflow`. This plugin is a manifest over the same canonical skill files (symlinks), not a separate copy.
+
+
 ## Available Skills
 
-### Workflow Skills (38 total, categories: process + meta)
+### Workflow Skills (33 total, categories: process + meta)
 
 **Development Workflows**
 
@@ -64,8 +75,7 @@ npx skills add ./ai-assistant-starter -s commit
 | `/start` | Scope a new work session to a ticket, worktree, and goal, auto-triggering on session start |
 | `/explore` | Understand code (read-only) |
 | `/plan` | Design approach before coding |
-| `/implement` | Full workflow: explore → plan → code → test → commit |
-| `/debug` | Find and fix bugs |
+| `/implement` | Execute an approved plan — code, self-review, test, validate, commit, close. Selectable modes (`--debug`, `--tdd`, `--scope-locked`, `--pr-iterate`) handle debugging, strict TDD, scope-locked autonomous work, and PR-feedback iteration. |
 | `/refactor` | Multi-file changes with tracking |
 | `/migrate` | Database/schema migrations with rollback planning |
 | `/stack` | Split a large branch into a resumable series of stacked PRs |
@@ -76,11 +86,9 @@ npx skills add ./ai-assistant-starter -s commit
 |-------|---------|
 | `/validate` | Run type check, lint, tests |
 | `/test-coverage` | Ensure test coverage for changes |
-| `/tdd` | Test-driven development (RED → GREEN → REFACTOR) |
-| `/spec-loop` | Scope-locked implementation with an approved file-scope contract |
 | `/api-test` | Discover, test, and report on API endpoints |
 | `/e2e` | End-to-end testing with Playwright/Cypress |
-| `/review` | Review current branch against base |
+| `/review` | Review current branch against base; `--quick` mode for use as a sub-step within `/implement` or `/done`
 | `/security-review` | Systematic security audit with confidence-based reporting |
 | `/accessibility-review` | WCAG 2.1 AA audit with automated + manual checks |
 
@@ -89,10 +97,8 @@ npx skills add ./ai-assistant-starter -s commit
 | Skill | Purpose |
 |-------|---------|
 | `/commit` | Review and commit with confirmation |
-| `/iterate-pr` | Iterate on PR until CI passes and feedback addressed |
 | `/pr` | Create pull request |
-| `/finish` | End-of-session: test → validate → review → commit |
-| `/done` | Close out a session opened by /start — commit, create or update the PR, record the session outcome, and nudge context compaction |
+| `/done` | Close out a session — test coverage, review, validation gate, commit, create/update the PR, record the outcome. Works standalone or for a `/start`-opened session.
 | `/trash` | Abandon a session — record why, score the outcome in Langfuse, report cost |
 | `/hotfix` | Emergency bug fix with abbreviated validation |
 | `/release` | Version bump, changelog, and tagging |
@@ -173,12 +179,11 @@ Auto-loaded when relevant — no slash command needed:
 5. For background skills, add `user-invocable: false` to frontmatter
 6. Add `references/` directory if the skill needs support docs (templates, rules)
 7. Update the skill tables in both `README.md` and this file
-8. Update `CHANGELOG.md` under `[Unreleased]`
 
 ### Modifying an existing skill
 
 1. Edit the `SKILL.md` directly — the frontmatter `description` is what users see in discovery
-2. If changing the skill's purpose or name, update `README.md`, `CLAUDE.md`, and `CHANGELOG.md`
+2. If changing the skill's purpose or name, update `README.md` and `CLAUDE.md`
 3. Keep instructions concise — use `references/` for lengthy support material
 
 ### Conventions

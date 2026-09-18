@@ -30,6 +30,8 @@ npx skills add ./ai-assistant-starter -s implement
 npx skills add ./ai-assistant-starter -s validate
 ```
 
+The session lifecycle skills are also distributed as a Claude Code plugin at `plugins/session-workflow/`, installable via `claude --plugin-dir plugins/session-workflow`.
+
 Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as `/name` commands.
 
 ## Skills
@@ -41,8 +43,7 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | `/start` | Scope a new work session to a ticket, worktree, and goal, auto-triggering on session start |
 | `/explore` | Understand code (read-only) |
 | `/plan` | Design approach before coding |
-| `/implement` | Full workflow: explore → plan → code → test → commit |
-| `/debug` | Find and fix bugs |
+| `/implement` | Execute an approved plan — code, self-review, test, validate, commit, close. Selectable modes (`--debug`, `--tdd`, `--scope-locked`, `--pr-iterate`) handle debugging, strict TDD, scope-locked autonomous work, and PR-feedback iteration.
 | `/refactor` | Multi-file changes with tracking |
 | `/migrate` | Database/schema migrations with rollback planning |
 | `/stack` | Split a large branch into a resumable series of stacked PRs |
@@ -53,11 +54,9 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 |-------|---------|
 | `/validate` | Run type check, lint, tests |
 | `/test-coverage` | Ensure test coverage for changes |
-| `/tdd` | Test-driven development (RED → GREEN → REFACTOR) |
-| `/spec-loop` | Scope-locked implementation with an approved file-scope contract |
 | `/api-test` | Discover, test, and report on API endpoints |
 | `/e2e` | End-to-end testing with Playwright/Cypress |
-| `/review` | Review current branch against base |
+| `/review` | Review current branch against base; `--quick` mode for use as a sub-step within `/implement` or `/done`
 | `/security-review` | Systematic security audit with confidence-based reporting |
 | `/accessibility-review` | WCAG 2.1 AA audit with automated + manual checks |
 
@@ -66,10 +65,8 @@ Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as
 | Skill | Purpose |
 |-------|---------|
 | `/commit` | Review and commit with confirmation |
-| `/iterate-pr` | Iterate on PR until CI passes and feedback addressed |
 | `/pr` | Create pull request |
-| `/finish` | End-of-session: test → validate → review → commit |
-| `/done` | Close out a session opened by /start — commit, create or update the PR, record the session outcome, and nudge context compaction |
+| `/done` | Close out a session — test coverage, review, validation gate, commit, create/update the PR, record the outcome. Works standalone or for a `/start`-opened session.
 | `/trash` | Abandon a session — record why, score the outcome in Langfuse, report cost |
 | `/hotfix` | Emergency bug fix with abbreviated validation |
 | `/release` | Version bump, changelog, and tagging |

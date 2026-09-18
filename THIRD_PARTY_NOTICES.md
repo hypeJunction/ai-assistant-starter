@@ -62,14 +62,3 @@ This project includes content derived from or inspired by the following third-pa
 - **Source:** [CycloneDX](https://cyclonedx.org/)
 - **Scope:** SBOM format guidance.
 
-### Keep a Changelog
-
-- **Used in:** `CHANGELOG.md`
-- **Source:** [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/)
-- **Note:** Already attributed inline in CHANGELOG.md. Listed here for completeness.
-
-### Semantic Versioning
-
-- **Used in:** `CHANGELOG.md`
-- **Source:** [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)
-- **Note:** Already attributed inline in CHANGELOG.md. Listed here for completeness.
