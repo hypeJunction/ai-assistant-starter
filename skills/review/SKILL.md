@@ -1,6 +1,6 @@
 ---
 name: review
-description: Comprehensive code review of the current branch against base. Read-only analysis with P0-P3 severity-rated findings and actionable feedback. Use before merging or to check code quality.
+description: Code review with --quick mode for uncommitted diffs (in-context, short checklist) or full branch review (subagent-delegated, comprehensive). Read-only P0-P3 severity ratings. Use before merging or to check code quality.
 category: process
 model: opus
 effort: high
@@ -49,6 +49,7 @@ triggers:
 |------|-------------|
 | `--files=<paths>` | Review specific files instead of full branch diff |
 | `--pr=<number>` | Review a specific PR by number |
+| `--quick` | Fast review of uncommitted + staged changes only. Runs in-context with shortened checklist (no `any` types, no `console.log`, no hardcoded secrets/obvious security patterns, test plans). Terser output — P0-P3 findings only. |
 
 ## Severity + Confidence
 
@@ -92,6 +93,53 @@ The stat-only summary is enough to plan scope. The full diff and file contents a
   4. Track which files have been reviewed — include a running count (e.g., "Reviewed 4/12 files")
   5. Summarize findings per group before moving to the next
 - **Mixed-concern changes** (feature + refactor + config) → Flag as candidate for splitting into separate PRs
+
+
+### Quick Review (--quick mode)
+
+**When triggered:** `/review --quick` runs a lightweight, in-context review of uncommitted + staged changes only. No subagent delegation.
+
+**Scope:** Current diff only — `git diff HEAD` + `git diff --staged`
+
+**Execution:**
+
+1. Get the current diff and changed file list
+2. Read changed files directly (in this context, no delegation)
+3. Apply shortened checklist (see below)
+4. Output: Brief P0-P3 findings list (no full report template)
+
+**Shortened Checklist:**
+
+- **No `any` types** — Implicit `any` defeats static typing
+- **No `console.log`** — Must use proper logging (unless intentionally in tests)
+- **Security red flags:**
+  - No `eval()`, `new Function()`, `innerHTML`, `dangerouslySetInnerHTML`, `v-html` with unsanitized input
+  - No raw SQL with string interpolation — must use parameterized queries or ORM
+  - No hardcoded secrets (API keys, tokens, credentials) in source files
+  - No `child_process.exec()` with user-controlled input
+- **Tests have test plans** — Meaningful descriptions and async handling verified
+- **General:** Obvious dead code, missing error handling
+- **No other checks** — Ignore style, naming, performance, and domain-specific guidelines (those are for full review)
+
+**Output Format:**
+
+```markdown
+## Quick Review: [Branch]
+
+### Findings
+- **[Pn]** [Issue] — `file.ts:line` — Confidence: HIGH/MEDIUM
+  - Evidence: [brief reason]
+  - Fix: [one-line remediation]
+
+_(None — or list findings)_
+
+### Summary
+[1-2 sentences on overall state]
+```
+
+If no issues found: "No findings — changes look good."
+
+---
 
 ### Step 4: Delegate File Review
 
@@ -249,3 +297,5 @@ The review phase (Steps 1-5) is **strictly read-only**. No file modifications, n
 | REV-T5 | Negative | "Fix the bug in auth" | Does NOT trigger (→ /debug) |
 | REV-T6 | Negative | "Check for security vulnerabilities" | Does NOT trigger (→ /security-review) |
 | REV-T7 | Boundary | "Review and then merge" | Triggers for review phase only |
+| REV-T8 | Positive | "Review my changes with --quick" | Skill triggers with --quick mode, runs in-context on uncommitted+staged diffs only |
+| REV-T9 | Boundary | "/review --quick --pr=123" | Triggers --quick mode (uncommitted diffs only), ignores --pr flag |
