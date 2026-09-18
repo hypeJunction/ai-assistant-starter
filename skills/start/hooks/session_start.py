@@ -67,6 +67,16 @@ def sibling_sessions(cwd, exclude_id):
     return out
 
 
+def get_most_recent_session(cwd, exclude_id):
+    """Find the session_id of the most recently started session, excluding the given ID."""
+    sessions = sibling_sessions(cwd, exclude_id)
+    if not sessions:
+        return None
+    # Sort by started_at timestamp descending (most recent first)
+    sessions.sort(key=lambda x: x.get("started_at", ""), reverse=True)
+    return sessions[0].get("session_id")
+
+
 def write_stub(cwd, session_id):
     path = os.path.join(cwd, SESSIONS_SUBDIR, re.sub(r"[^A-Za-z0-9._-]", "_", session_id) + ".json")
     if os.path.exists(path):
@@ -91,6 +101,17 @@ Invoke the /start skill's from-scratch path: ask the user for a ticket or
 work item, fetch its details, determine base branch and branch name, create
 a worktree, then scope the goal and enter Plan Mode before any code changes."""
 
+RESUME_PROMPT = """/start: this is a resumed session.
+Ticket: {ticket} ({branch}, base {base})
+Resumed from: {original_session_id}
+{siblings}
+This is a continuation of prior work in the same worktree. Log this as a resumed session:
+python3 skills/done/scripts/session_log.py --root . start --resumed-from {original_session_id} --goal "<goal>"
+Then confirm the goal for THIS session (same as the ticket's original goal,
+or a narrower continuation — ask if unclear), enter Plan Mode, and ask how to
+approach it. Do not create a new worktree."""
+
+
 
 def build_context(cwd, session_id):
     if not is_worktree(cwd):
@@ -110,6 +131,46 @@ def build_context(cwd, session_id):
                                   base=wt.get("base_branch"), siblings=sib_text, sid=session_id)
 
 
+def build_resume_context(cwd, session_id):
+    """Build context for a resumed session."""
+    # Find the most recent session (excluding the current one)
+    original_session_id = get_most_recent_session(cwd, session_id)
+    
+    # If no previous session found, treat as fresh
+    if not original_session_id:
+        return FRESH_PROMPT
+    
+    # Check if worktree is set up
+    if not is_worktree(cwd):
+        return FRESH_PROMPT
+    
+    # Load worktree context
+    wt = load_json(os.path.join(cwd, WORKTREE_FILE))
+    if not wt:
+        return FRESH_PROMPT
+    
+    # Write stub for this session
+    write_stub(cwd, session_id)
+    
+    # Get sibling sessions (excluding this one and the original)
+    sibs = [s for s in sibling_sessions(cwd, session_id) 
+            if s.get("status") == "in_progress" and s.get("session_id") != original_session_id]
+    sib_text = ""
+    if sibs:
+        lines = ["Other sessions currently on this worktree:"]
+        for s in sibs:
+            lines.append("  - %s: %s" % (s.get("session_id"), s.get("goal") or "(no goal yet)"))
+        sib_text = "\n".join(lines)
+    
+    return RESUME_PROMPT.format(
+        ticket=wt.get("ticket"), 
+        branch=wt.get("branch"),
+        base=wt.get("base_branch"), 
+        original_session_id=original_session_id,
+        siblings=sib_text
+    )
+
+
 def main():
     try:
         payload = json.load(sys.stdin)
@@ -119,12 +180,16 @@ def main():
         return
     if payload.get("hook_event_name") != "SessionStart":
         return
-    if (payload.get("source") or payload.get("startup_reason")) not in ("startup", "clear"):
+    if (payload.get("source") or payload.get("startup_reason")) not in ("startup", "clear", "resume"):
         return
     cwd = payload.get("cwd") or os.getcwd()
     session_id = payload["session_id"]
+    reason = payload.get("source") or payload.get("startup_reason")
     try:
-        context = build_context(cwd, session_id)
+        if reason == "resume":
+            context = build_resume_context(cwd, session_id)
+        else:
+            context = build_context(cwd, session_id)
     except Exception:
         return
     print(json.dumps({"hookSpecificOutput": {

@@ -21,9 +21,11 @@ import argparse
 import base64
 import collections
 import datetime
+import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 import urllib.request
 
@@ -53,6 +55,23 @@ RATES = {
 
 def now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def git_validated_sha(root):
+    try:
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root,
+                             capture_output=True, text=True, timeout=5)
+        if head.returncode != 0:
+            return None
+        head_sha = head.stdout.strip()
+        diff = subprocess.run(["git", "diff", "HEAD"], cwd=root,
+                             capture_output=True, timeout=5)
+        if diff.returncode != 0:
+            return None
+        diff_sha = hashlib.sha256(diff.stdout).hexdigest()[:12]
+        return head_sha + "-" + diff_sha
+    except Exception:
+        return None
 
 
 def claude_dir(root):
@@ -358,6 +377,8 @@ def cmd_start(args):
     rec = load_session(args.root, args.session) or new_session(args.session)
     if args.goal:
         rec["goal"] = args.goal
+    if args.resumed_from:
+        rec["resumed_from"] = args.resumed_from
     rec["status"] = "in_progress"
     save_session(args.root, rec)
     print("session_log: session %s started (goal: %s)" % (args.session, rec.get("goal")))
@@ -426,6 +447,17 @@ def cmd_status(args):
     print(json.dumps(out, indent=2))
 
 
+def cmd_validated(args):
+    rec = load_session(args.root, args.session) or new_session(args.session)
+    sha = git_validated_sha(args.root)
+    if sha:
+        rec["last_validated_sha"] = sha
+    rec["last_validated_at"] = now()
+    rec["last_validated_mode"] = args.mode
+    save_session(args.root, rec)
+    print("session_log: validation recorded for %s (mode: %s)" % (args.session, args.mode))
+
+
 def main(argv):
     parser = argparse.ArgumentParser(prog="session_log.py")
     parser.add_argument("--root", default=os.getcwd(), help="worktree root (default: cwd)")
@@ -442,6 +474,7 @@ def main(argv):
         sub.add_argument("--session", required=True)
         if name == "start":
             sub.add_argument("--goal")
+            sub.add_argument("--resumed-from")
         if name == "goal":
             sub.add_argument("text")
         if name == "done":
@@ -449,11 +482,15 @@ def main(argv):
         if name == "trash":
             sub.add_argument("--reason", required=True)
 
+    validated = subs.add_parser("validated")
+    validated.add_argument("--session", required=True)
+    validated.add_argument("--mode", required=True, choices=["quick", "full", "fix", "ci"])
+
     args = parser.parse_args(argv)
     args.root = os.path.abspath(args.root)
     {"worktree-init": cmd_worktree_init, "start": cmd_start, "goal": cmd_goal,
      "done": cmd_done, "trash": cmd_trash, "siblings": cmd_siblings,
-     "status": cmd_status}[args.cmd](args)
+     "status": cmd_status, "validated": cmd_validated}[args.cmd](args)
 
 
 if __name__ == "__main__":

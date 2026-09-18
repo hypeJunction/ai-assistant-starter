@@ -30,7 +30,7 @@ triggers:
 ## Setup (one-time per project)
 
 This skill needs its `SessionStart` hook registered in the project's
-`.claude/settings.json` (matcher `startup|clear`, pointing at
+`.claude/settings.json` (matcher `startup|resume|clear`, pointing at
 `skills/start/hooks/session_start.py`) to auto-trigger. Use the
 `update-config` skill to add it if it isn't already there. Without the hook,
 `/start` still works when typed manually.
