@@ -38,6 +38,16 @@ by committing directly here.
 ### Step 2: PR Lifecycle
 
 ```bash
+test -f .claude/worktree.json && echo present || echo absent
+```
+
+- **No `.claude/worktree.json`** → this session was never scoped by
+  `/start` to a dedicated worktree. Skip this step entirely — do not
+  create or update a PR. Tell the user the PR step was skipped for this
+  reason when reporting the outcome.
+- **`.claude/worktree.json` present** → proceed as below.
+
+```bash
 gh pr view --json number,url,title,state 2>/dev/null
 ```
 
@@ -58,10 +68,34 @@ python3 skills/done/scripts/session_log.py --root . done --session <id> --summar
 ```
 
 This marks `status: "done"` in `.claude/sessions/<id>.json` and
-best-effort posts a Langfuse score (ticket + `session_done`) using
-whatever Langfuse credentials are already configured for the
-`langfuse-observability` plugin — never blocks or fails `/done` if
-credentials are missing or the post fails; it's logged and kept local.
+best-effort posts three Langfuse scores — `ticket` (categorical, if a
+worktree ticket is known), the legacy `session_done` boolean (1), and
+`session_outcome` (numeric, **9** for a completed session — see `/trash`
+for the counterpart) — using whatever Langfuse credentials are already
+configured for the `langfuse-observability` plugin. Never blocks or fails
+`/done` if credentials are missing or the post fails; it's logged and kept
+local.
+
+The same command then prints a cost report for the session — total USD
+cost and token breakdown (input/output/cache read/cache write), computed
+from the session's own local JSONL transcript (`~/.claude/projects/<slug>/
+<id>.jsonl`), not Langfuse — no network call, no credentials required. If
+no transcript file is found for that session id, it prints that the cost
+report is unavailable instead of failing. Relay this line to the user as
+part of the close-out report.
+
+**If `SESSION_COST_RETRO_THRESHOLD_USD` is set** and the session's cost
+exceeds it, the script prints one extra advisory line naming the cost and
+threshold. When that line appears, ask the user via `AskUserQuestion`
+whether to run `/session-retro` now — never invoke it automatically.
+
+**If this session was never opened with `/start`** (no prior
+`.claude/sessions/<id>.json`), `session_log.py done` backfills a record
+retroactively instead of failing — it creates one with `started_at` set to
+now (the true start time is unknown) and `backfilled: true`, then marks it
+done immediately. The CLI prints a line noting the backfill; mention it
+when reporting the outcome so it's clear the session's start time is
+approximate.
 
 ### Step 4: Compaction Nudge (Setup + Behavior)
 
@@ -86,3 +120,8 @@ may need to type `/compact` themselves.
   those haven't run yet this session.
 - `/commit` — this skill's Step 1.
 - `/pr` — this skill's Step 2; owns all `gh pr create`/`gh pr edit` calls.
+- `/trash` — the counterpart when the session is being abandoned instead
+  of shipped: same session-state file and cost report, `session_outcome`
+  scored 1 instead of 9, no commit/PR step.
+- `/session-retro` — offered when Step 3's cost report exceeds
+  `SESSION_COST_RETRO_THRESHOLD_USD`.
