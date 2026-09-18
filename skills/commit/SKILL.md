@@ -155,15 +155,7 @@ Split into separate commits? (yes / no)
 
 ### Step 4: Validate (Optional)
 
-Validation scales by change tier. See `references/pre-commit-verification.md` for tier-specific requirements and evidence freshness rules.
-
-**Delegate each check to its own subagent** — typecheck, lint, and scoped test each run via a separate `Agent` call, never directly in the main agent's shell and never bundled into one call. Send independent checks in a single message with multiple tool uses so they run concurrently. Read each subagent's raw output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
-
-```bash
-npm run typecheck        # subagent 1
-npm run lint              # subagent 2
-npm run test -- [affected] # subagent 3
-```
+Invoke `/validate` to run quick validation (typecheck, lint, and scoped tests for uncommitted changes). See `references/pre-commit-verification.md` for tier-specific requirements.
 
 ### Step 5: Confirm
 
