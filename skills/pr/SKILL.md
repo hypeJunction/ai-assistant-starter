@@ -81,6 +81,14 @@ git log $MAIN..HEAD --oneline
 
 ### Step 3: Validate (with Re-Validation Loop)
 
+Validation may already have run for these commits during `/commit`. Ask the user explicitly before re-running it:
+
+```markdown
+Validation (typecheck/lint/test) may already have run when these changes were committed. Re-run full validation now before creating/updating the PR? (yes / skip)
+```
+
+**Wait for user response.** If skip, note in the Step 10 report that validation was skipped on user request and proceed to Step 4. If yes, continue below.
+
 Run full validation before creating PR. If issues are found, fix them and re-validate. Maximum 3 iterations. All checks must pass before proceeding.
 
 **Delegate each check to its own subagent** — typecheck, lint, and test each run via a separate `Agent` call, never directly in the main agent's shell and never bundled into one call. Send independent checks in a single message with multiple tool uses so they run concurrently. Read each subagent's raw output yourself before reporting results. See `ai-assistant-protocol` § Validation Execution.
@@ -295,6 +303,7 @@ EOF
 **Status:** [Created / Updated]
 **Branch:** [branch] → [base]
 **Commits:** [N]
+**Validation:** [Passed / Skipped on user request]
 
 **Next:** Wait for CI checks, request reviewers, or continue working.
 ```
