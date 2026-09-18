@@ -1,13 +1,17 @@
 {
+  "name": "ai-assistant-starter",
+  "description": "Reusable AI coding assistant skills, packaged as an installable Claude Code plugin.",
+  "owner": {
+    "name": "ai-assistant-starter"
+  },
   "plugins": [
     {
-      "name": "session-workflow",
-      "description": "A context-bound, atomic session lifecycle: start -> plan -> implement -> validate -> pivot -> done/trash.",
+      "name": "ai-assistant-starter",
+      "description": "Reusable AI coding assistant skills: session lifecycle, quality/testing, git/release workflows, and background guideline/enforcement skills.",
       "version": "0.1.0",
-      "author": "ai-assistant-starter",
-      "path": "./plugins/session-workflow",
+      "source": "./plugins/ai-assistant-starter",
       "category": "workflow",
-      "tags": ["session", "lifecycle", "planning", "implementation", "validation"]
+      "tags": ["session", "lifecycle", "planning", "implementation", "validation", "testing", "security", "guidelines"]
     }
   ]
 }

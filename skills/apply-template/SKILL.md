@@ -49,8 +49,8 @@ triggers:
 
 ## Prerequisites
 
-The target project should already have skills installed via
-`npx skills add ./ai-assistant-starter` (see root `README.md`). This skill
+The target project should already have the `ai-assistant-starter` plugin
+installed (see root `README.md`). This skill
 works even if it doesn't, but its value is wiring the template into a
 `CLAUDE.md` that skills like `/finish`, `/review`, and subagent-spawning
 skills will actually read.
@@ -65,7 +65,7 @@ consumer project — e.g. its `package.json` has `"name":
 "ai-assistant-starter"`, or it has both a top-level `skills/` directory and
 a `CLAUDE.md` mentioning "Agent Skills specification".
 
-This skill and the `npx skills add` install step exist to configure a
+This skill and the plugin install step exist to configure a
 *separate* project that consumes these skills — never this repo, which
 authors them and already documents itself natively. If the target matches,
 stop and tell the user this looks like the skills source repo itself; ask

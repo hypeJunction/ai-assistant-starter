@@ -50,18 +50,18 @@ Instructions follow...
 
 ## Installation
 
+All skills are distributed as a single Claude Code plugin, `ai-assistant-starter`, at `plugins/ai-assistant-starter/`. It's a manifest over the canonical skill files (symlinks into `skills/`), not a separate copy.
+
 ```bash
 # Clone the repo
 git clone https://github.com/hypefi/ai-assistant-starter.git
 
-# Install all skills into your project
-npx skills add ./ai-assistant-starter
-
-# Install specific skills
-npx skills add ./ai-assistant-starter -s commit
+# Register this repo as a plugin marketplace, then install the plugin
+claude plugin marketplace add ./ai-assistant-starter
+claude plugin install ai-assistant-starter
 ```
 
-Alternatively, the session lifecycle (`start`, `plan`, `implement`, `validate`, `review`, `commit`, `pr`, `pivot`, `done`, `trash`, `prompt-context-router`) is distributed as a Claude Code plugin at `plugins/session-workflow/`, installable via `claude --plugin-dir plugins/session-workflow`. This plugin is a manifest over the same canonical skill files (symlinks), not a separate copy.
+There is no per-skill install — `claude plugin install` installs the whole plugin, including its runtime hooks (`branch-protection`, `destructive-command-protection`, `context-circuit-breaker`, `cost-guardrail`, `prompt-context-router`).
 
 
 ## Available Skills

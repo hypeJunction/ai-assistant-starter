@@ -13,26 +13,28 @@ AI coding assistants work better with structured guidance. This collection provi
 
 ## Installation
 
-Run these commands from **your project's** directory, not from inside this
-cloned repo — `./ai-assistant-starter` is the skills *source*, and installing
-consumes it into a separate target project.
+All 61 skills are distributed as a single Claude Code plugin,
+`ai-assistant-starter`, at `plugins/ai-assistant-starter/`. Install it by
+adding this repo as a marketplace, then installing the plugin:
 
 ```bash
-# Clone the repo (as a sibling of your project)
+# Clone the repo (as a sibling of your project, or anywhere on disk)
 git clone https://github.com/hypefi/ai-assistant-starter.git
 
-# From your project directory, install all skills into your project
-npx skills add ./ai-assistant-starter
+# Register this repo as a plugin marketplace
+claude plugin marketplace add ./ai-assistant-starter
 
-# Or install specific skills
-npx skills add ./ai-assistant-starter -s commit
-npx skills add ./ai-assistant-starter -s implement
-npx skills add ./ai-assistant-starter -s validate
+# Install the plugin (installs every skill; there is no per-skill selection)
+claude plugin install ai-assistant-starter
 ```
 
-The session lifecycle skills are also distributed as a Claude Code plugin at `plugins/session-workflow/`, installable via `claude --plugin-dir plugins/session-workflow`.
+Installing the plugin also wires up its runtime hooks —
+`branch-protection`, `destructive-command-protection`,
+`context-circuit-breaker`, `cost-guardrail`, and `prompt-context-router` —
+so those protections are active immediately, with no separate setup step.
 
-Skills are installed to `.claude/skills/<name>/SKILL.md` and become available as `/name` commands.
+Skills become available as `/name` commands as soon as the plugin is
+installed.
 
 ## Skills
 
@@ -193,9 +195,9 @@ Background skills use `user-invocable: false` in frontmatter — a runtime exten
 cd ai-assistant-starter
 git pull
 
-# Re-install into your project
-cd /path/to/your-project
-npx skills add ./ai-assistant-starter
+# Update the marketplace and the plugin in your project
+claude plugin marketplace update ai-assistant-starter
+claude plugin update ai-assistant-starter
 
 # Then refresh project config
 /init --update
