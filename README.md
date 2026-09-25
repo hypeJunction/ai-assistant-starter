@@ -38,6 +38,108 @@ installed.
 
 ## Skills
 
+## Ideal Cost-Optimized Workflow
+
+This state machine synthesizes the skills above into one cost-aware workflow: classify every task before acting, route mechanical work to the cheapest model, and gate expensive steps (full review, subagent fan-out) behind explicit checks rather than defaults.
+
+```mermaid
+stateDiagram-v2
+    [*] --> SessionStart
+
+    SessionStart: /start
+    SessionStart --> Classify: scope ticket, worktree, goal
+
+    Classify: Task Classification
+    note right of Classify
+      mechanical / implementation / debugging /
+      architecture / extreme (CLAUDE.md gate)
+    end note
+
+    Classify --> Dispatch: mechanical (lookup, rename, boilerplate)
+    Classify --> Explore: ambiguous scope or unfamiliar code
+    Classify --> Plan: architecture / extreme
+    Classify --> Implement: implementation, scope already clear
+    Classify --> Hotfix: production-down / security-critical
+
+    Dispatch: dispatch subagent (cheapest capable model)
+    Dispatch --> Done: result relayed, no further work
+
+    Explore: /explore (read-only, Explore agent)
+    Explore --> Disambiguate: ambiguity found
+    Disambiguate: context-disambiguation<br/>(ask, don't broadly search)
+    Disambiguate --> Classify: scope clarified
+    Explore --> Plan: scope needs design
+    Explore --> Implement: scope clear enough
+
+    Plan: /plan (EnterPlanMode)
+    Plan --> ApprovalGate1: plan drafted
+
+    ApprovalGate1: user approves plan?
+    ApprovalGate1 --> Plan: revise
+    ApprovalGate1 --> Implement: approved (ExitPlanMode)
+
+    Implement: /implement<br/>(--debug/--tdd/--scope-locked/--pr-iterate)
+    Implement --> CostGuardrail: each Agent/Bash call
+
+    CostGuardrail: cost-guardrail hook<br/>(checks vs historical baseline)
+    CostGuardrail --> ContextBreaker: within budget
+    CostGuardrail --> Implement: blocked/warned, retry scoped
+
+    ContextBreaker: context-circuit-breaker<br/>(warns on fan-out/loops)
+    ContextBreaker --> Implement: continue coding
+    ContextBreaker --> QuickReview: self-review checkpoint
+
+    QuickReview: /review --quick (in-context)
+    QuickReview --> TestCoverage: issues fixed inline
+
+    TestCoverage: /test-coverage
+    TestCoverage --> Validate
+
+    Validate: /validate (type/lint/test)
+    Validate --> Implement: failures found
+    Validate --> ApprovalGate2: passes
+
+    ApprovalGate2: ask before full /review or /security-review?
+    ApprovalGate2 --> FullReview: yes (ask-first gate)
+    ApprovalGate2 --> Commit: no, proceed
+
+    FullReview: /review or /security-review<br/>(subagent-delegated, full branch)
+    FullReview --> Implement: findings to fix
+    FullReview --> Commit: clean
+
+    Commit: /commit
+    Commit --> PR: /pr or /done
+
+    PR: /pr
+    PR --> Done
+
+    Done: /done<br/>(record outcome, nudge compaction)
+    Done --> [*]
+
+    Hotfix: /hotfix (abbreviated validation)
+    Hotfix --> Commit
+
+    Implement --> Revert: regression discovered
+    Revert: /revert
+    Revert --> [*]
+
+    Classify --> Trash: goal abandoned
+    Implement --> Trash: goal abandoned
+    Trash: /trash (score outcome, report cost)
+    Trash --> [*]
+
+    Done --> Retro: periodically
+    Retro: /session-retro or /cost-audit
+    Retro --> [*]: proposes CLAUDE.md/skill fixes
+```
+
+**Cost-optimization logic embedded in the graph:**
+- Every task hits `Classify` first — mechanical work routes straight to `Dispatch` (cheapest model), never touches Plan/Implement.
+- `cost-guardrail` and `context-circuit-breaker` sit inline on every Agent/Bash call during `Implement`, not just at boundaries.
+- `--quick` review runs in-context before the expensive, subagent-delegated full `/review`/`/security-review` — the costly path is ask-first, not default.
+- `/trash` and `/revert` are explicit low-cost exits rather than letting abandoned work silently consume more turns.
+- `/session-retro` and `/cost-audit` close the loop by feeding waste patterns back into CLAUDE.md/skills.
+
 ### Development Workflows
 
 | Skill | Purpose |
