@@ -212,4 +212,81 @@ print(json.dumps({"commands": sorted(lq.COMMANDS),
   for (const name of ['payload_profile', 'underuse_profile', 'reconcile', 'token_economics']) {
     assert.ok(res.commands.includes(name), `${name} should be registered`);
   }
+  assert.ok(res.commands.includes('automation_drift'), 'automation_drift should be registered');
+});
+
+function cycle(traceId, cost, toolCalls, cacheWritePct, contextTokens = 100000) {
+  return {
+    traceId,
+    start: '2026-01-01T00:00:00Z',
+    cost,
+    tool_call_count: toolCalls,
+    cache_write_pct_of_context: cacheWritePct,
+    context_tokens: contextTokens,
+  };
+}
+
+test('automation_drift: a normal, flat session flags nothing', () => {
+  const cycles = [
+    cycle('t1', 1.0, 20, 6),
+    cycle('t2', 1.05, 21, 5),
+    cycle('t3', 0.98, 19, 7),
+    cycle('t4', 1.02, 20, 6),
+    cycle('t5', 1.0, 22, 5),
+    cycle('t6', 1.03, 20, 6),
+  ];
+  const res = runPython(`
+cycles = ${JSON.stringify(cycles)}
+print(json.dumps(lq._flag_automation_drift(cycles)))
+`);
+  assert.deepStrictEqual(res.cache_write_jump, []);
+  assert.strictEqual(res.cost_growth_no_complexity, null);
+});
+
+test('automation_drift: cache-write share jumping off a stable low baseline is flagged', () => {
+  const cycles = [
+    cycle('t1', 1.0, 20, 5),
+    cycle('t2', 1.0, 20, 6),
+    cycle('t3', 1.0, 20, 5),
+    cycle('t4', 1.0, 20, 5),
+    cycle('t5', 4.0, 20, 75), // TTL lapsed: cache-write share spikes, cost climbs, no more tool calls
+  ];
+  const res = runPython(`
+cycles = ${JSON.stringify(cycles)}
+print(json.dumps(lq._flag_automation_drift(cycles)))
+`);
+  assert.strictEqual(res.cache_write_jump.length, 1);
+  const flag = res.cache_write_jump[0];
+  assert.strictEqual(flag.cycle_index, 4);
+  assert.strictEqual(flag.traceId, 't5');
+  assert.strictEqual(flag.current_pct, 75);
+});
+
+test('automation_drift: cost growth without matching tool-call growth is flagged independently of cache-write share', () => {
+  const cycles = [
+    cycle('t1', 1.0, 20, 8),
+    cycle('t2', 1.1, 21, 8),
+    cycle('t3', 2.0, 20, 8),
+    cycle('t4', 3.5, 19, 8),
+    cycle('t5', 4.0, 20, 8),
+    cycle('t6', 4.2, 21, 8),
+  ];
+  const res = runPython(`
+cycles = ${JSON.stringify(cycles)}
+print(json.dumps(lq._flag_automation_drift(cycles)))
+`);
+  assert.deepStrictEqual(res.cache_write_jump, []);
+  assert.ok(res.cost_growth_no_complexity !== null);
+  assert.ok(res.cost_growth_no_complexity.cost_ratio >= 2.0);
+});
+
+test('automation_drift: fewer than min_cycles cycles returns the note shape without flagging', () => {
+  const cycles = [cycle('t1', 1.0, 20, 5), cycle('t2', 1.0, 20, 5)];
+  const res = runPython(`
+cycles = ${JSON.stringify(cycles)}
+print(json.dumps(lq._flag_automation_drift(cycles)))
+`);
+  assert.deepStrictEqual(res.cache_write_jump, []);
+  assert.strictEqual(res.cost_growth_no_complexity, null);
+  assert.strictEqual(res.note, 'fewer than min_cycles cycles');
 });

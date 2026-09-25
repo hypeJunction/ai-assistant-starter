@@ -26,6 +26,7 @@ Usage:
     python3 langfuse_queries.py session_sequences --growth-factor 2.0
     python3 langfuse_queries.py classify
     python3 langfuse_queries.py prompt_context_mismatch --prompt-context-factor 5.0
+    python3 langfuse_queries.py automation_drift --session <id>   # or omit --session to sweep all
     python3 langfuse_queries.py all --out-dir ./cost_audit_out
 
 Reading the output: start with `summary.json`. Cost concentrates in context
@@ -1054,6 +1055,150 @@ def cmd_session_sequences(base_url, headers, from_ts, to_ts, growth_factor=2.0, 
     return sessions_out
 
 
+# A scheduled/cron-style loop (the same prompt re-run on an interval) should look the
+# same cycle to cycle — so two drift patterns that only show up when comparing a
+# session's cycles against each other are worth flagging even though no single cycle
+# looks unusual on its own (invisible to `trace_outliers`, which scores one trace at a
+# time, and to `session_sequences`' context_growth, which only compares one
+# consecutive pair rather than a trailing baseline):
+#
+# - cache_write_jump: the loop was hitting a long-lived cache (a trailing run of
+#   cycles with a low, stable cache-write share) and then a cycle's cache-write share
+#   spikes — the cache TTL lapsed, or the prefix broke, and the loop fell back to
+#   rebuilding/re-writing the whole context every cycle instead of reading it from
+#   cache.
+# - cost_growth_no_complexity: per-cycle cost climbs across the run with no matching
+#   growth in tool_call_count — the loop is paying more per cycle without doing more
+#   work per cycle.
+def _flag_automation_drift(cycles, cache_write_jump_factor=3.0, cache_write_stability_cv=0.3,
+                            cost_growth_factor=2.0, min_cycles=4):
+    if len(cycles) < min_cycles:
+        return {"cache_write_jump": [], "cost_growth_no_complexity": None, "note": "fewer than min_cycles cycles"}
+
+    cache_write_jump = []
+    window = 3
+    for i in range(window, len(cycles)):
+        prior = [cycles[j]["cache_write_pct_of_context"] for j in range(i - window, i)]
+        prior_mean = statistics.mean(prior)
+        prior_cv = (statistics.stdev(prior) / prior_mean) if prior_mean else float("inf")
+        # Only a session that WAS stable and low can "drift" — a session with a
+        # consistently high cache-write share isn't drifting, it just never caches.
+        stable = prior_cv < cache_write_stability_cv and prior_mean < 30
+        current = cycles[i]["cache_write_pct_of_context"]
+        if stable and current > cache_write_jump_factor * max(prior_mean, 1.0):
+            cache_write_jump.append({
+                "cycle_index": i,
+                "traceId": cycles[i]["traceId"],
+                "prior_mean_pct": round(prior_mean, 2),
+                "prior_cv": round(prior_cv, 3),
+                "current_pct": current,
+                "jump_ratio": round(current / max(prior_mean, 1.0), 2),
+            })
+
+    n = len(cycles)
+    first_half = cycles[: n // 2]
+    second_half = cycles[n // 2:]
+    first_cost_mean = statistics.mean(c["cost"] for c in first_half)
+    second_cost_mean = statistics.mean(c["cost"] for c in second_half)
+    first_tool_mean = statistics.mean(c["tool_call_count"] for c in first_half)
+    second_tool_mean = statistics.mean(c["tool_call_count"] for c in second_half)
+
+    cost_growth_no_complexity = None
+    if first_cost_mean > 0:
+        cost_ratio = second_cost_mean / first_cost_mean
+        complexity_ratio = (second_tool_mean / first_tool_mean) if first_tool_mean > 0 else None
+        if cost_ratio >= cost_growth_factor and (complexity_ratio is None or complexity_ratio < cost_ratio / 2):
+            cost_growth_no_complexity = {
+                "cost_ratio": round(cost_ratio, 2),
+                "complexity_ratio": round(complexity_ratio, 2) if complexity_ratio is not None else None,
+                "first_half_mean_cost": round(first_cost_mean, 4),
+                "second_half_mean_cost": round(second_cost_mean, 4),
+                "first_half_mean_tool_calls": round(first_tool_mean, 2),
+                "second_half_mean_tool_calls": round(second_tool_mean, 2),
+            }
+
+    return {"cache_write_jump": cache_write_jump, "cost_growth_no_complexity": cost_growth_no_complexity}
+
+
+def cmd_automation_drift(base_url, headers, from_ts, to_ts, session=None,
+                          cache_write_jump_factor=3.0, cache_write_stability_cv=0.3,
+                          cost_growth_factor=2.0, min_cycles=4, **_):
+    """Detect the "scheduled loop silently lost its cache TTL" failure mode across a
+    session's sequence of traces (cycles) — see `_flag_automation_drift` for the two
+    conditions checked. Pass `--session` to target a specific known scheduled/cron
+    loop, or omit it to sweep every session in the window and surface candidates.
+    """
+    extra_filter = None
+    if session:
+        extra_filter = [{"type": "string", "column": "sessionId", "operator": "=", "value": session}]
+
+    by_trace = collections.defaultdict(
+        lambda: {"sessionId": None, "cost": 0.0, "tool_calls": 0, "start": None, "usage": collections.Counter()}
+    )
+    for obs in pull_observations(base_url, headers, "core,basic,usage,model", from_ts, to_ts, extra_filter):
+        tid = obs.get("traceId") or "(no trace)"
+        entry = by_trace[tid]
+        entry["sessionId"] = entry["sessionId"] or obs.get("sessionId")
+        entry["cost"] += obs.get("totalCost") or 0
+        st = obs.get("startTime")
+        if st and (entry["start"] is None or st < entry["start"]):
+            entry["start"] = st
+        name = obs.get("name")
+        if obs.get("type") == "TOOL" and name not in NO_INPUT_TOOL_SPAN_NAMES:
+            entry["tool_calls"] += 1
+        for key, value in _usage_of(obs).items():
+            entry["usage"][key] += value
+
+    by_session = collections.defaultdict(list)
+    for tid, data in by_trace.items():
+        if not data["sessionId"] or not data["start"]:
+            continue
+        context_tokens = _context_tokens(data["usage"])
+        write = data["usage"][USAGE_CACHE_WRITE]
+        cache_write_pct = round(write / context_tokens * 100, 4) if context_tokens else 0.0
+        by_session[data["sessionId"]].append({
+            "traceId": tid,
+            "start": data["start"],
+            "cost": data["cost"],
+            "tool_call_count": data["tool_calls"],
+            "context_tokens": context_tokens,
+            "cache_write_pct_of_context": cache_write_pct,
+        })
+
+    results = []
+    for sid, traces in by_session.items():
+        if len(traces) < min_cycles:
+            continue
+        traces.sort(key=lambda t: t["start"])
+        flags = _flag_automation_drift(
+            traces,
+            cache_write_jump_factor=cache_write_jump_factor,
+            cache_write_stability_cv=cache_write_stability_cv,
+            cost_growth_factor=cost_growth_factor,
+            min_cycles=min_cycles,
+        )
+        if not (flags["cache_write_jump"] or flags["cost_growth_no_complexity"]):
+            continue
+        results.append({
+            "sessionId": sid,
+            "cycle_count": len(traces),
+            "trace_order": [t["traceId"] for t in traces],
+            **flags,
+        })
+
+    # Sessions tripping both checks are the strongest candidates; break ties by
+    # cycle_count since a longer-running loop gives each pattern more room to be a
+    # real trend rather than noise.
+    results.sort(
+        key=lambda r: (
+            bool(r["cache_write_jump"]) and r["cost_growth_no_complexity"] is not None,
+            r["cycle_count"],
+        ),
+        reverse=True,
+    )
+    return results
+
+
 def _parse_ts(ts):
     if not ts:
         return None
@@ -1265,6 +1410,7 @@ COMMANDS = {
     "session_sequences": cmd_session_sequences,
     "classify": cmd_classify,
     "prompt_context_mismatch": cmd_prompt_context_mismatch,
+    "automation_drift": cmd_automation_drift,
 }
 
 
@@ -1305,6 +1451,22 @@ def main():
     parser.add_argument(
         "--prompt-context-min-tokens", type=int, default=20000,
         help="min context_tokens for a call to be eligible for flagging, for `prompt_context_mismatch`"
+    )
+    parser.add_argument(
+        "--cache-write-jump-factor", type=float, default=3.0,
+        help="cache-write-share jump threshold vs. the trailing stable window, for `automation_drift`"
+    )
+    parser.add_argument(
+        "--cache-write-stability-cv", type=float, default=0.3,
+        help="max coefficient of variation for the trailing window to count as 'stable', for `automation_drift`"
+    )
+    parser.add_argument(
+        "--cost-growth-factor", type=float, default=2.0,
+        help="second-half/first-half mean cost ratio threshold, for `automation_drift`"
+    )
+    parser.add_argument(
+        "--min-cycles", type=int, default=4,
+        help="min traces in a session to evaluate it, for `automation_drift`"
     )
     parser.add_argument("--out-dir", default="./cost_audit_out", help="output dir for `all`")
     parser.add_argument(
@@ -1446,6 +1608,10 @@ def main():
         reverify_window_seconds=args.reverify_window_seconds,
         prompt_context_factor=args.prompt_context_factor,
         prompt_context_min_tokens=args.prompt_context_min_tokens,
+        cache_write_jump_factor=args.cache_write_jump_factor,
+        cache_write_stability_cv=args.cache_write_stability_cv,
+        cost_growth_factor=args.cost_growth_factor,
+        min_cycles=args.min_cycles,
     )
     print(json.dumps(result, indent=2))
 

@@ -1,6 +1,6 @@
 ---
 name: cost-guardrail
-description: Runtime enforcement hook that estimates the likely cost of an imminent Agent (subagent) spawn or Bash command against cost-audit-derived historical baselines, and blocks or warns when it's disproportionate. Auto-loaded for Agent and Bash tool calls.
+description: Runtime enforcement hook that compares the historical median cost of an imminent Agent (subagent) spawn's requested model tier — or a Bash call — against the cheapest tracked tier's median, using cost-audit-derived baselines, and blocks or warns when the ratio is disproportionate. Auto-loaded for Agent and Bash tool calls.
 category: enforcement
 user-invocable: false
 ---

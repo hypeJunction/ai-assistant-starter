@@ -323,6 +323,18 @@ protocol, and the baseline file itself is refreshed only manually (a
 scheduled job may remind, never run the refresh unattended — see
 `cost-audit`'s "Continuous Baseline Refresh" section).
 
+A scheduled/cron loop — the same prompt re-run on an interval — has its own
+failure mode the baselines above don't catch: it can silently lose the
+long-lived cache it was relying on partway through a run, then keep paying
+full context-rebuild cost on every later cycle with nothing in the shape of
+the call looking abnormal on its own. `cost-audit`'s
+`references/langfuse_queries.py automation_drift` command detects this by
+comparing a session's cycles against each other, flagging a cache-write
+share that was flat and low and then jumps and stays up, and separately a
+per-cycle cost that climbs with no matching growth in tool-call count. It's
+not part of the general `all` sweep — run it targeted at a session known to
+be a scheduled loop, or swept across a window to find candidates.
+
 ## Suggested `settings.json` skeleton
 
 ```json
