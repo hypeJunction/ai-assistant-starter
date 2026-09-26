@@ -148,6 +148,7 @@ Every workflow that includes a validation, verification, or testing step — inc
 4. **Test as you go** — Run tests for changed components only
 5. **Security by default** — See Security Standards below
 6. **Scope awareness** — Confirm with user at 6+ file changes; require refactor workflow at 16+
+7. **Default to the narrowest scope** — When a request is ambiguous about how far it reaches (e.g. "rename X" without "everywhere" or "across the codebase"), assume the narrowest reasonable interpretation and confirm before expanding to a wider or codebase-wide sweep
 
 ### Comments Policy
 
@@ -263,7 +264,8 @@ Use task tracking for complex tasks (3+ steps). Skip for trivial tasks.
 |-------|-------|--------|
 | Small | 1-5 | Proceed directly |
 | Medium | 6-15 | Confirm with user, suggest `/refactor` if structural |
-| Large | 16+ | **Must use refactor workflow** |
+| Large | 16-99 | **Must use refactor workflow** |
+| Extreme | 100+, or true count unknown/unbounded | **STOP** — report the count (or estimate) and do not proceed until the user confirms the full scope, narrows it (directory/package/feature), or opts into `/stack` to split the work into multiple PRs |
 
 ## Asking Questions
 
@@ -323,6 +325,7 @@ These skills perform a single concern and are designed to be called independentl
 - **Know what to do, 1-2 files?** → Edit directly
 - **Know what to do, 3-5 files?** → `/implement`
 - **Structural change, 6+ files?** → `/refactor`
+- **Structural change, 100+ files or scope unknown?** → STOP, report the count, confirm scope before `/refactor`
 - **Approach unclear?** → `/plan`, then `/implement` or `/implement --tdd`
 - **Bug with unknown cause?** → `/implement --debug`
 - **Production emergency?** → `/hotfix`

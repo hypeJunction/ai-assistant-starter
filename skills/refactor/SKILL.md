@@ -73,8 +73,8 @@ Determine refactor type, file count, risk level:
 |-------|-------|------|----------|
 | Small | 1-5 | Low | Direct changes |
 | Medium | 6-20 | Medium | Batched with testing |
-| Large | 21-50 | High | Phased with checkpoints |
-| Massive | 50+ | Critical | Multiple phases |
+| Large | 21-99 | High | Phased with checkpoints |
+| Extreme | 100+ or unbounded | Critical | **STOP** — report the count (or estimate) and do not draft a plan until the user confirms the full scope, narrows it (directory/package/feature), or opts into `/stack` to split the work into multiple PRs |
 
 **Wait for confirmation.**
 
@@ -84,7 +84,9 @@ Determine refactor type, file count, risk level:
 
 ### Step 2.1: Find All Occurrences
 
-Searching the codebase for every occurrence is read-only and can produce a large volume of raw output — dispatch the `Explore` agent type (via the `Agent` tool) to run the search and return a structured occurrence list (file, line, surrounding context) rather than pulling raw search output into the main agent. Present the subagent's findings (see `references/refactor-templates.md` — Pattern Analysis).
+Searching the codebase for every occurrence is read-only and can produce a large volume of raw output — dispatch the `Explore` agent type (via the `Agent` tool) to run the search and return a structured occurrence list (file, line, surrounding context) rather than pulling raw search output into the main agent. Present the subagent's findings (see `references/refactor-templates.md` — Pattern Analysis), leading with the total occurrence count.
+
+**If the count crosses the Extreme threshold (100+ or the true count is unbounded)** — even when the request initially looked smaller — stop here and re-confirm scope with the user (report the count, offer to narrow to a directory/package/feature or split via `/stack`) before continuing to Phase 3.
 
 ### Step 2.2: Surface Edge Cases
 
@@ -107,7 +109,9 @@ For most refactors, direct changes are fine. However, when a direct rename or ch
 
 This pattern is safer for public APIs, published packages, and widely-used internal interfaces where a single atomic rename would be too disruptive or where the migration must be done incrementally across multiple PRs.
 
-Present the chosen strategy (direct change or abstraction layer) as part of the plan summary.
+For Large or Extreme scope, also present splitting the work into a resumable series of stacked PRs via `/stack` as an explicit alternative to a single sweeping refactor.
+
+Present the chosen strategy (direct change or abstraction layer, plus `/stack` split if applicable) as part of the plan summary.
 
 **GATE: Do NOT begin modifying files until user approves.**
 
