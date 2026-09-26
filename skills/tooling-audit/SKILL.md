@@ -19,7 +19,7 @@ triggers:
 
 > **Purpose:** Turn `~/.claude.json` usage counters (and, optionally, Langfuse tool-call histograms) into evidence-backed removals of unused plugins, MCP servers, skills, and permission entries — then gate every change behind approval.
 > **Usage:** `/tooling-audit`
-> **Scope note:** this skill has no token-cost model of its own — it only knows `usageCount`, not tokens. But every skill/plugin removed here stops loading its frontmatter (`description`/`triggers`) into every session's startup context, which is the dominant fixed cost of a large install (routinely far bigger than a global `CLAUDE.md`). For *runtime* waste within a session (duplicate tool calls, retry loops), see `cost-audit` instead — the two are complementary, not overlapping: this skill shrinks the fixed per-session floor, `cost-audit` catches per-session overruns above it.
+> **Scope note:** this skill's token-cost model is directional (chars/4), not a real tokenizer, and covers two axes: Step 2d estimates *plugin/skill* startup footprint from frontmatter (routinely the dominant fixed cost of a large install, bigger than a global `CLAUDE.md`), and Step 2f (`references/warmup_footprint.py`) measures the *CLAUDE.md / settings.json* axis deterministically across every project actively used recently. For *runtime* waste within a session (duplicate tool calls, retry loops), see `cost-audit` instead — the two are complementary, not overlapping: this skill shrinks the fixed per-session floor, `cost-audit` catches per-session overruns above it.
 
 ## Constraints
 
@@ -78,6 +78,14 @@ This gives a per-**tool** invocation histogram (including individual MCP tool na
 **2d. Optional: estimate startup token footprint per plugin.** For a "reduce startup cost" request specifically (as opposed to a routine cleanup), usage evidence alone doesn't tell the user which removal moves the number. Estimate it: for each user-scoped plugin, sum the byte length of every skill's frontmatter (`description` + `triggers`, the part that loads into every session's discovery listing regardless of whether the skill body is ever read) and divide by ~4 for a rough token count. A plugin bundling 60 skills can easily cost 10x what the project's `CLAUDE.md` costs — call this out explicitly when it's true, since it's the counterintuitive part users tend to miss (they reach for trimming `CLAUDE.md` first because it's visible, when the skill listing is invisible and larger). This estimate is directional, not exact — say so in the report rather than presenting it as measured.
 
 **2e. Permission entries have no usage counter — classify structurally instead.** A literal (non-wildcarded) `Bash(...)`/`Read(...)`/`WebFetch(...)` pattern is dead the moment it can never match a *different* future command, independent of whether it was ever used. See `references/dead_permission_patterns.md` for the concrete shapes (embedded heredocs, hardcoded resolved absolute paths, hardcoded ports, stray shell-loop fragments like a bare `for x in a b c` or `do`/`done` split out of a multi-line command).
+
+**2f. Measure the CLAUDE.md / settings.json warmup footprint deterministically.** For a "reduce startup cost" request that spans multiple projects (not just the current one), don't re-derive this by hand or via ad-hoc subagent exploration — run:
+
+```bash
+python3 <path-to-tooling-audit>/references/warmup_footprint.py --days 30
+```
+
+This walks `~/.claude/projects/*/`, resolves each recently-active session's real cwd, groups git worktrees of the same repo into one cluster, and reports: the global `~/.claude/CLAUDE.md` size (plus any `@`-included files, e.g. `RTK.md`) paid in every session everywhere; each project/cluster's `CLAUDE.md` char/token count, flagging stub files (<50 words) and oversized ones (>3000 words); `CLAUDE.md` drift *within* a worktree cluster (same repo, different content across worktrees — a common source of silently-inconsistent instructions); `settings.local.json` permission-list bloat (>5000 chars or >100 entries); and stale project entries whose `cwd` no longer exists on disk. Pass `--json` for machine-readable output. Read-only — makes no changes.
 
 ### Step 3: Classify Each Item
 
