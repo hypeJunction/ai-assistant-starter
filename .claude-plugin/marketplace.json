@@ -8,7 +8,7 @@
     {
       "name": "ai-assistant-starter",
       "description": "Reusable AI coding assistant skills: session lifecycle, quality/testing, git/release workflows, and background guideline/enforcement skills.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "source": "./plugins/ai-assistant-starter",
       "category": "workflow",
       "tags": ["session", "lifecycle", "planning", "implementation", "validation", "testing", "security", "guidelines"]

@@ -6,7 +6,7 @@ This project includes content derived from or inspired by the following third-pa
 
 ### WCAG 2.1 (W3C)
 
-- **Used in:** `skills/accessibility-review/references/wcag-checklist.md`
+- **Used in:** `archive/skills/accessibility-review/references/wcag-checklist.md`
 - **Source:** [Web Content Accessibility Guidelines (WCAG) 2.1](https://www.w3.org/TR/WCAG21/)
 - **Author:** [W3C Web Accessibility Initiative (WAI)](https://www.w3.org/WAI/)
 - **License:** [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)

@@ -11,12 +11,15 @@ triggers:
   - what should we uninstall
   - claude code feels cluttered
   - unused skills or plugins
+  - reduce startup cost
+  - session costs too much before I even type anything
 ---
 
 # Tooling Audit
 
 > **Purpose:** Turn `~/.claude.json` usage counters (and, optionally, Langfuse tool-call histograms) into evidence-backed removals of unused plugins, MCP servers, skills, and permission entries — then gate every change behind approval.
 > **Usage:** `/tooling-audit`
+> **Scope note:** this skill has no token-cost model of its own — it only knows `usageCount`, not tokens. But every skill/plugin removed here stops loading its frontmatter (`description`/`triggers`) into every session's startup context, which is the dominant fixed cost of a large install (routinely far bigger than a global `CLAUDE.md`). For *runtime* waste within a session (duplicate tool calls, retry loops), see `cost-audit` instead — the two are complementary, not overlapping: this skill shrinks the fixed per-session floor, `cost-audit` catches per-session overruns above it.
 
 ## Constraints
 
@@ -72,7 +75,9 @@ python3 <path-to-cost-audit>/references/langfuse_queries.py tool_usage --out-dir
 
 This gives a per-**tool** invocation histogram (including individual MCP tool names like `mcp__playwright__browser_navigate`), which is finer-grained than plugin/skill counters — useful for telling apart "is the playwright MCP server actually being called" from "is it just configured." If a recent `cost_audit_out/tool_usage.json` already exists, reuse it instead of re-querying. **If Langfuse isn't reachable or `cost-audit` isn't installed, skip this step and say so explicitly in the report** — don't silently omit it, and don't block the rest of the audit on it.
 
-**2c. Permission entries have no usage counter — classify structurally instead.** A literal (non-wildcarded) `Bash(...)`/`Read(...)`/`WebFetch(...)` pattern is dead the moment it can never match a *different* future command, independent of whether it was ever used. See `references/dead_permission_patterns.md` for the concrete shapes (embedded heredocs, hardcoded resolved absolute paths, hardcoded ports, stray shell-loop fragments like a bare `for x in a b c` or `do`/`done` split out of a multi-line command).
+**2d. Optional: estimate startup token footprint per plugin.** For a "reduce startup cost" request specifically (as opposed to a routine cleanup), usage evidence alone doesn't tell the user which removal moves the number. Estimate it: for each user-scoped plugin, sum the byte length of every skill's frontmatter (`description` + `triggers`, the part that loads into every session's discovery listing regardless of whether the skill body is ever read) and divide by ~4 for a rough token count. A plugin bundling 60 skills can easily cost 10x what the project's `CLAUDE.md` costs — call this out explicitly when it's true, since it's the counterintuitive part users tend to miss (they reach for trimming `CLAUDE.md` first because it's visible, when the skill listing is invisible and larger). This estimate is directional, not exact — say so in the report rather than presenting it as measured.
+
+**2e. Permission entries have no usage counter — classify structurally instead.** A literal (non-wildcarded) `Bash(...)`/`Read(...)`/`WebFetch(...)` pattern is dead the moment it can never match a *different* future command, independent of whether it was ever used. See `references/dead_permission_patterns.md` for the concrete shapes (embedded heredocs, hardcoded resolved absolute paths, hardcoded ports, stray shell-loop fragments like a bare `for x in a b c` or `do`/`done` split out of a multi-line command).
 
 ### Step 3: Classify Each Item
 
@@ -122,9 +127,9 @@ For every plugin, MCP server, skill, and permission entry from Step 1, assign on
 ## Findings
 
 ### Dead — propose removal
-| Item | Type | Evidence | Hard dependency? |
-|---|---|---|---|
-| [name] | plugin/skill/mcp/permission | usageCount 0 (last used [date] or never) / [structural reason] | none found |
+| Item | Type | Evidence | Est. startup tokens saved | Hard dependency? |
+|---|---|---|---|---|
+| [name] | plugin/skill/mcp/permission | usageCount 0 (last used [date] or never) / [structural reason] | [directional estimate from Step 2d, or "n/a" if not requested] | none found |
 
 ### Used, Irrelevant Here — recommend rescoping, not removal
 | Item | Type | Usage | Why it's irrelevant to this project | Recommendation |
@@ -169,7 +174,8 @@ For every plugin, MCP server, skill, and permission entry from Step 1, assign on
 | TA-T2 | Positive | "This settings.json is a mess, can you clean it up?" | Skill triggers |
 | TA-T3 | Positive | "Are we actually using the playwright MCP server?" | Skill triggers |
 | TA-T4 | Negative | "Install the Figma MCP server" | Does NOT trigger — that's setup, not audit |
-| TA-T5 | Negative | "Why is this session expensive?" | Does NOT trigger (-> `/cost-audit`, which is about token cost, not installed-surface clutter) |
+| TA-T5 | Negative | "Why is this session expensive?" (a single session's runtime behavior — duplicate calls, retry loops) | Does NOT trigger (-> `/cost-audit`, which is about runtime token waste within a session, not installed-surface clutter) |
+| TA-T9 | Positive | "Every session starts at 10 cents before I type anything, get it to 1 cent" (fixed per-session floor, not a specific session's runtime behavior) | Skill triggers; runs Step 2d to estimate which plugin/skill removals move the number, since usage evidence alone doesn't rank savings |
 | TA-T6 | Boundary | A plugin has `usageCount: 0` but another skill's Prerequisites reads its `pluginConfigs` credentials | Reported as "Hard Dependency Found," not proposed for removal |
 | TA-T7 | Boundary | A skill has real usage but for a different project's stack (e.g. a PHP-CMS skill in a TypeScript-frontend session) | Classified "Used, Irrelevant Here" with a rescoping recommendation, not a removal proposal |
 | TA-T8 | Positive | "Why does every session list 60 skills I never use?" | Skill triggers; agent runs `skillUsage` cross-reference and separates dead-everywhere from used-elsewhere-irrelevant-here |
