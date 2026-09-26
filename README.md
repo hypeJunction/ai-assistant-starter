@@ -13,7 +13,7 @@ AI coding assistants work better with structured guidance. This collection provi
 
 ## Installation
 
-All 61 skills are distributed as a single Claude Code plugin,
+All 41 skills are distributed as a single Claude Code plugin,
 `ai-assistant-starter`, at `plugins/ai-assistant-starter/`. Install it by
 adding this repo as a marketplace, then installing the plugin:
 
@@ -59,14 +59,13 @@ stateDiagram-v2
     Classify --> Explore: ambiguous scope or unfamiliar code
     Classify --> Plan: architecture / extreme
     Classify --> Implement: implementation, scope already clear
-    Classify --> Hotfix: production-down / security-critical
 
     Dispatch: dispatch subagent (cheapest capable model)
     Dispatch --> Done: result relayed, no further work
 
     Explore: /explore (read-only, Explore agent)
     Explore --> Disambiguate: ambiguity found
-    Disambiguate: context-disambiguation<br/>(ask, don't broadly search)
+    Disambiguate: ask for clarification<br/>(don't broadly search)
     Disambiguate --> Classify: scope clarified
     Explore --> Plan: scope needs design
     Explore --> Implement: scope clear enough
@@ -108,25 +107,10 @@ stateDiagram-v2
     FullReview --> Commit: clean
 
     Commit: /commit
-    Commit --> PR: /pr or /done
-
-    PR: /pr
-    PR --> Done
+    Commit --> Done
 
     Done: /done<br/>(record outcome, nudge compaction)
     Done --> [*]
-
-    Hotfix: /hotfix (abbreviated validation)
-    Hotfix --> Commit
-
-    Implement --> Revert: regression discovered
-    Revert: /revert
-    Revert --> [*]
-
-    Classify --> Trash: goal abandoned
-    Implement --> Trash: goal abandoned
-    Trash: /trash (score outcome, report cost)
-    Trash --> [*]
 
     Done --> Retro: periodically
     Retro: /session-retro or /cost-audit
@@ -137,7 +121,6 @@ stateDiagram-v2
 - Every task hits `Classify` first — mechanical work routes straight to `Dispatch` (cheapest model), never touches Plan/Implement.
 - `cost-guardrail` and `context-circuit-breaker` sit inline on every Agent/Bash call during `Implement`, not just at boundaries.
 - `--quick` review runs in-context before the expensive, subagent-delegated full `/review`/`/security-review` — the costly path is ask-first, not default.
-- `/trash` and `/revert` are explicit low-cost exits rather than letting abandoned work silently consume more turns.
 - `/session-retro` and `/cost-audit` close the loop by feeding waste patterns back into CLAUDE.md/skills.
 
 ### Development Workflows
@@ -149,7 +132,6 @@ stateDiagram-v2
 | `/plan` | Design approach before coding |
 | `/implement` | Execute an approved plan — code, self-review, test, validate, commit, close. Selectable modes (`--debug`, `--tdd`, `--scope-locked`, `--pr-iterate`) handle debugging, strict TDD, scope-locked autonomous work, and PR-feedback iteration.
 | `/refactor` | Multi-file changes with tracking |
-| `/migrate` | Database/schema migrations with rollback planning |
 | `/stack` | Split a large branch into a resumable series of stacked PRs |
 
 ### Quality & Testing
@@ -158,21 +140,16 @@ stateDiagram-v2
 |-------|---------|
 | `/validate` | Run type check, lint, tests |
 | `/test-coverage` | Ensure test coverage for changes |
-| `/api-test` | Discover, test, and report on API endpoints |
 | `/e2e` | End-to-end testing with Playwright/Cypress |
 | `/review` | Review current branch against base; `--quick` mode for use as a sub-step within `/implement` or `/done`
 | `/security-review` | Systematic security audit with confidence-based reporting |
-| `/accessibility-review` | WCAG 2.1 AA audit with automated + manual checks |
 
 ### Git & Release
 
 | Skill | Purpose |
 |-------|---------|
 | `/commit` | Review and commit with confirmation |
-| `/pr` | Create pull request |
 | `/done` | Close out a session — test coverage, review, validation gate, commit, create/update the PR, record the outcome. Works standalone or for a `/start`-opened session.
-| `/trash` | Abandon a session — record why, score the outcome in Langfuse, report cost |
-| `/hotfix` | Emergency bug fix with abbreviated validation |
 | `/release` | Version bump, changelog, and tagging |
 
 ### Utilities
@@ -180,18 +157,12 @@ stateDiagram-v2
 | Skill | Purpose |
 |-------|---------|
 | `/deps` | Audit, update, and manage dependencies |
-| `/docs` | Add or improve documentation |
-| `/revert` | Safely rollback changes |
 | `/sync` | Align documentation with codebase |
-| `/adr` | Capture an Architecture Decision Record |
 | `/add-story` | Create Storybook stories |
 | `/add-todo` | Document deferred work |
-| `/research` | Ethical web research with attribution and license compliance |
-| `/track-files` | Track files for batch operations |
 | `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
-| `/pivot` | Explicitly pause the current thread and re-enter Plan Mode for a new direction |
 | `/init` | Bootstrap project configuration |
 | `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs and circuit-breaker/cost-guardrail/prompt-context-router hooks |
 
@@ -210,16 +181,13 @@ Runtime hooks that intercept dangerous or costly operations:
 These are loaded automatically when relevant — no slash command needed:
 
 - **ai-assistant-protocol** — Core execution protocol, code quality, testing requirements
-- **context-disambiguation** — Ask clarifying questions instead of broad exploration when ambiguity would pull large context
 - **git-conventions** — Branch naming, commit messages, workflow patterns
-- **typescript-guidelines** — TypeScript best practices and patterns
-- **vitest-guidelines** — Testing with Vitest
 - **security-guidelines** — OWASP top 10, input validation, XSS prevention
 - **documentation-guidelines** — When and how to comment code
 - **communication-guidelines** — Response formatting and status indicators
 - **code-review-guidelines** — Review checklist and feedback patterns
 - **interaction-boundaries** — Human-AI interaction boundaries, non-anthropomorphic communication
-- And more: REST API, Zod, Prisma, Docker, GitHub Actions, logging, naming, performance, error handling, Storybook, environment config
+- And more: GitHub Actions, logging, naming, performance, error handling, environment config
 
 ## How It Works
 

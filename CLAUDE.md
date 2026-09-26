@@ -66,7 +66,7 @@ There is no per-skill install — `claude plugin install` installs the whole plu
 
 ## Available Skills
 
-### Workflow Skills (33 total, categories: process + meta)
+### Workflow Skills (23 total, categories: process + meta)
 
 **Development Workflows**
 
@@ -77,7 +77,6 @@ There is no per-skill install — `claude plugin install` installs the whole plu
 | `/plan` | Design approach before coding |
 | `/implement` | Execute an approved plan — code, self-review, test, validate, commit, close. Selectable modes (`--debug`, `--tdd`, `--scope-locked`, `--pr-iterate`) handle debugging, strict TDD, scope-locked autonomous work, and PR-feedback iteration. |
 | `/refactor` | Multi-file changes with tracking |
-| `/migrate` | Database/schema migrations with rollback planning |
 | `/stack` | Split a large branch into a resumable series of stacked PRs |
 
 **Quality & Testing**
@@ -86,21 +85,16 @@ There is no per-skill install — `claude plugin install` installs the whole plu
 |-------|---------|
 | `/validate` | Run type check, lint, tests |
 | `/test-coverage` | Ensure test coverage for changes |
-| `/api-test` | Discover, test, and report on API endpoints |
 | `/e2e` | End-to-end testing with Playwright/Cypress |
 | `/review` | Review current branch against base; `--quick` mode for use as a sub-step within `/implement` or `/done`
 | `/security-review` | Systematic security audit with confidence-based reporting |
-| `/accessibility-review` | WCAG 2.1 AA audit with automated + manual checks |
 
 **Git & Release**
 
 | Skill | Purpose |
 |-------|---------|
 | `/commit` | Review and commit with confirmation |
-| `/pr` | Create pull request |
 | `/done` | Close out a session — test coverage, review, validation gate, commit, create/update the PR, record the outcome. Works standalone or for a `/start`-opened session.
-| `/trash` | Abandon a session — record why, score the outcome in Langfuse, report cost |
-| `/hotfix` | Emergency bug fix with abbreviated validation |
 | `/release` | Version bump, changelog, and tagging |
 
 **Utilities**
@@ -108,22 +102,16 @@ There is no per-skill install — `claude plugin install` installs the whole plu
 | Skill | Purpose |
 |-------|---------|
 | `/deps` | Audit, update, and manage dependencies |
-| `/docs` | Add or improve documentation |
-| `/revert` | Safely rollback changes |
 | `/sync` | Align documentation with codebase |
-| `/adr` | Capture an Architecture Decision Record |
 | `/add-story` | Create Storybook stories |
 | `/add-todo` | Document deferred work |
-| `/research` | Ethical web research with attribution and license compliance |
-| `/track-files` | Track files for batch operations |
 | `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
-| `/pivot` | Explicitly pause the current thread and re-enter Plan Mode for a new direction |
 | `/init` | Bootstrap project configuration |
 | `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs, circuit-breaker/cost-guardrail/prompt-context-router hooks, and cost-saving settings.json env vars |
 
-### Background Skills (26 total)
+### Background Skills (18 total)
 
 Auto-loaded when relevant — no slash command needed:
 
@@ -132,7 +120,6 @@ Auto-loaded when relevant — no slash command needed:
 | Skill | Domain |
 |-------|--------|
 | `ai-assistant-protocol` | Core execution protocol, code quality, testing requirements |
-| `context-disambiguation` | When to ask clarifying questions vs. explore, to keep initial context small |
 | `communication-guidelines` | Response formatting and status indicators |
 | `code-review-guidelines` | Review checklist and feedback patterns |
 | `interaction-boundaries` | Human-AI interaction boundaries, non-anthropomorphic communication |
@@ -152,20 +139,13 @@ Auto-loaded when relevant — no slash command needed:
 | Skill | Domain |
 |-------|--------|
 | `git-conventions` | Branch naming, commit messages, workflow patterns |
-| `typescript-guidelines` | TypeScript best practices and patterns |
-| `vitest-guidelines` | Testing with Vitest |
 | `security-guidelines` | OWASP top 10, input validation, XSS prevention |
 | `documentation-guidelines` | When and how to comment code |
 | `naming-guidelines` | Naming conventions for variables, functions, files |
 | `error-handling-guidelines` | Custom error classes, try-catch, error boundaries |
 | `logging-guidelines` | Structured logging, log levels, correlation IDs |
 | `performance-guidelines` | Frontend/backend optimization, caching, profiling |
-| `rest-api-guidelines` | URL structure, HTTP methods, status codes |
-| `zod-guidelines` | Schema validation, API/form validation |
-| `prisma-guidelines` | Schema design, queries, migrations |
-| `docker-node-guidelines` | Dockerfile best practices, multi-stage builds |
 | `github-actions-guidelines` | CI/CD pipelines, caching, secrets, deployment |
-| `storybook-react-guidelines` | Story structure, interaction tests, play functions |
 | `env-config-guidelines` | Environment variables, type-safe config, feature flags |
 
 ## Contributing a Skill
