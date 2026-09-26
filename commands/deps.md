@@ -1,14 +1,6 @@
 ---
-name: deps
 description: Audit, update, and manage project dependencies safely. Use when checking for vulnerabilities, updating outdated packages, or performing routine dependency maintenance.
-category: process
-model: sonnet
-effort: medium
-triggers:
-  - update dependencies
-  - outdated packages
-  - vulnerability scan
-  - audit deps
+argument-hint: "[audit|update|update --major|update --security|check] [--package=<name>|--dev|--prod|--dry-run]"
 ---
 
 # Dependencies
@@ -114,7 +106,7 @@ npm view [package-name] deprecated 2>/dev/null
 
 #### Step 1.4: Present Audit Results
 
-Present vulnerability and outdated package tables, then confirm scope. Include a "Deprecated Packages" section if any are found. See [references/audit-mode.md](references/audit-mode.md) for full audit results presentation template and scope confirmation prompt.
+Present vulnerability and outdated package tables, then confirm scope. Include a "Deprecated Packages" section if any are found. See [commands/references/deps/audit-mode.md](commands/references/deps/audit-mode.md) for full audit results presentation template and scope confirmation prompt.
 
 **Scope flag behavior:**
 - `--dev`: Filter outdated and audit output to devDependencies only
@@ -133,7 +125,7 @@ Present vulnerability and outdated package tables, then confirm scope. Include a
 
 #### Step 2.1: Categorize Updates
 
-Group updates by risk level and present batch plan. See [references/update-plan-template.md](references/update-plan-template.md) for full batch plan, risk assessment, and update strategy templates.
+Group updates by risk level and present batch plan. See [commands/references/deps/update-plan-template.md](commands/references/deps/update-plan-template.md) for full batch plan, risk assessment, and update strategy templates.
 
 **Security fix requiring major version:** If a vulnerability fix is only available in a major version (e.g., `lodash@3 -> lodash@4`), present this separately with breaking change analysis. User must explicitly approve major version bumps even for security fixes.
 
@@ -170,7 +162,7 @@ $PKG_MGR install package1@X.Y.W package2@A.B.D
 $PKG_MGR run typecheck
 ```
 
-**If type errors occur:** Present warning with options (fix, revert batch, pin version). To revert the batch: `git checkout -- package.json $LOCK_FILE && $PKG_MGR install`, which restores the last committed manifest/lockfile and reinstalls. Wait for decision. See [references/common-issues.md](references/common-issues.md) for troubleshooting.
+**If type errors occur:** Present warning with options (fix, revert batch, pin version). To revert the batch: `git checkout -- package.json $LOCK_FILE && $PKG_MGR install`, which restores the last committed manifest/lockfile and reinstalls. Wait for decision. See [commands/references/deps/common-issues.md](commands/references/deps/common-issues.md) for troubleshooting.
 
 #### Step 3.3: Progress Report
 
@@ -264,6 +256,6 @@ Updates:
 
 ## References
 
-- [Audit Mode & Results Templates](references/audit-mode.md) -- Audit results presentation, scope confirmation, and audit-only report templates
-- [Update Plan Template](references/update-plan-template.md) -- Batch plan, risk assessment, and update strategy templates
-- [Handling Common Issues](references/common-issues.md) -- Type errors, peer dependency conflicts, and lock file troubleshooting
+- [Audit Mode & Results Templates](commands/references/deps/audit-mode.md) -- Audit results presentation, scope confirmation, and audit-only report templates
+- [Update Plan Template](commands/references/deps/update-plan-template.md) -- Batch plan, risk assessment, and update strategy templates
+- [Handling Common Issues](commands/references/deps/common-issues.md) -- Type errors, peer dependency conflicts, and lock file troubleshooting

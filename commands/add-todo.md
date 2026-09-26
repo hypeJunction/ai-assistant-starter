@@ -1,15 +1,6 @@
 ---
-name: add-todo
 description: Document deferred work, shortcuts, and technical debt for future resolution. Use when taking a shortcut, finding tech debt, or deferring out-of-scope work.
-category: meta
-model: haiku
-effort: low
-triggers:
-  - defer this
-  - tech debt
-  - add todo
-  - note for later
-  - shortcut taken
+argument-hint: <description>
 ---
 
 # Add Todo
@@ -232,4 +223,4 @@ When a todo is no longer relevant:
 
 ## References
 
-- [Example Todo](references/example-todo.md) — Worked example of a fully filled-in todo entry
+- [Example Todo](commands/references/add-todo/example-todo.md) — Worked example of a fully filled-in todo entry

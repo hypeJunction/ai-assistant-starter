@@ -1,14 +1,6 @@
 ---
-name: add-story
 description: Create comprehensive Storybook stories with play functions and validated tests for a component. Use when a component needs Storybook coverage or story files.
-category: meta
-model: sonnet
-effort: medium
-triggers:
-  - create story
-  - storybook
-  - component story
-  - add stories
+argument-hint: <ComponentName or path>
 ---
 
 # Add Story
@@ -78,7 +70,7 @@ Common patterns:
 
 ### Step 4: Write Stories for Visual States
 
-Create stories covering all visual states (default, disabled, loading, error, etc.). Use meta configuration with title, component, parameters, and autodocs tag. See `references/story-patterns.md` for templates and the factory pattern.
+Create stories covering all visual states (default, disabled, loading, error, etc.). Use meta configuration with title, component, parameters, and autodocs tag. See `commands/references/add-story/story-patterns.md` for templates and the factory pattern.
 
 **Context providers and decorators:**
 
@@ -104,15 +96,15 @@ Check the component's imports for context usage:
 
 ### Step 5: Write Play Functions for Interactions
 
-Add play functions for all interactive scenarios using `step()` blocks, Testing Library queries, and `waitFor` for async assertions. See `references/story-patterns.md` for play function examples.
+Add play functions for all interactive scenarios using `step()` blocks, Testing Library queries, and `waitFor` for async assertions. See `commands/references/add-story/story-patterns.md` for play function examples.
 
 ### Step 6: Add Mocking If Required
 
-For components with API dependencies, use MSW handlers in story parameters. See `references/testing-best-practices.md` for MSW patterns.
+For components with API dependencies, use MSW handlers in story parameters. See `commands/references/add-story/testing-best-practices.md` for MSW patterns.
 
 ### Step 7: Run Tests and Validate
 
-Delegate the run itself to `dispatch` (mechanical): "Run `$PKG_MGR run test-storybook -- --grep \"ComponentName\"` and report full pass/fail output." Only bring failures back into the main loop to diagnose and fix — re-run via `dispatch` after each fix until green. See `references/testing-best-practices.md` for debugging guidance.
+Delegate the run itself to `dispatch` (mechanical): "Run `$PKG_MGR run test-storybook -- --grep \"ComponentName\"` and report full pass/fail output." Only bring failures back into the main loop to diagnose and fix — re-run via `dispatch` after each fix until green. See `commands/references/add-story/testing-best-practices.md` for debugging guidance.
 
 ## Story File Checklist
 
@@ -138,5 +130,5 @@ Before completing:
 
 ## References
 
-- `references/story-patterns.md` - Story templates, play functions, factory pattern
-- `references/testing-best-practices.md` - MSW mocking, Testing Library queries, async handling, example workflow
+- `commands/references/add-story/story-patterns.md` - Story templates, play functions, factory pattern
+- `commands/references/add-story/testing-best-practices.md` - MSW mocking, Testing Library queries, async handling, example workflow

@@ -1,14 +1,6 @@
 ---
-name: commit
 description: Review changes and create a git commit with user confirmation. Use when work is ready to commit, changes need staging, or the user says "commit".
-category: process
-model: sonnet
-effort: medium
-triggers:
-  - commit changes
-  - save work
-  - stage and commit
-  - git commit
+argument-hint: "[--files=<paths>|--uncommitted|--staged]"
 ---
 
 # Commit
@@ -155,7 +147,7 @@ Split into separate commits? (yes / no)
 
 ### Step 4: Validate (Optional)
 
-Invoke `/validate` to run quick validation (typecheck, lint, and scoped tests for uncommitted changes). See `references/pre-commit-verification.md` for tier-specific requirements.
+Invoke `/validate` to run quick validation (typecheck, lint, and scoped tests for uncommitted changes). See `commands/references/commit/pre-commit-verification.md` for tier-specific requirements.
 
 ### Step 5: Confirm
 
@@ -183,7 +175,7 @@ git commit -m "[message]"       # or: git commit -s -m "[message]" if git.dco_si
 
 ## Commit Message Format
 
-See `references/commit-conventions.md` for extended formats (breaking changes, reverts, multi-issue references, scope conventions, good/bad examples).
+See `commands/references/commit/commit-conventions.md` for extended formats (breaking changes, reverts, multi-issue references, scope conventions, good/bad examples).
 
 ```
 [type](scope): [short description]

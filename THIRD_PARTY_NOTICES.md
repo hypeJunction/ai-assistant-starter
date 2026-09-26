@@ -14,7 +14,7 @@ This project includes content derived from or inspired by the following third-pa
 
 ### Conventional Commits 1.0.0
 
-- **Used in:** `skills/git-conventions/SKILL.md`, `skills/commit/references/commit-conventions.md`
+- **Used in:** `skills/git-conventions/SKILL.md`, `commands/references/commit/commit-conventions.md`
 - **Source:** [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)
 - **License:** [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)
 - **Scope:** Commit message format (`type(scope): description`), type definitions, breaking change footer format.

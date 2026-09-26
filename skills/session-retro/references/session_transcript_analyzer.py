@@ -450,16 +450,180 @@ def _prompt_context_correlation(
     return findings
 
 
+# How far back a Skill invocation looks for the user turn that prompted it. Reuses
+# the same threshold `analyze()` already uses to decide whether two events belong to
+# the same active stretch of work, rather than inventing a second window.
+SKILL_TRIGGER_LOOKBACK_SECONDS = ACTIVE_GAP_THRESHOLD_SECONDS
+
+# First path segment of a skill invocation's `skill` field is a plugin scope prefix
+# (e.g. "ai-assistant-starter:review" vs. bare "review") — same skill, different
+# install path. Trigger classification should treat them as one skill.
+def _base_skill_name(name):
+    return name.split(":")[-1] if name else name
+
+
+def _extract_slash_command(text):
+    """A user typing `/name` is rendered in the transcript as a `<command-name>`
+    wrapper (e.g. `<command-name>/pr</command-name>`), not as literal `/pr` text —
+    `_is_synthetic_user_text` correctly treats that wrapper as non-prose for the
+    corrections check, but for trigger classification it IS the signal: it's the
+    one case that unambiguously proves `explicit_slash`. Returns the bare command
+    name (no leading slash, no plugin-scope prefix) or None if `text` isn't one.
+    """
+    import re
+
+    m = re.search(r"<command-name>/?([a-zA-Z0-9_.\-]+)</command-name>", text)
+    if not m:
+        return None
+    return _base_skill_name(m.group(1))
+
+
+# A Skill invocation's own rendered body comes back on the very next transcript
+# line as a "user"-role event with a plain `type: "text"` content block (not a
+# `tool_result` wrapper, and not one of SYNTHETIC_USER_MARKERS's tagged forms) —
+# confirmed by inspecting a real transcript line, where the "user" text was
+# verbatim "Base directory for this skill: .../commit\n\n# Commit\n\n...". Every
+# skill body starts with this exact line, so it's a reliable, cheap filter.
+# Left un-generalized into `_is_synthetic_user_text` itself since that function's
+# existing callers (corrections, in `analyze()`) are out of scope for this change.
+SKILL_BODY_MARKER = "Base directory for this skill:"
+
+
+def _gather_trigger_audit_turns(path):
+    """Like `analyze()`'s user_turns, but kept separate: trigger classification
+    needs `<command-name>` turns (proof of an explicit slash invocation) that
+    `_is_synthetic_user_text` deliberately filters out for the corrections check.
+    Other synthetic markers (task notifications, hook/local-command output, and a
+    just-invoked skill's own body) are still dropped — none of those are something
+    a user typed.
+    """
+    turns = []
+    for event in load_events(path):
+        if event.get("type") != "user" or event.get("isSidechain"):
+            continue
+        ts = event.get("timestamp")
+        message = event.get("message") or {}
+        raw_text = _extract_user_text(message.get("content"))
+        if not raw_text or raw_text.startswith(SKILL_BODY_MARKER):
+            continue
+        command = _extract_slash_command(raw_text)
+        if command:
+            turns.append({"ts": ts, "text": "/" + command, "prompt_est_tokens": 1})
+        elif not _is_synthetic_user_text(raw_text):
+            turns.append({"ts": ts, "text": raw_text, "prompt_est_tokens": len(raw_text) // 4})
+    return turns
+
+
+def _classify_skill_invocations(user_turns, tool_calls, skill_triggers, session_id=None):
+    """Classify each `Skill` tool_use event by how the invocation was likely
+    prompted: did the user type a slash command for this exact skill
+    (`explicit_slash`), does their preceding text contain one of the skill's own
+    `triggers:` phrases without a leading slash (`prose_triggered`), does their text
+    start with a slash naming a *different* skill than the one actually invoked
+    (`ambiguous`, e.g. the model reinterpreted `/plan` as `/adr`), or is there no
+    usable preceding user turn within the active-gap window at all
+    (`inconclusive`)? One record per Skill invocation, in transcript order.
+    """
+    findings = []
+    for call in tool_calls:
+        if call.get("name") != "Skill":
+            continue
+        skill = (call.get("input") or {}).get("skill")
+        if not skill:
+            continue
+        base = _base_skill_name(skill)
+        call_ts = call.get("ts")
+
+        preceding = None
+        if call_ts:
+            for turn in reversed(user_turns):
+                if turn["ts"] and turn["ts"] <= call_ts:
+                    gap = _seconds_between(turn["ts"], call_ts)
+                    if gap is not None and 0 <= gap <= SKILL_TRIGGER_LOOKBACK_SECONDS:
+                        preceding = turn
+                    break
+
+        record = {
+            "skill": base,
+            "session_id": session_id,
+            "ts": call_ts,
+            "mechanism": "inconclusive",
+            "matched_phrase": None,
+            "user_text_excerpt": None,
+        }
+
+        if preceding is None:
+            findings.append(record)
+            continue
+
+        text = preceding["text"]
+        record["user_text_excerpt"] = text[:120]
+        stripped = text.lstrip()
+
+        if stripped.startswith("/"):
+            # e.g. "/review foo" or "/plugin:review foo" -> "review"
+            slash_token = stripped[1:].split()[0] if len(stripped) > 1 else ""
+            slash_name = _base_skill_name(slash_token)
+            if slash_name == base:
+                record["mechanism"] = "explicit_slash"
+            else:
+                record["mechanism"] = "ambiguous"
+        else:
+            text_lower = text.lower()
+            matched = next(
+                (phrase for phrase in skill_triggers.get(base, []) if phrase.lower() in text_lower),
+                None,
+            )
+            if matched:
+                record["mechanism"] = "prose_triggered"
+                record["matched_phrase"] = matched
+            # else stays "inconclusive": a preceding turn exists but neither a
+            # matching slash command nor a known trigger phrase explains the call.
+
+        findings.append(record)
+
+    return findings
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("transcript", help="Path to the session's .jsonl transcript file")
     parser.add_argument("--out", help="Write JSON report to this path instead of stdout")
+    parser.add_argument(
+        "--trigger-audit",
+        metavar="TRIGGERS_JSON",
+        help="Optional: path to a JSON file mapping skill name -> list of trigger phrases. "
+        "When given, also classifies each Skill invocation in this transcript as "
+        "explicit_slash/prose_triggered/ambiguous/inconclusive and adds a "
+        "'skill_invocation_classification' key to the report. Standalone session-retro "
+        "usage is unaffected when this flag is omitted.",
+    )
     args = parser.parse_args()
 
     try:
         report = analyze(args.transcript)
     except FileNotFoundError:
         sys.exit(f"error: transcript not found: {args.transcript}")
+
+    if args.trigger_audit:
+        with open(args.trigger_audit) as f:
+            skill_triggers = json.load(f)
+        # Re-walk the transcript for tool_calls (analyze() only returns derived
+        # aggregates, not the raw list) — cheap re-parse of a single file. user_turns
+        # comes from the dedicated gatherer, not analyze()'s filtered list, because
+        # that filter drops the `<command-name>` turns this classification needs.
+        tool_calls = []
+        for event in load_events(args.transcript):
+            ts = event.get("timestamp")
+            message = event.get("message") or {}
+            if event.get("type") == "assistant" and not event.get("isSidechain"):
+                for item in (message.get("content") or []):
+                    if item.get("type") == "tool_use":
+                        tool_calls.append({"name": item.get("name"), "input": item.get("input"), "ts": ts, "id": item.get("id")})
+        user_turns = _gather_trigger_audit_turns(args.transcript)
+        report["skill_invocation_classification"] = _classify_skill_invocations(
+            user_turns, tool_calls, skill_triggers, session_id=args.transcript
+        )
 
     output = json.dumps(report, indent=2)
     if args.out:

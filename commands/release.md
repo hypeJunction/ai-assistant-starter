@@ -1,15 +1,6 @@
 ---
-name: release
 description: Prepare and publish a release with version bump, changelog, and tagging. Use when shipping a new version, creating a release candidate, or tagging a production build.
-category: process
-model: sonnet
-effort: medium
-triggers:
-  - ship version
-  - release
-  - version bump
-  - publish
-  - tag release
+argument-hint: "[patch|minor|major|<version>] [--dry-run]"
 ---
 
 # Release
@@ -90,7 +81,7 @@ cat package.json | grep '"version"'
 git describe --tags --abbrev=0 2>/dev/null || echo "No tags found"
 ```
 
-Display release status table and warn if not on main branch. See [references/release-display-templates.md](references/release-display-templates.md) for status and warning templates. Wait if on wrong branch.
+Display release status table and warn if not on main branch. See [commands/references/release/release-display-templates.md](commands/references/release/release-display-templates.md) for status and warning templates. Wait if on wrong branch.
 
 **If uncommitted changes exist:** Report "Cannot release with uncommitted changes — commit or stash first" and exit.
 
@@ -107,11 +98,11 @@ else
 fi
 ```
 
-Categorize changes into Breaking Changes, Features, Bug Fixes, Other. If a `--type` flag or version argument was provided, use it directly. Otherwise, suggest a version bump based on conventional commit analysis (see Release type resolution above). See [references/release-display-templates.md](references/release-display-templates.md) for categorization template.
+Categorize changes into Breaking Changes, Features, Bug Fixes, Other. If a `--type` flag or version argument was provided, use it directly. Otherwise, suggest a version bump based on conventional commit analysis (see Release type resolution above). See [commands/references/release/release-display-templates.md](commands/references/release/release-display-templates.md) for categorization template.
 
 #### Step 1.3: Confirm Release Scope
 
-Present release confirmation with current version, requested bump, new version, and change counts. See [references/release-display-templates.md](references/release-display-templates.md) for confirmation template.
+Present release confirmation with current version, requested bump, new version, and change counts. See [commands/references/release/release-display-templates.md](commands/references/release/release-display-templates.md) for confirmation template.
 
 **GATE: Do NOT proceed without explicit approval.**
 
@@ -157,7 +148,7 @@ Stage the updated lockfile alongside `package.json` for the release commit.
 
 #### Step 2.3: Update Changelog
 
-If `CHANGELOG.md` exists, update it. See [references/changelog-format.md](references/changelog-format.md) for the changelog entry format.
+If `CHANGELOG.md` exists, update it. See [commands/references/release/changelog-format.md](commands/references/release/changelog-format.md) for the changelog entry format.
 
 If no `CHANGELOG.md` exists, release notes will be generated from commits.
 
@@ -234,7 +225,7 @@ grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
 
 ### Phase 4: Docs (Optional)
 
-Before creating the release commit, prompt for documentation. See [references/release-display-templates.md](references/release-display-templates.md) for documentation prompt template.
+Before creating the release commit, prompt for documentation. See [commands/references/release/release-display-templates.md](commands/references/release/release-display-templates.md) for documentation prompt template.
 
 Wait for user response. If `skip`, proceed to tag.
 
@@ -263,9 +254,9 @@ git tag -a vX.Y.Z -m "Release vX.Y.Z"
 
 #### Step 5.3: Push Release
 
-**If `--dry-run` flag:** Show what would have happened. See [references/release-display-templates.md](references/release-display-templates.md) for dry run template.
+**If `--dry-run` flag:** Show what would have happened. See [commands/references/release/release-display-templates.md](commands/references/release/release-display-templates.md) for dry run template.
 
-**Otherwise:** Present push confirmation. See [references/release-display-templates.md](references/release-display-templates.md) for push template.
+**Otherwise:** Present push confirmation. See [commands/references/release/release-display-templates.md](commands/references/release/release-display-templates.md) for push template.
 
 **GATE: Never push without explicit "yes".**
 
@@ -282,7 +273,7 @@ git push origin vX.Y.Z
 
 #### Step 6.1: Generate Release Notes
 
-See [references/release-notes-template.md](references/release-notes-template.md) for the full release notes format.
+See [commands/references/release/release-notes-template.md](commands/references/release/release-notes-template.md) for the full release notes format.
 
 #### Step 6.2: Create GitHub Release (Optional)
 
@@ -324,7 +315,7 @@ Delete the tag as above afterward if it should not exist.
 
 ## Release Complete
 
-Present release summary. See [references/release-display-templates.md](references/release-display-templates.md) for summary template.
+Present release summary. See [commands/references/release/release-display-templates.md](commands/references/release/release-display-templates.md) for summary template.
 
 ## Acceptance Tests
 
@@ -340,6 +331,6 @@ Present release summary. See [references/release-display-templates.md](reference
 
 ## References
 
-- [Release Notes Template](references/release-notes-template.md) -- Full release notes format with highlights, changes, and contributors
-- [Changelog Format](references/changelog-format.md) -- CHANGELOG.md entry format for version releases
-- [Display Templates](references/release-display-templates.md) -- Status, confirmation, documentation, push, and summary templates
+- [Release Notes Template](commands/references/release/release-notes-template.md) -- Full release notes format with highlights, changes, and contributors
+- [Changelog Format](commands/references/release/changelog-format.md) -- CHANGELOG.md entry format for version releases
+- [Display Templates](commands/references/release/release-display-templates.md) -- Status, confirmation, documentation, push, and summary templates

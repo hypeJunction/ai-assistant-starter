@@ -1,15 +1,6 @@
 ---
-name: validate
 description: Run validation checks to ensure code quality, security, and correctness. Supports quick (scoped), full (CI pipeline), fix (auto-correct), and CI mirror modes.
-category: process
-model: sonnet
-effort: medium
-triggers:
-  - run checks
-  - verify quality
-  - typecheck
-  - lint
-  - does it pass
+argument-hint: "[--full|--fix|--ci|--files=<paths>]"
 ---
 
 # Validate
@@ -58,7 +49,7 @@ If `git status` shows no changes and no specific mode is requested, report "No c
 
 ## Quiet Execution
 
-`scripts/quiet-run.sh <label> -- <command...>` runs a command and prints nothing but `PASS: <label>` when it exits 0; on a non-zero exit it prints `FAIL: <label> (exit N)` followed by the full captured output. The subagent running validation uses this wrapper for commands with a known, stable exit-code contract — typecheck, lint, test, build, format:check — since a clean pass carries no information worth spending tokens on.
+`commands/scripts/validate/quiet-run.sh <label> -- <command...>` runs a command and prints nothing but `PASS: <label>` when it exits 0; on a non-zero exit it prints `FAIL: <label> (exit N)` followed by the full captured output. The subagent running validation uses this wrapper for commands with a known, stable exit-code contract — typecheck, lint, test, build, format:check — since a clean pass carries no information worth spending tokens on.
 
 Use the raw command (no wrapper) instead when:
 - The tool is unfamiliar or its exit-code semantics haven't been verified (e.g. it exits 0 with warnings you'd still want to see)
@@ -124,7 +115,7 @@ npm run lint -- [changed-files]
 
 **Security Scan (always runs):**
 
-> See `references/security-scan-patterns.md` for concrete grep patterns for secrets, dangerous functions, and security anti-patterns. Run these scans as part of full validation.
+> See `commands/references/validate/security-scan-patterns.md` for concrete grep patterns for secrets, dangerous functions, and security anti-patterns. Run these scans as part of full validation.
 
 ```bash
 # Secrets detection
@@ -293,7 +284,7 @@ When a subagent reports task completion, verify independently:
 
 ---
 
-## Common Issues & Solutions (see `references/validation-troubleshooting.md` for expanded patterns including build failures and CI discrepancies)
+## Common Issues & Solutions (see `commands/references/validate/validation-troubleshooting.md` for expanded patterns including build failures and CI discrepancies)
 
 ### Type Errors
 

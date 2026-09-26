@@ -30,7 +30,7 @@ triggers:
   themselves and types `/done` — the internal `/review --quick` in Step 2 is
   a machine check, not a substitute for that.
 - Never call `gh pr create` or `gh pr edit` directly — delegate to `/pr`,
-  which owns that (`skills/pr/SKILL.md`'s own constraint says nothing else
+  which owns that (`commands/pr.md`'s own constraint says nothing else
   should call these directly).
 - Never commit without going through `/commit`'s own approval gate.
 - Steps 2 and 3 ask before running review/validation — never skip either
@@ -116,7 +116,7 @@ gh pr view --json number,url,title,state 2>/dev/null
   work-in-progress checkpoint, not a "ready to merge" signal).
 - **PR exists** → `git push`, then update the description via `/pr`'s
   existing "rewrite fresh, don't append" logic
-  (`skills/pr/SKILL.md`). Do not touch the PR description any other way.
+  (`commands/pr.md`). Do not touch the PR description any other way.
 
 ### Step 6: Session Bookkeeping
 

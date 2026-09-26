@@ -1,16 +1,5 @@
 ---
-name: pr
 description: Create a well-documented GitHub pull request with quality checks, proper description, and test plan. Use when pushing a branch, creating a merge request, or preparing code for review.
-category: process
-model: sonnet
-effort: medium
-triggers:
-  - create PR
-  - pull request
-  - ready for review
-  - open PR
-  - fix PR description
-  - update PR description
 ---
 
 # Create Pull Request
@@ -118,7 +107,7 @@ Report format:
 
 ### Step 4: Delegate Security Scan + Mixed-Concern Check
 
-Both checks are read-only and don't need the main session's context — dispatch a single subagent (via the `Agent` tool) to run the scan and classify the diff, rather than pulling the full diff into the main agent. (See also `../commit/references/pre-commit-verification.md` and `../validate/references/security-scan-patterns.md` for detailed pattern guidance.)
+Both checks are read-only and don't need the main session's context — dispatch a single subagent (via the `Agent` tool) to run the scan and classify the diff, rather than pulling the full diff into the main agent. (See also `commands/references/commit/pre-commit-verification.md` and `commands/references/validate/security-scan-patterns.md` for detailed pattern guidance.)
 
 Give the subagent the commands below and instructions to return only the digest format — not raw diff text (except for grep matches, which must be quoted in full):
 
