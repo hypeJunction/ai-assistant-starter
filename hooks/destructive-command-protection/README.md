@@ -1,11 +1,6 @@
----
-name: destructive-command-protection
-description: Runtime enforcement hook that blocks destructive system and database commands. Prevents accidental rm -rf, database drops, and other irreversible operations. Auto-loaded for all command execution.
-category: enforcement
-user-invocable: false
----
-
 # Destructive Command Protection
+
+Runtime enforcement hook that blocks destructive system and database commands. Prevents accidental rm -rf, database drops, and other irreversible operations. Wired into every Bash tool call via `plugins/ai-assistant-starter/hooks/hooks.json` — not a Claude-invoked skill.
 
 Runtime enforcement hook for Claude Code's PreToolUse hook system. Intercepts Bash tool calls and blocks commands that could cause irreversible damage.
 
@@ -136,7 +131,7 @@ Add to your Claude Code settings (`~/.claude/settings.json` or project `.claude/
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/skills/destructive-command-protection/references/hook.js"
+            "command": "node .claude/hooks/destructive-command-protection/hook.js"
           }
         ]
       }

@@ -1,11 +1,6 @@
----
-name: branch-protection
-description: Runtime enforcement hook that blocks dangerous git operations on protected branches. Prevents force-push, hard reset, and branch deletion on main/master. Auto-loaded for all git operations.
-category: enforcement
-user-invocable: false
----
-
 # Branch Protection
+
+Runtime enforcement hook that blocks dangerous git operations on protected branches. Prevents force-push, hard reset, and branch deletion on main/master. Wired into every Bash tool call via `plugins/ai-assistant-starter/hooks/hooks.json` — not a Claude-invoked skill.
 
 Runtime enforcement hook for Claude Code's PreToolUse hook system. Intercepts Bash tool calls and blocks dangerous git operations on protected branches.
 
@@ -32,7 +27,7 @@ Add to your Claude Code settings (`~/.claude/settings.json` or project `.claude/
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/skills/branch-protection/references/hook.js"
+            "command": "node .claude/hooks/branch-protection/hook.js"
           }
         ]
       }

@@ -13,9 +13,11 @@ AI coding assistants work better with structured guidance. This collection provi
 
 ## Installation
 
-All 41 skills are distributed as a single Claude Code plugin,
-`ai-assistant-starter`, at `plugins/ai-assistant-starter/`. Install it by
-adding this repo as a marketplace, then installing the plugin:
+All 36 skills are distributed as a single Claude Code plugin,
+`ai-assistant-starter`, at `plugins/ai-assistant-starter/`. 5 additional
+harness-level runtime hooks (see "Runtime Hooks" below) ship alongside them —
+they're plumbing the plugin wires in, not skills. Install by adding this repo
+as a marketplace, then installing the plugin:
 
 ```bash
 # Clone the repo (as a sibling of your project, or anywhere on disk)
@@ -163,12 +165,22 @@ stateDiagram-v2
 | `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
+
+### Bootstrap & Setup
+
+Run once when adopting or upgrading the assistant on a project, not during day-to-day coding:
+
+| Skill | Purpose |
+|-------|---------|
 | `/init` | Bootstrap project configuration |
 | `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs and circuit-breaker/cost-guardrail/prompt-context-router hooks |
 
-### Enforcement Hooks (auto-loaded)
+### Runtime Hooks (not skills)
 
-Runtime hooks that intercept dangerous or costly operations:
+These live under `hooks/<name>/`, not `skills/` — they're plain scripts the harness
+invokes directly via `plugins/ai-assistant-starter/hooks/hooks.json`, never
+instructions Claude reads or executes. Each `hooks/<name>/README.md` documents
+its exact trigger conditions and configuration:
 
 - **branch-protection** — Blocks force-push, hard reset, branch deletion on main/master
 - **destructive-command-protection** — Blocks rm -rf /, DROP DATABASE, and other destructive commands

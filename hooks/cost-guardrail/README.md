@@ -1,11 +1,6 @@
----
-name: cost-guardrail
-description: Runtime enforcement hook that compares the historical median cost of an imminent Agent (subagent) spawn's requested model tier — or a Bash call — against the cheapest tracked tier's median, using cost-audit-derived baselines, and blocks or warns when the ratio is disproportionate. Auto-loaded for Agent and Bash tool calls.
-category: enforcement
-user-invocable: false
----
-
 # Cost Guardrail
+
+Runtime enforcement hook that compares the historical median cost of an imminent Agent (subagent) spawn's requested model tier — or a Bash call — against the cheapest tracked tier's median, using cost-audit-derived baselines, and blocks or warns when the ratio is disproportionate. Wired into Agent and Bash tool calls via `plugins/ai-assistant-starter/hooks/hooks.json` — not a Claude-invoked skill.
 
 Runtime `PreToolUse` hook for Claude Code. Compares the model tier requested
 by an `Agent` (subagent) spawn — or, secondarily, `Bash` calls — against
@@ -56,11 +51,11 @@ Add to your Claude Code settings (`~/.claude/settings.json` or project
     "PreToolUse": [
       {
         "matcher": "Agent",
-        "hooks": [{ "type": "command", "command": "node .claude/skills/cost-guardrail/references/hook.js" }]
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/cost-guardrail/hook.js" }]
       },
       {
         "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "node .claude/skills/cost-guardrail/references/hook.js" }]
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/cost-guardrail/hook.js" }]
       }
     ]
   }

@@ -174,7 +174,7 @@ docs that don't exist.
 Ask the user (`AskUserQuestion`, options **Install** / **Skip**) whether to
 install the `context-circuit-breaker` hook — a `PreToolUse` hook that warns
 (never blocks) on subagent fan-out and expensive-call loops. See
-`skills/context-circuit-breaker/SKILL.md` for what it does and doesn't do.
+`hooks/context-circuit-breaker/README.md` for what it does and doesn't do.
 
 **GATE: only proceed on explicit "Install."** This is the only step in this
 skill that touches `settings.json`; treat it with the same caution as any
@@ -184,9 +184,9 @@ If installed:
 
 1. Copy the hook script:
    ```bash
-   mkdir -p <target>/.claude/skills/context-circuit-breaker/references
-   cp skills/context-circuit-breaker/references/hook.js \
-     <target>/.claude/skills/context-circuit-breaker/references/hook.js
+   mkdir -p <target>/.claude/hooks/context-circuit-breaker
+   cp hooks/context-circuit-breaker/hook.js \
+     <target>/.claude/hooks/context-circuit-breaker/hook.js
    ```
 2. Back up any existing target settings file the same way `CLAUDE.md` is
    backed up (reuse `backup-claude-md.sh <target>/.claude/settings.json` —
@@ -203,7 +203,7 @@ If installed:
    ```
 
 The merge script only ever adds or confirms the presence of one
-`PreToolUse` entry referencing `context-circuit-breaker/references/hook.js`
+`PreToolUse` entry referencing `context-circuit-breaker/hook.js`
 — it is idempotent and leaves every other key in `settings.json` untouched.
 
 ### Step 5.6: Offer the cost-guardrail hook
@@ -211,7 +211,7 @@ The merge script only ever adds or confirms the presence of one
 Ask the user (`AskUserQuestion`, options **Install** / **Skip**) whether to
 install the `cost-guardrail` hook — a `PreToolUse` hook that warns or blocks
 on `Agent` spawns (and `Bash` calls) whose historical cost is disproportionate
-to the cheapest tracked model tier. See `skills/cost-guardrail/SKILL.md` for
+to the cheapest tracked model tier. See `hooks/cost-guardrail/README.md` for
 what it does and doesn't do, including that it fails open until a
 `cost_baselines.json` file exists — installing the hook alone is harmless.
 
@@ -222,9 +222,9 @@ If installed:
 
 1. Copy the hook script:
    ```bash
-   mkdir -p <target>/.claude/skills/cost-guardrail/references
-   cp skills/cost-guardrail/references/hook.js \
-     <target>/.claude/skills/cost-guardrail/references/hook.js
+   mkdir -p <target>/.claude/hooks/cost-guardrail
+   cp hooks/cost-guardrail/hook.js \
+     <target>/.claude/hooks/cost-guardrail/hook.js
    ```
 2. Back up any existing target settings file the same way as Step 5.5
    (`backup-claude-md.sh <target>/.claude/settings.json`).
@@ -233,14 +233,14 @@ If installed:
    ```bash
    node skills/apply-template/scripts/merge-settings-hook.js \
      <target>/.claude/settings.json \
-     --command "node .claude/skills/cost-guardrail/references/hook.js" \
+     --command "node .claude/hooks/cost-guardrail/hook.js" \
      --matcher Agent --matcher Bash
    ```
 4. Only after confirmation, apply it:
    ```bash
    node skills/apply-template/scripts/merge-settings-hook.js \
      <target>/.claude/settings.json \
-     --command "node .claude/skills/cost-guardrail/references/hook.js" \
+     --command "node .claude/hooks/cost-guardrail/hook.js" \
      --matcher Agent --matcher Bash --apply
    ```
 5. Remind the user that the hook is inert until they run
@@ -318,7 +318,7 @@ install the `prompt-context-router` hook — a `UserPromptSubmit` hook that
 classifies each incoming prompt by task class and topic-pivot, and advises
 (never blocks, except for two opt-in one-shot-per-session/cycle deny checks —
 see below) treating clear asides as standalone — with a delegation
-suggestion for cheap ones. See `skills/prompt-context-router/SKILL.md` for
+suggestion for cheap ones. See `hooks/prompt-context-router/README.md` for
 what it does and doesn't do.
 
 This installs **two** hooks that share one state file: the `UserPromptSubmit`
@@ -335,10 +335,10 @@ If installed:
 
 1. Copy both hook scripts:
    ```bash
-   mkdir -p <target>/.claude/skills/prompt-context-router/references
-   cp skills/prompt-context-router/references/hook.js \
-     skills/prompt-context-router/references/post-tool-hook.js \
-     <target>/.claude/skills/prompt-context-router/references/
+   mkdir -p <target>/.claude/hooks/prompt-context-router
+   cp hooks/prompt-context-router/hook.js \
+     hooks/prompt-context-router/post-tool-hook.js \
+     <target>/.claude/hooks/prompt-context-router/
    ```
 2. Back up any existing target settings file the same way Steps 5.5/5.6 do
    (`backup-claude-md.sh <target>/.claude/settings.json`).
@@ -348,7 +348,7 @@ If installed:
    ```bash
    node skills/apply-template/scripts/merge-settings-hook.js \
      <target>/.claude/settings.json \
-     --command "node .claude/skills/prompt-context-router/references/hook.js" \
+     --command "node .claude/hooks/prompt-context-router/hook.js" \
      --matcher "*" --event UserPromptSubmit
    ```
 4. Dry-run the `PostToolUse` merge — pass `--matcher` once per tool name
@@ -357,7 +357,7 @@ If installed:
    ```bash
    node skills/apply-template/scripts/merge-settings-hook.js \
      <target>/.claude/settings.json \
-     --command "node .claude/skills/prompt-context-router/references/post-tool-hook.js" \
+     --command "node .claude/hooks/prompt-context-router/post-tool-hook.js" \
      --matcher ExitPlanMode --matcher Edit --matcher Write \
      --matcher NotebookEdit --matcher Bash --event PostToolUse
    ```

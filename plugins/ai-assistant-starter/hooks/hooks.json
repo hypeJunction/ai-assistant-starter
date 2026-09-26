@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/prompt-context-router/references/hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/prompt-context-router/hook.js"
           }
         ]
       }
@@ -17,15 +17,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/destructive-command-protection/references/hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/destructive-command-protection/hook.js"
           },
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/branch-protection/references/hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/branch-protection/hook.js"
           },
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/cost-guardrail/references/hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/cost-guardrail/hook.js"
           }
         ]
       },
@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/cost-guardrail/references/hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/cost-guardrail/hook.js"
           }
         ]
       },
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/context-circuit-breaker/references/hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/context-circuit-breaker/hook.js"
           }
         ]
       }
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/prompt-context-router/references/post-tool-hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/prompt-context-router/post-tool-hook.js"
           }
         ]
       },
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/prompt-context-router/references/post-tool-hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/prompt-context-router/post-tool-hook.js"
           }
         ]
       },
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/prompt-context-router/references/post-tool-hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/prompt-context-router/post-tool-hook.js"
           }
         ]
       },
@@ -81,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/prompt-context-router/references/post-tool-hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/prompt-context-router/post-tool-hook.js"
           }
         ]
       },
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/skills/prompt-context-router/references/post-tool-hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/prompt-context-router/post-tool-hook.js"
           }
         ]
       }

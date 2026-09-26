@@ -10,7 +10,7 @@ const {
   loadBaselines,
   extractAgentRequest,
   normalizeModelName,
-} = require('../../skills/cost-guardrail/references/hook.js');
+} = require('../../hooks/cost-guardrail/hook.js');
 
 function freshBaselines(overrides) {
   return {

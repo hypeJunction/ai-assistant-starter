@@ -1,11 +1,6 @@
----
-name: prompt-context-router
-description: Runtime enforcement hook that classifies each incoming prompt by task class and topic-pivot, then advises the assistant to treat clear asides as standalone (and delegate cheap ones to a subagent), to consider entering Plan Mode for architecture/extreme-scope prompts — denying the first extreme-scope prompt per session outright, with an opt-in extension to pivot+architecture — flags when a short prompt is riding on a disproportionately large accumulated context, warns when a turn is likely to miss the prompt cache due to elapsed time, flags when a pivot lands on a large accumulated context, and (with a companion PostToolUse hook) denies a pivot away from a plan that was just implemented until EnterPlanMode is called again. Auto-loaded for every user prompt.
-category: enforcement
-user-invocable: false
----
-
 # Prompt Context Router
+
+Runtime enforcement hook that classifies each incoming prompt by task class and topic-pivot, then advises the assistant to treat clear asides as standalone (and delegate cheap ones to a subagent), to consider entering Plan Mode for architecture/extreme-scope prompts — denying the first extreme-scope prompt per session outright, with an opt-in extension to pivot+architecture — flags when a short prompt is riding on a disproportionately large accumulated context, warns when a turn is likely to miss the prompt cache due to elapsed time, flags when a pivot lands on a large accumulated context, and (with a companion PostToolUse hook) denies a pivot away from a plan that was just implemented until EnterPlanMode is called again. Wired into every user prompt and several PostToolUse events via `plugins/ai-assistant-starter/hooks/hooks.json` — not a Claude-invoked skill.
 
 Runtime `UserPromptSubmit` hook for Claude Code. Classifies the incoming
 prompt on two independent axes — task class and topic-pivot — and, when
@@ -192,29 +187,29 @@ install both — `post-tool-hook.js` alone is silent, and without it
     "UserPromptSubmit": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/hook.js" }]
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/prompt-context-router/hook.js" }]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "ExitPlanMode",
-        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/prompt-context-router/post-tool-hook.js" }]
       },
       {
         "matcher": "Edit",
-        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/prompt-context-router/post-tool-hook.js" }]
       },
       {
         "matcher": "Write",
-        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/prompt-context-router/post-tool-hook.js" }]
       },
       {
         "matcher": "NotebookEdit",
-        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/prompt-context-router/post-tool-hook.js" }]
       },
       {
         "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "node .claude/skills/prompt-context-router/references/post-tool-hook.js" }]
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/prompt-context-router/post-tool-hook.js" }]
       }
     ]
   }

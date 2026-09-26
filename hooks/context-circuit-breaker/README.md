@@ -1,11 +1,6 @@
----
-name: context-circuit-breaker
-description: Runtime enforcement hook that warns on context-multiplication patterns — subagent fan-out and expensive-call loops — before they run up cost. Warn-only, never blocks. Auto-loaded for all tool calls.
-category: enforcement
-user-invocable: false
----
-
 # Context Circuit Breaker
+
+Runtime enforcement hook that warns on context-multiplication patterns — subagent fan-out and expensive-call loops — before they run up cost. Warn-only, never blocks. Wired into every tool call via `plugins/ai-assistant-starter/hooks/hooks.json` — not a Claude-invoked skill.
 
 Runtime `PreToolUse` hook for Claude Code. Tracks a short rolling window of
 recent tool calls per session and surfaces a warning — via
@@ -40,7 +35,7 @@ Add to your Claude Code settings (`~/.claude/settings.json` or project
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/skills/context-circuit-breaker/references/hook.js"
+            "command": "node .claude/hooks/context-circuit-breaker/hook.js"
           }
         ]
       }

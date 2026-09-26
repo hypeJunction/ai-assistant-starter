@@ -10,6 +10,10 @@ skills/                          # All skills live here
 │   ├── SKILL.md                 # Skill definition (frontmatter + instructions)
 │   ├── references/              # Optional support docs (templates, detection rules)
 │   └── assets/                  # Optional scaffolding templates (rare; mainly init)
+hooks/                            # Runtime hooks (not skills) — harness-invoked scripts
+├── <name>/
+│   ├── hook.js                  # Script the harness calls directly via hooks.json
+│   └── README.md                # Trigger conditions, config, installation snippet
 CLAUDE.md                        # This file (project instructions)
 README.md                        # User-facing documentation
 ```
@@ -31,7 +35,7 @@ Each skill is a `skills/<name>/SKILL.md` file with YAML frontmatter:
 ---
 name: skill-name              # Must match directory name
 description: One-line summary  # Used in skill discovery
-category: process             # process | meta | guideline | protocol | enforcement
+category: process             # process | meta | guideline | protocol
 triggers:                      # Intent keywords for auto-routing (workflow skills only)
   - keyword phrase
   - another phrase
@@ -108,10 +112,30 @@ There is no per-skill install — `claude plugin install` installs the whole plu
 | `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
 | `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
 | `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
+
+**Bootstrap & Setup** (run once when adopting or upgrading, not during day-to-day coding)
+
+| Skill | Purpose |
+|-------|---------|
 | `/init` | Bootstrap project configuration |
 | `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs, circuit-breaker/cost-guardrail/prompt-context-router hooks, and cost-saving settings.json env vars |
 
-### Background Skills (18 total)
+### Runtime Hooks (5 total, not skills)
+
+These live under `hooks/<name>/`, not `skills/`. Each is a plain script the
+harness invokes directly via `plugins/ai-assistant-starter/hooks/hooks.json` —
+never a `SKILL.md` Claude reads or executes. `hooks/<name>/README.md`
+documents each one's exact trigger conditions and configuration:
+
+| Hook | Domain |
+|-------|--------|
+| `branch-protection` | Blocks force-push, hard reset on protected branches |
+| `destructive-command-protection` | Blocks rm -rf, DROP DATABASE, and other destructive commands |
+| `context-circuit-breaker` | Warns (never blocks) on subagent fan-out and expensive-call loops |
+| `cost-guardrail` | Warns/blocks Agent spawns and Bash calls whose historical cost is disproportionate, using cost-audit-derived baselines |
+| `prompt-context-router` | Classifies each prompt by task class and topic-pivot, advising standalone treatment (and subagent delegation for cheap asides) instead of re-deriving from full session history; with a companion PostToolUse hook, denies a pivot away from a just-implemented plan until EnterPlanMode is called again |
+
+### Background Skills (13 total)
 
 Auto-loaded when relevant — no slash command needed:
 
@@ -123,16 +147,6 @@ Auto-loaded when relevant — no slash command needed:
 | `communication-guidelines` | Response formatting and status indicators |
 | `code-review-guidelines` | Review checklist and feedback patterns |
 | `interaction-boundaries` | Human-AI interaction boundaries, non-anthropomorphic communication |
-
-**Enforcement Skills** (category: enforcement)
-
-| Skill | Domain |
-|-------|--------|
-| `branch-protection` | Runtime hook: blocks force-push, hard reset on protected branches |
-| `destructive-command-protection` | Runtime hook: blocks rm -rf, DROP DATABASE, and other destructive commands |
-| `context-circuit-breaker` | Runtime hook: warns (never blocks) on subagent fan-out and expensive-call loops |
-| `cost-guardrail` | Runtime hook: warns/blocks Agent spawns and Bash calls whose historical cost is disproportionate, using cost-audit-derived baselines |
-| `prompt-context-router` | Runtime hook: classifies each prompt by task class and topic-pivot, advising standalone treatment (and subagent delegation for cheap asides) instead of re-deriving from full session history; with a companion PostToolUse hook, denies a pivot away from a just-implemented plan until EnterPlanMode is called again |
 
 **Guideline Skills** (category: guideline)
 
@@ -150,15 +164,30 @@ Auto-loaded when relevant — no slash command needed:
 
 ## Contributing a Skill
 
+A skill is instructions Claude reads and executes. A harness-invoked script
+that the plugin's `hooks.json` calls directly — never read by Claude as
+instructions — is a **hook**, not a skill; see "Adding a new runtime hook"
+below instead.
+
 ### Adding a new skill
 
 1. Create `skills/<name>/SKILL.md` with frontmatter (`name`, `description`, `category`)
 2. Name must be lowercase, hyphen-separated, and match the directory name
-3. Add `category:` — one of: `process`, `meta`, `guideline`, `protocol`, `enforcement`
+3. Add `category:` — one of: `process`, `meta`, `guideline`, `protocol`
 4. For workflow skills, add `triggers` with 4-8 short keyword phrases (developer perspective, distinct across skills)
 5. For background skills, add `user-invocable: false` to frontmatter
 6. Add `references/` directory if the skill needs support docs (templates, rules)
 7. Update the skill tables in both `README.md` and this file
+
+### Adding a new runtime hook
+
+1. Create `hooks/<name>/hook.js` plus a `hooks/<name>/README.md` documenting
+   its trigger conditions, configuration, and installation snippet — no
+   Agent Skills frontmatter, since it's never discovered as a skill
+2. Register it in `plugins/ai-assistant-starter/hooks/hooks.json` under the
+   relevant event/matcher, and symlink `plugins/ai-assistant-starter/hooks/<name>`
+   to `../../../hooks/<name>`
+3. Update the "Runtime Hooks" tables in both `README.md` and this file
 
 ### Modifying an existing skill
 

@@ -23,7 +23,7 @@ const {
   detectCheckoutRestoreDot,
   detectClean,
   protectedBranches,
-} = require('../../skills/branch-protection/references/hook.js');
+} = require('../../hooks/branch-protection/hook.js');
 
 const PROTECTED = ['main', 'master'];
 

@@ -14,7 +14,7 @@ const {
   checkKubernetes,
   checkNetworkStorage,
   checkBypass,
-} = require('../../skills/destructive-command-protection/references/hook.js');
+} = require('../../hooks/destructive-command-protection/hook.js');
 
 // ── 1. Filesystem destruction: rm -rf ──
 

@@ -34,7 +34,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_COMMAND = 'node .claude/skills/context-circuit-breaker/references/hook.js';
+const DEFAULT_COMMAND = 'node .claude/hooks/context-circuit-breaker/hook.js';
 const DEFAULT_MATCHERS = ['*'];
 const DEFAULT_EVENT = 'PreToolUse';
 

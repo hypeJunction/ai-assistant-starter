@@ -7,7 +7,7 @@ const {
   looksLikePivot,
   buildPlanModeGuidance,
   statePath,
-} = require('../../skills/prompt-context-router/references/hook.js');
+} = require('../../hooks/prompt-context-router/hook.js');
 
 // ── classifyTaskClass ──
 
