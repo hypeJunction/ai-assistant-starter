@@ -75,7 +75,7 @@ There is no per-skill install — `claude plugin install` installs the whole plu
 | `/start` | Scope a new work session to a ticket, worktree, and goal, auto-triggering on session start |
 | `/explore` | Understand code (read-only) |
 | `/plan` | Design approach before coding |
-| `/implement` | Execute an approved plan — code, self-review, test, validate, commit, close. Selectable modes (`--debug`, `--tdd`, `--scope-locked`, `--pr-iterate`) handle debugging, strict TDD, scope-locked autonomous work, and PR-feedback iteration. |
+| `/implement` | Execute an approved plan — code, self-review, test, validate, commit, close. Selectable modes (`--debug`, `--tdd`, `--scope-locked`, `--pr-iterate`) handle debugging, strict TDD, scope-locked autonomous work, and PR-feedback iteration. Gate flags (`--review`/`--no-review`, `--validate`/`--no-validate`) pick the optional checks upfront instead of asking mid-run. |
 | `/refactor` | Multi-file changes with tracking |
 | `/stack` | Split a large branch into a resumable series of stacked PRs |
 
@@ -93,8 +93,8 @@ There is no per-skill install — `claude plugin install` installs the whole plu
 
 | Skill | Purpose |
 |-------|---------|
-| `/commit` | Review and commit with confirmation |
-| `/done` | Close out a session — test coverage, review, validation gate, commit, create/update the PR, record the outcome. Works standalone or for a `/start`-opened session.
+| `/commit` | Review and commit with confirmation. `--validate`/`--no-validate` picks the pre-commit validate gate upfront. |
+| `/done` | Close out a session — test coverage, review, validation gate, commit, create/update the PR, record the outcome. Works standalone or for a `/start`-opened session. `--review`/`--no-review` and `--validate`/`--no-validate` pick the optional gates upfront.
 | `/release` | Version bump, changelog, and tagging |
 
 **Utilities**

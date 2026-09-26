@@ -60,6 +60,8 @@ See `ai-assistant-protocol` for valid approval terms and invalid responses.
 | `--tdd` | Strict RED-GREEN-REFACTOR discipline (see `references/tdd-mode.md`) |
 | `--scope-locked` | File-scope contract gate for autonomous/long-running work (see `references/scope-locked-mode.md`) |
 | `--pr-iterate` | Drive an open PR to merge-ready against CI/review feedback (see `references/pr-iterate-mode.md`) |
+| `--review` / `--no-review` | Force-run or force-skip the Phase 3 `/review --quick` gate |
+| `--validate` / `--no-validate` | Force-run or force-skip the Phase 5 `/validate` gate |
 
 > **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
 
@@ -98,6 +100,20 @@ Detect the mode from an explicit flag or the phrasing of the request:
 If a mode matched, load its reference file now and follow it — it supplies its own version of Phase 1 (its gate *is* its plan-equivalent) and tells you which of Phases 2–4 it replaces or skips. All modes still finish through this skill's shared Phase 5 (Validate), Phase 6 (Commit), and Phase 7 (Close Todo) unless their reference file says otherwise.
 
 If `--todo` is provided, read the todo file to seed the implementation: extract description, context, affected files, and acceptance criteria — the todo becomes the source of truth for scope and success criteria.
+
+### Gate Decision
+
+If neither `--review` nor `--no-review` was passed, and neither `--validate` nor `--no-validate` was passed, ask once here via `AskUserQuestion` (`multiSelect: true`):
+
+```markdown
+header: "Verification gates"
+question: "Which optional checks should this run before commit?"
+options:
+- "Quick review" — Phase 3's /review --quick pass (unused imports, any types, hardcoded values, security checklist). Recommended.
+- "Full validate" — Phase 5's /validate run (typecheck, lint, tests, build). Recommended.
+```
+
+Record the selection as the effective `--review`/`--no-review` and `--validate`/`--no-validate` flags for the rest of this run — do not ask again at Phase 3 or Phase 5. If either flag was already passed on invocation, skip this question entirely and use the flags as given (an unspecified flag defaults to "recommended: run").
 
 ---
 
@@ -184,11 +200,9 @@ Compare implementation against the approved plan:
 | [Step 1] | ✓ / ✗ | [deviations] |
 ```
 
-Ask via `AskUserQuestion`:
-- Run `/review --quick` now (recommended) — for the checklist pass (unused imports, `any` types, hardcoded values, inconsistent patterns, and the security checklist — secrets, `eval`/`innerHTML`, raw SQL interpolation, `child_process` with unsanitized input, disabled security controls, missing input validation/authz at boundaries).
-- Skip self-review — proceed to Phase 4; note the skip in Completion Evidence (Phase 6.1).
-
-If run: fix issues it flags before proceeding.
+Use the effective `--review`/`--no-review` flag from Phase 0's Gate Decision (or passed directly on invocation):
+- **`--review`:** Run `/review --quick` — the checklist pass (unused imports, `any` types, hardcoded values, inconsistent patterns, and the security checklist — secrets, `eval`/`innerHTML`, raw SQL interpolation, `child_process` with unsanitized input, disabled security controls, missing input validation/authz at boundaries). Fix issues it flags before proceeding.
+- **`--no-review`:** Skip self-review — proceed to Phase 4; note the skip in Completion Evidence (Phase 6.1).
 
 ---
 
@@ -214,9 +228,9 @@ If run: fix issues it flags before proceeding.
 
 ## Phase 5: Validate
 
-Ask via `AskUserQuestion`:
-- Run `/validate` now (recommended) — full mode for medium/large tiers, quick for nano/small — rather than running checks inline.
-- Skip validation — proceed to Phase 6; note the skip in Completion Evidence.
+Use the effective `--validate`/`--no-validate` flag from Phase 0's Gate Decision (or passed directly on invocation):
+- **`--validate`:** Run `/validate` — full mode for medium/large tiers, quick for nano/small — rather than running checks inline.
+- **`--no-validate`:** Skip validation — proceed to Phase 6; note the skip in Completion Evidence.
 
 **GATE: If validation ran, it must pass before proceeding — fix failures before continuing. If skipped by user choice, proceed and note the skip.**
 
@@ -293,9 +307,9 @@ Remove the completed todo file. The ADR (if created) and git history preserve th
 | 0. Determine Mode | Read-only | — |
 | 1. Plan Input | Read-only | **Plan approved** (or quick nod for nano/small) |
 | 2. Code | Full access | Typecheck passes per file |
-| 3. Self-Review | Read-only | `/review --quick` run and issues fixed, or explicitly skipped by user |
+| 3. Self-Review | Read-only | `/review --quick` run and issues fixed, or skipped per `--review`/`--no-review` |
 | 4. Test | Testing | **All tests pass** |
-| 5. Validate | Validation | `/validate` passes, or explicitly skipped by user |
+| 5. Validate | Validation | `/validate` passes, or skipped per `--validate`/`--no-validate` |
 | 6. Commit | Git only | **User confirms (via `/commit`)** |
 | 7. Close | Housekeeping | Acceptance criteria met (todo-driven only) |
 

@@ -1,6 +1,6 @@
 ---
 description: Review changes and create a git commit with user confirmation. Use when work is ready to commit, changes need staging, or the user says "commit".
-argument-hint: "[--files=<paths>|--uncommitted|--staged]"
+argument-hint: "[--files=<paths>|--uncommitted|--staged] [--validate|--no-validate]"
 ---
 
 # Commit
@@ -29,8 +29,22 @@ argument-hint: "[--files=<paths>|--uncommitted|--staged]"
 | `--files=<paths>` | Commit only specified files |
 | `--uncommitted` | Commit all uncommitted changes (default) |
 | `--staged` | Commit only already-staged files |
+| `--validate` | Run `/validate` before committing (Step 4) |
+| `--no-validate` | Skip `/validate` before committing |
 
 > **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
+
+### Gate Decision
+
+If neither `--validate` nor `--no-validate` was passed, ask once before Step 0 via `AskUserQuestion`:
+
+```markdown
+header: "Validate gate"
+question: "Run /validate (typecheck, lint, scoped tests) before committing?"
+options: "Yes — run /validate first" | "No — commit without validating"
+```
+
+Record the answer as the effective `--validate`/`--no-validate` flag for the rest of this run — do not ask again at Step 4.
 
 ## Change Tiers
 
@@ -145,9 +159,9 @@ Split into separate commits? (yes / no)
 
 **Re-scan after a secret fix:** If a secret is found and fixed (moved to environment variable, removed, etc.), dispatch a fresh Step 1 analysis subagent to re-scan. Continue until the scan is clean. **Maximum 3 iterations** — if secrets persist after 3 fix-and-rescan cycles, stop and escalate to the user with a summary of remaining issues. Do NOT proceed to Step 4 until the security scan passes with zero findings.
 
-### Step 4: Validate (Optional)
+### Step 4: Validate (Gated)
 
-Invoke `/validate` to run quick validation (typecheck, lint, and scoped tests for uncommitted changes). See `commands/references/commit/pre-commit-verification.md` for tier-specific requirements.
+If the effective flag from the Gate Decision (or `--validate` passed on invocation) is set, invoke `/validate` to run quick validation (typecheck, lint, and scoped tests for uncommitted changes). See `commands/references/commit/pre-commit-verification.md` for tier-specific requirements. If `--no-validate` is effective, skip this step silently.
 
 ### Step 5: Confirm
 

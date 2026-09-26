@@ -17,7 +17,26 @@ triggers:
 # Done
 
 > **Purpose:** Wrap up a unit of work: cover with tests, review, validate, commit, create/update the PR, record the outcome, nudge compaction.
-> **Usage:** `/done`
+> **Usage:** `/done [--review|--no-review] [--validate|--no-validate]`
+
+## Gate Flags
+
+| Flag | Description |
+|------|-------------|
+| `--review` / `--no-review` | Force-run or force-skip the Step 2 `/review --quick` gate |
+| `--validate` / `--no-validate` | Force-run or force-skip the Step 3 validation gate |
+
+If neither pair of flags was passed on invocation, ask once at Step 0 via `AskUserQuestion` (`multiSelect: true`):
+
+```markdown
+header: "Verification gates"
+question: "Which optional checks should this close-out run?"
+options:
+- "Quick review" — Step 2's /review --quick pass against the current diff. Recommended.
+- "Validate" — Step 3's /validate run, if the current code isn't already covered by a matching last_validated_sha. Recommended.
+```
+
+Record the selection as the effective flags for the rest of this run — do not ask again at Step 2 or Step 3. If either pair was already passed on invocation, skip this question and use the flags as given.
 
 ## Constraints
 
@@ -33,8 +52,9 @@ triggers:
   which owns that (`commands/pr.md`'s own constraint says nothing else
   should call these directly).
 - Never commit without going through `/commit`'s own approval gate.
-- Steps 2 and 3 ask before running review/validation — never skip either
-  silently or auto-run either without asking first.
+- Steps 2 and 3 use the effective `--review`/`--no-review` and
+  `--validate`/`--no-validate` flags decided upfront (Gate Flags, above) —
+  never re-ask mid-flow, and never silently override an explicit flag.
 - The compaction nudge in Step 6 is advisory, not a guarantee — Claude Code
   has no mechanism for a hook to force `/compact`.
 
@@ -51,6 +71,8 @@ git log --oneline $MAIN..HEAD
 
 **If no uncommitted changes and no commits ahead of base branch:** report "Nothing to close out — working tree is clean and branch is up to date" and skip to Step 4 (Session Bookkeeping) so the session still gets closed cleanly.
 
+Otherwise, resolve the Gate Flags decision (see above) now, before Step 1, so Steps 2 and 3 run without interruption.
+
 ### Step 1: Test Coverage
 
 Ensure changed code has test coverage.
@@ -64,14 +86,11 @@ Ensure changed code has test coverage.
 
 ### Step 2: Review
 
-Stop and ask via `AskUserQuestion`:
-- Run `/review --quick` now (recommended) — against the current diff.
-- Skip review — proceed to Step 3; note in the close-out report that
-  review was skipped by user choice.
+Use the effective `--review`/`--no-review` flag from Step 0's Gate Decision (or passed directly on invocation):
+- **`--review`:** Run `/review --quick` against the current diff. Fix any critical issues (any-typed code, security anti-patterns, missing input validation at boundaries) before proceeding. Warnings can be documented and deferred if the user agrees.
+- **`--no-review`:** Skip review — proceed to Step 3; note in the close-out report that review was skipped by user choice.
 
-If run: fix any critical issues (any-typed code, security anti-patterns, missing input validation at boundaries) before proceeding. Warnings can be documented and deferred if the user agrees.
-
-**Exit criteria:** no critical issues remaining, or review skipped by user choice.
+**Exit criteria:** no critical issues remaining, or review skipped per flag.
 
 ### Step 3: Validate Gate
 
@@ -83,13 +102,12 @@ git rev-parse HEAD
 git diff HEAD
 ```
 
-- **`last_validated_sha` present and matches the current `HEAD` + diff state** → validation already ran against this exact code (via `/validate` finishing cleanly, from this step or from `/implement`/`/commit`/`/pr` earlier in the session) — proceed silently to Step 4.
-- **Record missing, or stale (code has changed since it was written)** → stop and ask via `AskUserQuestion`:
-  - Run `/validate --full` now (recommended) — then re-check the record and proceed.
-  - Skip validation — proceed to Step 4; note in the close-out report that validation was skipped by user choice.
-  - Cancel.
+- **`last_validated_sha` present and matches the current `HEAD` + diff state** → validation already ran against this exact code (via `/validate` finishing cleanly, from this step or from `/implement`/`/commit`/`/pr` earlier in the session) — proceed silently to Step 4 regardless of the effective flag.
+- **Record missing, or stale (code has changed since it was written)** → use the effective `--validate`/`--no-validate` flag from Step 0's Gate Decision (or passed directly on invocation):
+  - **`--validate`:** Run `/validate --full` now, then re-check the record and proceed.
+  - **`--no-validate`:** Skip validation — proceed to Step 4; note in the close-out report that validation was skipped by user choice.
 
-**Never auto-run `/validate` without asking first.**
+**Never re-ask about `/validate` mid-flow — the flag from Step 0 (or invocation) is final for this run.**
 
 ### Step 4: Commit
 
