@@ -84,7 +84,7 @@ Determine refactor type, file count, risk level:
 
 ### Step 2.1: Find All Occurrences
 
-Searching the codebase for every occurrence is read-only and can produce a large volume of raw output — dispatch a subagent (via the `Agent` tool) to run the search and return a structured occurrence list (file, line, surrounding context) rather than pulling raw search output into the main agent. Present the subagent's findings (see `references/refactor-templates.md` — Pattern Analysis).
+Searching the codebase for every occurrence is read-only and can produce a large volume of raw output — dispatch the `Explore` agent type (via the `Agent` tool) to run the search and return a structured occurrence list (file, line, surrounding context) rather than pulling raw search output into the main agent. Present the subagent's findings (see `references/refactor-templates.md` — Pattern Analysis).
 
 ### Step 2.2: Surface Edge Cases
 

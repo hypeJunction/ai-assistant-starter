@@ -70,7 +70,7 @@ Before exploring code, interview the user to clarify requirements:
 
 ### Step 3: Explore Relevant Code
 
-Delegate large explorations (6+ files) to parallel agents to preserve context.
+Delegate large explorations (6+ files) to the `Explore` agent type (via the `Agent` tool) to preserve context.
 
 1. Search for related files
 2. Read key components

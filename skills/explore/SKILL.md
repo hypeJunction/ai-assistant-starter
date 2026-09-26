@@ -87,8 +87,8 @@ For monorepo projects (multiple packages/workspaces in one repository):
 
 ## Context Management
 
-- **Delegate deep explorations.** When exploring a large area (6+ files), delegate to a parallel agent to prevent context exhaustion. The agent reports a summary; the main session stays clean.
-- **Set a scope budget.** Before exploring, estimate how many files you'll need. If >10 files, narrow the question or delegate to parallel agents.
+- **Delegate deep explorations.** When exploring a large area (6+ files), delegate to the `Explore` agent type (via the `Agent` tool) to prevent context exhaustion. The agent reports a summary; the main session stays clean.
+- **Set a scope budget.** Before exploring, estimate how many files you'll need. If >10 files, narrow the question or delegate to the `Explore` agent type (via the `Agent` tool).
 - **Stop when answered.** Don't keep reading files after finding the answer. Report what you found.
 
 ## Workflow
