@@ -97,9 +97,32 @@ For Complex and Risky, present 2-3 alternative approaches with trade-offs before
 **Recommended:** [option] because [reasoning]
 ```
 
+### Step 4.5: Decompose & Classify Work Units
+
+For Standard/Complex/Risky plans (skip for Trivial), break the approach into atomic work units before writing Step 5's detailed steps, and decide inline vs. subagent for each:
+
+1. List each unit — these become the plan Steps in Step 5.
+2. Classify each unit using the `CLAUDE.md` Task Classification table (mechanical / implementation / debugging / architecture / extreme).
+3. Decide **Runs as** per unit, applying the thresholds these skills already use elsewhere (don't re-derive new ones):
+   - Validation/check commands (test, lint, build, typecheck) → subagent, always (`ai-assistant-protocol`).
+   - Read-only search/exploration touching 6+ files → subagent (`explore` threshold).
+   - Mechanical/lookup/boilerplate units → `dispatch` subagent at cheapest tier (`CLAUDE.md` "Delegation as Default").
+   - Units needing cross-file judgment, architectural reasoning, or that depend on another unit's not-yet-produced output → inline, main agent.
+   - Units independent of each other and individually subagent-eligible → group for parallel dispatch in one message, capped at 5 concurrent spawns per batch (`context-circuit-breaker` threshold).
+4. Emit the table:
+
+   ```markdown
+   ### Work Units
+   | Unit | Class | Runs as | Depends on |
+   |------|-------|---------|------------|
+   | Add input validation to handleSubmit | implementation | inline | — |
+   | Search for all callers of oldFn() | mechanical | subagent (dispatch) | — |
+   | Run typecheck + lint | — | subagent (parallel, batch 1) | Unit 1 |
+   ```
+
 ### Step 5: Create Plan
 
-**Every step must include:** exact file path, what specifically changes, representative code snippet showing the change shape, clear deliverable, and estimated scope.
+**Every step must include:** exact file path, what specifically changes, representative code snippet showing the change shape, clear deliverable, estimated scope, and **Runs as** (inline / subagent, from the Work Units table).
 
 ```markdown
 ## Implementation Plan
@@ -192,9 +215,9 @@ for an ADR capturing the decision, then remove the todo.
 ## Next Steps
 
 Choose execution mode:
-- **`/implement`** — Execute the plan step by step (default)
+- **`/implement`** — Execute the plan step by step (default), following each step's **Runs as** from the Work Units table
 - **`/implement --tdd`** — Test-driven execution (write tests first, then implement)
-- **Parallel dispatch** — Break independent tasks into parallel agent work (for Complex plans)
+- **Parallel dispatch** — [N] units run inline, [N] dispatch in parallel (batch 1), [N] validation checks delegate after — see Work Units table above
 - **Manual** — You execute, I advise
 
 Which approach?
@@ -211,6 +234,7 @@ Before presenting the plan, verify (see `references/plan-quality-checklist.md` f
 - [ ] Risks have mitigation strategies
 - [ ] Steps are ordered by dependency
 - [ ] No step takes longer than 5 minutes of focused work
+- [ ] Every work unit has an inline/subagent decision with a stated reason (threshold or rule applied)
 
 ## Acceptance Tests
 
