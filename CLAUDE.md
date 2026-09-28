@@ -5,6 +5,7 @@ Reusable AI coding assistant skills following the [Agent Skills specification](h
 ## Project Structure
 
 ```
+scripts/                          # Shared scripts skills call (session_state.py)
 skills/                          # All skills live here
 ├── <name>/
 │   ├── SKILL.md                 # Skill definition (frontmatter + instructions)
@@ -82,15 +83,49 @@ claude plugin install ai-assistant-starter
 ```
 
 There is no per-skill install — `claude plugin install` installs the whole
-plugin: 5 skills, 1 command (`/commit`), 3 agents (`dispatch`, `verifier`,
+plugin: 6 skills, 1 command (`/commit`), 3 agents (`dispatch`, `verifier`,
 `auditor`), and its runtime hooks (`guard` and `prompt-context-router`).
+
+## The Session State Machine
+
+`/start`, `/done` and `/trash` are orchestrators over one script,
+`scripts/session_state.py`, symlinked into the plugin so skills reach it at
+`${CLAUDE_PLUGIN_ROOT}/scripts/session_state.py`. A flow is a fixed ordered
+list of phases; `plan` lays out the queue, `next` hands out the single phase
+that may run now, and `complete` reports its outcome. `complete` rejects any
+phase that is not the running head, which is what makes these skills
+deterministic rather than merely well-documented — a flow cannot be
+reordered, skipped past, or silently abandoned halfway.
+
+Put a decision in the script rather than in a SKILL.md whenever the tree
+state answers it. Anything the machine can check, the skill should not spend
+a turn re-deriving, and a check that lives in the script produces the same
+queue for the same tree every time. That is why `auto_skips()` holds the
+skips, `diff_summary()` sizes the work and decides which gates it has earned,
+and `publish_plan()`, `inventory()` and `branch_plan()` derive the parameters
+`next` hands out with each phase. A SKILL.md phase reads those values; it
+does not compute them.
+
+Gate discretion is a function of diff size, not a default. A `trivial` diff
+earns no `/code-review`, a documentation-only diff earns neither review nor
+verification, and everything else earns a review effort level scaled to its
+churn. `--force`, and the `DONE_REVIEW_ALWAYS` / `DONE_VALIDATE_ALWAYS` env
+vars, override it.
+
+State is `.claude/worktree.json` (one per worktree) and
+`.claude/sessions/<id>.json` (one per session). The session **goal** and
+**outcome** are not stored here: the `session-context` plugin owns both and
+is the only thing that posts either to Langfuse. `session_state.py` reads
+them through a read-only bridge, so nothing in this repo duplicates that
+store or competes for those Langfuse scores.
 
 ## Available Skills
 
 | Skill | Purpose |
 |-------|---------|
-| `/start` | Scope a new work session to a ticket, worktree, and goal via flags; auto-triggers on session start |
-| `/done` | Close out a session — code review, verifier gate, commit, create/update the PR, record the outcome, nudge a context compaction |
+| `/start` | Scope a work session to a ticket, worktree, and goal via flags, as a fixed phase queue |
+| `/done` | Ship a session — code review, verifier gate, commit, PR, outcome — as a fixed phase queue, with the gates scaled to the size of the diff |
+| `/trash` | Abandon a session — inventory what would be lost, discard behind a confirmation gate, record why |
 | `/retro` | Mine session transcripts, cost traces, and tooling usage evidence (`--session`/`--cost`/`--tooling`/`--all`) for evidence-backed CLAUDE.md/skill/config corrections |
 | `/stack` | Split a large branch into a resumable series of stacked PRs, one worktree per bucket |
 | `/apply-template` | Apply the standardized CLAUDE.md template sections to an existing installation, with opt-in companion READMEs, the `guard`/`prompt-context-router` hooks, and cost-saving settings.json env vars |

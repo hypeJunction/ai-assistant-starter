@@ -8,7 +8,7 @@ AI coding assistants have gotten native at the things a starter kit used to
 paper over — plan mode, code review, exploration. What's left to package is
 narrower and sharper:
 
-- **Session lifecycle** skills (`/start`, `/done`, `/stack`) for scoping and closing out work
+- **Session lifecycle** skills (`/start`, `/done`, `/trash`, `/stack`) for scoping and closing out work
 - **Agent definitions** with fixed model tiers for cost-aware delegation, verification, and auditing
 - **Runtime hooks** that enforce mechanical rules for zero tokens instead of prose that's paid for on every turn
 - **Template installation** (`/apply-template`) to carry the underlying conventions into a consumer project's own `CLAUDE.md`
@@ -47,11 +47,61 @@ installed.
 
 | Skill | Purpose |
 |-------|---------|
-| `/start` | Scope a new work session to a ticket, worktree, and goal via flags; auto-triggers on session start |
-| `/done` | Close out a session — code review, verifier gate, commit, create/update the PR, record the outcome, nudge a context compaction |
+| `/start` | Scope a work session to a ticket, worktree, and goal via flags, as a fixed phase queue |
+| `/done` | Ship a session — code review, verifier gate, commit, PR, outcome — as a fixed phase queue, with the gates scaled to the size of the diff |
+| `/trash` | Abandon a session — inventory what would be lost, discard behind a confirmation gate, record why |
 | `/retro` | Mine session transcripts, cost traces, and tooling usage evidence for evidence-backed CLAUDE.md/skill/config corrections (`--session`/`--cost`/`--tooling`/`--all`) |
 | `/stack` | Split a large branch into a resumable series of stacked PRs, one worktree per bucket |
 | `/apply-template` | Apply the standardized CLAUDE.md template to an existing installation, with opt-in companion READMEs, hooks, and settings.json env vars |
+
+### The session state machine
+
+`/start`, `/done` and `/trash` are orchestrators, not procedures. Each one
+is a flow — a fixed, ordered list of phases — driven by
+`scripts/session_state.py`:
+
+```bash
+SS=python3 ${CLAUDE_PLUGIN_ROOT}/scripts/session_state.py
+$SS plan --session <id> --flow done      # lay out the queue
+$SS next --session <id>                  # claim the one phase that may run now
+$SS complete --session <id> --phase review --status passed
+```
+
+`complete` rejects any phase that is not the running head, so a flow cannot
+be reordered or skipped past, and a failed phase blocks it until the flow is
+re-planned or aborted. `plan` decides on its own which phases are
+unnecessary — validation already passed at this exact tree state, no
+worktree to publish from, nothing to close out — so the skills never spend a
+turn re-deriving what the machine can check.
+
+It also sizes the diff, and the gates a run gets are the ones that size has
+earned: a three-line change gets no code review, a documentation-only change
+gets neither review nor a test run, and anything larger gets a review effort
+level scaled to its churn. `--force review`, `--force validate`, and the
+`DONE_REVIEW_ALWAYS` / `DONE_VALIDATE_ALWAYS` env vars override it; the class
+boundaries themselves are `DONE_DIFF_TRIVIAL_LINES`, `DONE_DIFF_SMALL_LINES`
+and `DONE_DIFF_MODERATE_LINES`.
+
+The same principle covers the rest of each flow. `next` hands a phase out
+together with the parameters it runs on — the review level and target, the
+PR number and whether a push is needed, the full inventory of what `/trash`
+would destroy — and `branch-plan` derives the base branch, branch name and
+worktree path `/start` would choose. A skill reads those values rather than
+improvising them, so the same tree produces the same run every time.
+
+State lives in `.claude/worktree.json` (ticket, branch, base; one per
+worktree) and `.claude/sessions/<id>.json` (flow and phase status; one per
+session, so concurrent sessions never clobber each other).
+
+### Working with the session-context plugin
+
+The `session-context` plugin owns the session **goal**
+and the session **outcome**, and is the only thing that posts either to
+Langfuse. These skills read both through a read-only bridge and never keep a
+competing copy: `/start` inherits whatever goal session-context's intake
+question already recorded rather than asking a second time, and `/done` and
+`/trash` hand the outcome to it at their `record` phase. With the plugin
+absent, every phase still runs; only the goal and rating go unrecorded.
 
 ## Command
 

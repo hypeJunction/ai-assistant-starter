@@ -3,8 +3,9 @@
 # requires-python = ">=3.9"
 # dependencies = []
 # ///
-"""UserPromptSubmit hook for /done: on the first prompt after /done marked
-this session's state file done, nudge Claude to /compact before continuing.
+"""UserPromptSubmit hook for /done and /trash: on the first prompt after the
+session's state file reached a terminal status, nudge Claude to /compact
+before continuing.
 
 This is advisory only — Claude Code has no mechanism for a hook to force
 compaction, so this injects additionalContext asking Claude to run /compact
@@ -18,9 +19,11 @@ import sys
 
 SESSIONS_SUBDIR = os.path.join(".claude", "sessions")
 
-NUDGE = """/done marked this session complete and posted its outcome. Before
-doing anything else with the message below, run /compact to reclaim context,
-then continue with the user's request."""
+TERMINAL = ("done", "trashed")
+
+NUDGE = """This session's work was just closed out and its outcome recorded.
+Before doing anything else with the message below, run /compact to reclaim
+context, then continue with the user's request."""
 
 
 def session_path(cwd, session_id):
@@ -48,7 +51,7 @@ def main():
     session_id = payload["session_id"]
     path = session_path(cwd, session_id)
     rec = load_json(path)
-    if not rec or rec.get("status") != "done" or rec.get("compact_nudged"):
+    if not rec or rec.get("status") not in TERMINAL or rec.get("compact_nudged"):
         return
     rec["compact_nudged"] = True
     try:

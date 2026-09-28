@@ -1,9 +1,9 @@
 ---
 name: start
-description: Scope a new work session to a ticket, worktree, and goal via flags — no mid-run prompts for mode/config. Auto-triggers on session start; also invocable manually with `/start [<ticket>] [--worktree|--no-worktree] [--goal=<text>] [--plan|--no-plan]`.
+description: Scope a work session to a ticket, worktree, and goal via flags — no mid-run prompts. Runs as a fixed phase queue over session_state.py and inherits the goal from the session-context plugin. Invoke as `/start [<ticket>] [--worktree|--no-worktree] [--goal=<text>] [--plan|--no-plan]`.
 category: process
 model: sonnet
-effort: medium
+effort: low
 triggers:
   - start session
   - start ticket
@@ -14,75 +14,105 @@ triggers:
 
 # Start
 
-Scopes a session to a ticket, worktree, and goal, then optionally hands off
-into native plan mode. Unrecognized flags are an error — report and stop.
+Scopes a session to a ticket, worktree, and goal, then hands off to native
+plan mode. Every decision resolves at invocation; nothing is asked mid-run
+that the machine can determine for itself.
+
+`SS` below means `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/session_state.py --root .`
+and `<id>` means this session's id. An unrecognized flag is an error: report
+it and stop before planning.
 
 ## Flags
 
-| Flag | Description |
-|------|-------------|
-| `<ticket>` | optional ticket/issue identifier |
-| `--worktree` / `--no-worktree` | create an isolated git worktree (default: `--worktree` if a ticket is given, else `--no-worktree`) |
-| `--goal=<text>` | session goal, recorded verbatim, no paraphrase |
-| `--plan` / `--no-plan` | enter native plan mode after scoping (default: `--plan`) |
+| Flag | Default | Effect |
+|---|---|---|
+| `<ticket>` | — | ticket or issue identifier |
+| `--worktree` / `--no-worktree` | `--worktree` when a ticket is given | create an isolated git worktree |
+| `--goal=<text>` | — | session goal, recorded verbatim, never paraphrased |
+| `--plan` / `--no-plan` | `--plan` | enter native plan mode at handoff |
 
-Requires a `SessionStart` hook (`skills/start/hooks/session_start.py`,
-matcher `startup|resume|clear`) in `.claude/settings.json` to auto-trigger —
-add via `update-config` if missing; without it, `/start` still works typed
-manually.
+## The machine
+
+One call lays out the queue, then each phase is claimed and reported:
+
+```bash
+SS plan --session <id> --flow start          # add --skip worktree for --no-worktree
+SS next --session <id>                       # prints NEXT=<phase>
+SS complete --session <id> --phase <phase> --status passed|skipped [--detail "..."]
+```
+
+`plan` auto-skips `worktree` when `.claude/worktree.json` already exists —
+that is the inherit path, and it needs no separate branch in this document.
+`next` refuses to hand out a phase until the previous one is reported, so the
+order below is the only order that can happen. Run `next` between every
+phase; never assume what it will say.
+
+## Phases
+
+### `scope` — establish the ticket
+Use `<ticket>` if given. Otherwise read `SS status --session <id>`: if
+`worktree.ticket` or `session_context.ticket` is set, adopt it silently. Only
+with no ticket from any source, ask once via `AskUserQuestion`.
+
+Fetch details through the Atlassian MCP — `getJiraIssue` for a key,
+`searchJiraIssuesUsingJql` for a name. Delegate the fetch and the summary to
+`dispatch`; it is self-contained lookup work and does not belong in this
+context. If the fetch fails, ask the user to paste the details rather than
+inventing them. Complete with the ticket key as `--detail`.
+
+### `worktree` — branch and isolate
+Pre-flight, then ask the machine for the names:
+
+```bash
+git rev-parse --show-toplevel && git fetch origin
+SS branch-plan --ticket <T> --type "<issue type>" --summary "<ticket summary>"
+```
+
+That prints `BASE`, `BASE_CANDIDATES`, `BASE_AMBIGUOUS`, `BRANCH` and
+`WORKTREE_PATH`. Take `BASE` as given when `BASE_AMBIGUOUS=0`; otherwise ask
+once via `AskUserQuestion`, offering each of `BASE_CANDIDATES` plus an
+"other" option, and re-run nothing. `BRANCH` and `WORKTREE_PATH` are the
+machine's to decide — do not rename them.
+
+```bash
+git worktree add <WORKTREE_PATH> -b <BRANCH> <BASE>
+SS --root <WORKTREE_PATH> worktree-init --ticket <T> --summary "<s>" --base <BASE> --branch <BRANCH>
+```
+
+Then `cd` into the new worktree. Every later `SS` call uses it as `--root`.
+
+### `goal` — one line, recorded once
+`--goal` verbatim when given. Otherwise run `SS goal --session <id>`: the
+session-context plugin's intake question usually already recorded one, and
+that is the goal — do not re-ask. With neither, derive one line from the
+ticket.
+
+The session-context plugin owns the goal. Record it there, not here:
+
+- Invoke the `session-context:session` skill with `goal <text>` when the goal
+  is new or has changed.
+- `SESSION_CONTEXT=absent` means the plugin is not installed. Skip the call
+  and complete the phase with the goal as `--detail`; nothing downstream
+  depends on it.
+
+A goal covering more than one concrete outcome is too broad — ask the user to
+narrow it before completing this phase. Never start open-ended.
+
+### `handoff` — plan or stop
+Report the scope in four lines: ticket, branch, base, goal. Name any sibling
+sessions from `SS status` under `siblings`. Then call `EnterPlanMode` under
+`--plan`, or stop under `--no-plan`.
 
 ## State
 
-Both written via `python3 skills/done/scripts/session_log.py`:
-- `.claude/worktree.json` — ticket, Jira summary, base branch, branch name;
-  written once per worktree, shared by every session in it.
-- `.claude/sessions/<session_id>.json` — one per Claude Code session
-  (`session_id` from the hook payload), so concurrent sessions in the same
-  worktree never overwrite each other's goal/status; `/done` reads and
-  updates this same file.
+- `.claude/worktree.json` — ticket, summary, base, branch. Written once per
+  worktree, shared by every session in it.
+- `.claude/sessions/<id>.json` — this session's flow and phase statuses.
+- Goal and outcome live in the session-context plugin, which is also the only
+  thing that posts either to Langfuse. This skill reads them and never writes
+  a competing copy.
 
-## Workflow
+## Related
 
-1. **Determine path.** Compare `git rev-parse --git-common-dir` vs
-   `--git-dir`; if they differ this is a linked worktree. Worktree +
-   `.claude/worktree.json` present → step 2. Otherwise → step 3. The
-   `SessionStart` hook, when it fires this, already made this determination
-   plus a sibling-session summary — use that instead of re-deriving it.
-
-2. **Inherit.** Load `.claude/worktree.json`; print ticket, branch, base,
-   and in-progress siblings (hook context, or `session_log.py siblings
-   --session <id>`). Goal: `--goal` verbatim if given, else the ticket's
-   original goal unless this session is a narrower continuation — infer
-   from context, ask only if genuinely ambiguous. Go to step 5.
-
-3. **Get the ticket.** Use `<ticket>` if given, else ask via
-   `AskUserQuestion`. Fetch details via Atlassian MCP (`getJiraIssue` for a
-   key, `searchJiraIssuesUsingJql` for a name); if the fetch fails, ask the
-   user to paste details rather than inventing them.
-
-4. **Resolve base, branch, worktree.** Pre-flight: confirm the repo via
-   `git rev-parse --show-toplevel`, then `git fetch origin` first. Base:
-   last two `origin/rel/*`-style branches by version — the one clear match
-   silently, else ask with an "other" option. Branch prefix from issue type
-   (Bug/Defect → `fix/`, Story/Task/Improvement → `ft/`); reuse the repo's
-   own recent naming template if evident, else `git-conventions`'s
-   `feature/TICKET-123-slug`. If `--worktree` is effective: `git worktree
-   add ../<repo-basename>__<ticket-lower> -b <branch> <base>` (mirrors
-   `/stack`'s `../wt-stack-<n>`), then `cd` into it, and write
-   `.claude/worktree.json`:
-   ```bash
-   session_log.py --root . worktree-init --ticket <T> --summary "<s>" --base <base> --branch <branch>
-   ```
-
-5. **Scope the goal and write the session file.** `--goal` verbatim if
-   given, else derive one line from the ticket; if it covers more than one
-   concrete outcome, ask the user to narrow it — never start open-ended.
-   ```bash
-   session_log.py --root . start --session <id> --goal "<goal>"
-   ```
-
-6. **Enter plan mode.** If `--plan` is effective, call `EnterPlanMode`; if
-   `--no-plan`, stop here.
-
-`/done` closes the session this skill opens; `/stack` shares its worktree
-naming pattern.
+`/done` closes what this opens, `/trash` abandons it, and `/stack` shares the
+worktree naming pattern.

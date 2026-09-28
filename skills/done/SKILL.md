@@ -1,94 +1,150 @@
 ---
 name: done
-description: Close out a session — code review, verifier gate, commit, create or update the PR, record the session outcome, nudge a context compaction. Flag-driven; supports --review/--no-review, --validate/--no-validate, --pr/--no-pr, --dry-run.
+description: Close out a session as a fixed phase queue — review, verifier gate, commit, PR, outcome — over session_state.py, which sizes the diff and decides which gates it has earned. Invoke as `/done [--review] [--no-review] [--validate] [--no-validate] [--no-pr] [--dry-run]`.
 category: process
 model: sonnet
-effort: medium
+effort: low
 triggers:
   - done
   - wrap and ship
   - close out ticket
   - finish and PR
   - ship this
-  - dry run close out
 ---
 
 # Done
 
-> **Purpose:** Wrap up a unit of work: review, validate, commit, create/update the PR, record the outcome, nudge compaction — driven entirely by flags given at invocation.
-> **Usage:** `/done [--review|--no-review] [--validate|--no-validate] [--pr|--no-pr] [--dry-run]`
+Ships a unit of work: review, validate, commit, PR, record. The phase order
+is fixed by the machine, not by this document — `/done` cannot commit before
+validating or record before committing, because `complete` rejects any phase
+that is not the running head.
+
+`SS` below means `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/session_state.py --root .`
+and `<id>` means this session's id. An unrecognized flag is an error: report
+it and stop before planning.
 
 ## Flags
 
 | Flag | Default | Effect |
 |---|---|---|
-| `--review` / `--no-review` | `--review` | Run the native `/code-review` gate against the current diff |
-| `--validate` / `--no-validate` | `--validate` | Delegate to the `verifier` subagent (fallback `general-purpose`) to run tests/lint/typecheck/build |
-| `--pr` / `--no-pr` | `--pr` | Create or update the PR for this branch |
-| `--dry-run` | off | Report what each phase would do; no commits, no pushes, no PR writes |
+| `--no-review` | off | skip the `/code-review` gate |
+| `--review` | off | run it even on a diff too small to have earned it |
+| `--no-validate` | off | skip the `verifier` gate |
+| `--validate` | off | run it even on a documentation-only diff |
+| `--no-pr` | off | skip creating or updating the PR |
+| `--dry-run` | off | report what each phase would do; no commit, push, or PR write |
 
-All flags resolve once at invocation — `/done` never asks mid-run which gates to run. An unrecognized flag is reported as an error and the run stops before Phase 0.
+## The machine
 
-## Session State (optional)
+```bash
+SS plan --session <id> --flow done [--skip review|validate|publish] [--force review|validate]
+SS next --session <id>
+SS complete --session <id> --phase <phase> --status passed|skipped|failed [--detail "..."]
+```
 
-`/done` reads, but doesn't require, two files `/start` writes. Every phase below runs the same with or without them — `/done` works standalone on any branch when `/start` never ran.
+`plan` measures the diff and decides the skips itself, so nothing below
+re-checks them. It skips `validate` when `last_validated_sha` already matches
+the exact current tree, `publish` when there is no `.claude/worktree.json`,
+and every working phase when the tree is clean with no commits ahead of base.
 
-- `.claude/sessions/<session_id>.json` — `last_validated_sha`, read in Phase 2 to skip re-validation when it already matches the current code; `status` and outcome fields, written in Phase 5.
-- `.claude/worktree.json` — presence gates Phase 4 (PR): absent means this branch was never scoped to a dedicated worktree by `/start`, so Phase 4 is skipped with that reason reported.
+It also sizes the work and hands out only the gates that size has earned: a
+`trivial` diff gets no review, and a `docs` diff gets neither review nor
+validation, because neither gate can find anything there that the diff itself
+does not already show. Class boundaries are `DONE_DIFF_TRIVIAL_LINES` (10),
+`DONE_DIFF_SMALL_LINES` (80) and `DONE_DIFF_MODERATE_LINES` (400) lines of
+churn; `DONE_REVIEW_ALWAYS=1` and `DONE_VALIDATE_ALWAYS=1` disable the
+discretion outright.
+
+Read `plan`'s output — a phase already marked `skipped` is not yours to run,
+and the `DIFF_*` and `REVIEW_LEVEL` lines beneath the queue are the inputs
+the phases below use. `next` reprints them for the phase it hands out, so no
+phase has to re-derive its own parameters.
+
+A phase reported `failed` blocks the flow: `next` and `complete` both refuse
+until the flow is re-planned with `--restart` or abandoned with `abort`. Stop
+the run there and report why. Once the cause is fixed, a later `/done`
+re-plans, and the phases that already passed are re-derived from the tree —
+`validate` in particular stays skipped while the code is unchanged.
 
 ## Phases
 
-### Phase 0: Assess State
+### `review`
+`next` prints `REVIEW_LEVEL` and `REVIEW_TARGET` for this phase. Run
+`/code-review <REVIEW_LEVEL> <REVIEW_TARGET>` — the level is the machine's,
+not yours to raise or lower. Fix critical findings — unsafe types, security
+anti-patterns, missing boundary validation — before completing. Warnings may
+be documented and deferred. Complete with the finding count as `--detail`.
+
+### `validate`
+Dispatch the `verifier` subagent, falling back to `general-purpose`, to run
+the project's test, lint, typecheck, and build commands. Read its raw output
+before treating the gate as passed; a pass/fail summary is not evidence.
+Never run these in this agent's own shell.
+
+On `passed` the machine records the tree fingerprint, so a second `/done` on
+unchanged code skips this phase automatically.
+
+### `commit`
+Invoke `/commit`. Its approval gate is never bypassed by committing directly
+here. Under `--dry-run`, report what would be committed, complete this phase
+as `skipped` with `dry-run` as the detail, and let `plan`'s remaining phases
+run in report-only form.
+
+### `publish`
+`next` prints this phase's parameters — `BRANCH`, `BASE`, `TICKET`,
+`NEEDS_PUSH`, `PR_ACTION`, and `PR_NUMBER` when one exists. Push when
+`NEEDS_PUSH=1`, then follow `PR_ACTION`: `create` runs `gh pr create --draft`,
+because `/done` is a work-in-progress checkpoint and not a merge signal;
+`update` runs `gh pr edit <PR_NUMBER>`, rewriting the description fresh rather
+than appending. Do not run `gh pr view` to re-derive any of this.
+
+Title is `[component]: description [TICKETS]`. Body: `## Summary` is one
+prose paragraph in plain language, never a jargon dump; `## What changed`
+lists up to five outcome bullets and never file or variable names;
+`## Test Plan` and `## Security` appear only when non-obvious; ticket links
+come last. Use tickets already known from `SS status`; omit the section
+rather than asking. On update, re-derive `## Summary` for the branch's
+current state and add bullets only for genuinely new behavior — a PR
+description is not a changelog. Template and worked example:
+`references/pr-body.md`.
+
+Delegate the body draft to `dispatch` when `DIFF_CLASS` is `large`; it is
+self-contained writing work.
+
+### `record`
+The session-context plugin owns the outcome. Invoke the
+`session-context:session` skill with `end` so it collects the user's rating,
+writes the overview, and posts to Langfuse. Then:
+
 ```bash
-MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo main)
-git branch --show-current; git status --short; git log --oneline $MAIN..HEAD
+SS complete --session <id> --phase record --status passed --detail "<one-line outcome>"
 ```
-No uncommitted changes and no commits ahead of `$MAIN` → report "nothing to close out" and skip to Phase 5.
 
-### Phase 1: Review (`--review`)
-Run `/code-review` against the current diff. Fix critical findings (unsafe types, security anti-patterns, missing boundary validation) before continuing; warnings can be documented and deferred. `--no-review` skips straight to Phase 2, noted in the final report.
+That marks the session done and prints its local cost report. If the plugin
+is not installed, the `SS complete` call alone is the whole phase. Under
+`--dry-run`, complete as `skipped`. A `RETRO_SUGGESTED=1` line means the
+session cost more than `SESSION_COST_RETRO_THRESHOLD_USD`; offer `/retro`
+via `AskUserQuestion` when it appears, and never run it unasked.
 
-### Phase 2: Validate (`--validate`)
-Compare `last_validated_sha` (from `.claude/sessions/<id>.json`, if present) against current `HEAD` + `git diff HEAD`. A match means this exact code already passed validation this session — skip silently to Phase 3. Otherwise dispatch the `verifier` subagent (fall back to `general-purpose` if unavailable) to run the project's test, lint, typecheck, and build commands, and read its raw command output — not just a pass/fail summary — before treating this gate as passed. `--no-validate` skips the gate, noted in the final report.
-
-### Phase 3: Commit
-Invoke `/commit`. Its approval gate is never bypassed by committing directly here. Under `--dry-run`, report what would be committed and stop — no commit, no push, no PR write.
-
-### Phase 4: PR (`--pr`)
-```bash
-test -f .claude/worktree.json && echo present || echo absent
-gh pr view --json number,url,title,state 2>/dev/null
-```
-No `.claude/worktree.json` → skip this phase, report why. `--no-pr` → skip this phase, report skipped by flag.
-
-Otherwise: push, then —
-- **No PR exists** → `gh pr create --draft` (drafted — `/done` is a work-in-progress checkpoint, not a merge signal).
-- **PR exists** → `gh pr edit`, rewriting the description fresh (never appended).
-
-Use tickets already known from the session or the user's request; if none is known, omit the ticket section rather than asking. Title: `[component]: description [TICKETS]`. Body: `## Summary` is one prose paragraph in plain language, never a jargon dump; `## What changed` lists up to 5 outcome bullets, never file or variable names; `## Test Plan`/`## Security` appear only when non-obvious; ticket links come last. On update, re-derive `## Summary` for the branch's current state and add bullets only for genuinely new behavior — never let the description accumulate into a changelog. Full title/body template and a worked example: `references/pr-body.md`.
-
-### Phase 5: Session Bookkeeping
-```bash
-python3 skills/done/scripts/session_log.py --root . done --session <id> --summary "<one-line outcome>"
-```
-Marks `status: "done"` in `.claude/sessions/<id>.json`, best-effort posts Langfuse scores (`session_outcome` 9), and prints the session's local cost report. No prior session file → the script backfills one (`backfilled: true`) instead of failing. Under `--dry-run`, skip this write and report what it would record.
-
-### Phase 6: Compaction Nudge
-Requires the `UserPromptSubmit` hook (`skills/done/hooks/user_prompt_submit.py`) registered via the `update-config` skill. Once registered, the next user message in this session arrives with a note to run `/compact` first — advisory only; there's no mechanism to force it.
+With `hooks/user_prompt_submit.py` registered, the next prompt in this
+session arrives asking for a `/compact` first. Advisory only — nothing can
+force it.
 
 ## Output
 
 ```markdown
-## Close-out Summary
-### Review — 0 critical issues (or: skipped by flag)
-### Validate — verifier passed (or: last_validated_sha matched, or: skipped by flag)
-### Commit — `feat: add data export` (SHA abc1234) (or: dry-run, not committed)
-### PR — created draft #42 / updated #42 (or: skipped — reason)
-### Session — cost $0.42, session_outcome 9
+## Close-out
+- Diff — 210 lines across 7 files, moderate
+- Review — medium, 0 critical (or: skipped, <reason from the queue>)
+- Validate — verifier passed (or: skipped, tree already validated)
+- Commit — `feat: add data export` abc1234
+- PR — draft #42 created (or: skipped, no worktree.json)
+- Session — done, $0.42
 ```
 
-## Related Skills
+Quote the machine's own skip reasons rather than inventing wording for them.
 
-- `/start` — opens the session this skill closes and writes the state files Phase 2/4 read.
-- `/code-review` — Phase 1.
-- `/commit` — Phase 3, owns its own approval gate.
+## Related
+
+`/start` opens the session and writes the worktree state `publish` reads;
+`/trash` is the abandon counterpart; `/commit` owns its own approval gate.
