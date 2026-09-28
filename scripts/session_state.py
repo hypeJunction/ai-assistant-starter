@@ -574,6 +574,12 @@ def session_cost(root, session_id):
 
     Deduplicates on message.id: one assistant message spans several JSONL lines,
     one per content block, and every line repeats the same usage object.
+
+    Claude Code itself appends a `cost-state` event to the transcript with a
+    running `totalCostUSD` that already accounts for every model and subagent
+    call — the same figure the statusline reads via the hook payload's
+    `cost.total_cost_usd`. That figure is authoritative; the RATES-based
+    estimate below only fills in for older transcripts that never got one.
     """
     path = transcript_path(root, session_id)
     if not os.path.isfile(path):
@@ -582,6 +588,7 @@ def session_cost(root, session_id):
     totals = collections.Counter()
     cost = 0.0
     seen = set()
+    authoritative_cost = None
     with open(path) as fh:
         for line in fh:
             line = line.strip()
@@ -591,6 +598,13 @@ def session_cost(root, session_id):
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
+
+            if event.get("type") == "cost-state":
+                total = event.get("totalCostUSD")
+                if isinstance(total, (int, float)):
+                    authoritative_cost = total
+                continue
+
             if event.get("type") != "assistant" or event.get("isSidechain"):
                 continue
             message = event.get("message") or {}
@@ -629,7 +643,8 @@ def session_cost(root, session_id):
                          + read / 1e6 * base_in * 0.1
                          + out / 1e6 * out_rate)
 
-    return {"cost_usd": round(cost, 4), "messages": len(seen),
+    cost_usd = round(authoritative_cost, 4) if authoritative_cost is not None else round(cost, 4)
+    return {"cost_usd": cost_usd, "messages": len(seen),
             "input": totals["input"], "output": totals["output"],
             "cache_read": totals["cache_read"], "cache_write": totals["cache_write"]}
 
