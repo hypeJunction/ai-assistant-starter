@@ -1,10 +1,10 @@
 # Cost Guardrail
 
-Runtime enforcement hook that compares the historical median cost of an imminent Agent (subagent) spawn's requested model tier — or a Bash call — against the cheapest tracked tier's median, using cost-audit-derived baselines, and blocks or warns when the ratio is disproportionate. Wired into Agent and Bash tool calls via `plugins/ai-assistant-starter/hooks/hooks.json` — not a Claude-invoked skill.
+Runtime enforcement hook that compares the historical median cost of an imminent Agent (subagent) spawn's requested model tier — or a Bash call — against the cheapest tracked tier's median, using `/retro`-derived baselines, and blocks or warns when the ratio is disproportionate. Wired into Agent and Bash tool calls via `plugins/ai-assistant-starter/hooks/hooks.json` — not a Claude-invoked skill.
 
 Runtime `PreToolUse` hook for Claude Code. Compares the model tier requested
 by an `Agent` (subagent) spawn — or, secondarily, `Bash` calls — against
-historical cost baselines mined from Langfuse trace data by `cost-audit`'s
+historical cost baselines mined from Langfuse trace data by `/retro`'s
 `build_cost_baselines.py`, and warns or blocks when the requested tier's
 historical cost is disproportionate.
 
@@ -63,8 +63,8 @@ Add to your Claude Code settings (`~/.claude/settings.json` or project
 ```
 
 Install via `/apply-template`'s opt-in hook-install step, or add this
-snippet by hand — see `docs/README-security-scripts.md` for what running
-this hook script does and doesn't do.
+snippet by hand — see `skills/apply-template/assets/readmes/README-security-scripts.md`
+for what running this hook script does and doesn't do.
 
 ## Refreshing the baseline
 
@@ -72,12 +72,12 @@ This hook only reads `.claude/cost-audit/cost_baselines.json` — it never
 calls Langfuse itself. That file is produced by:
 
 ```bash
-python3 skills/cost-audit/references/build_cost_baselines.py --out .claude/cost-audit/cost_baselines.json
+python3 skills/retro/references/build_cost_baselines.py --out .claude/cost-audit/cost_baselines.json
 ```
 
-which needs the same Langfuse credentials as the rest of `/cost-audit`. This
-is a **manual, credentialed step** — see `/cost-audit`'s "Continuous baseline
-refresh" section for the recommended weekly reminder cadence via `/schedule`.
+which needs the same Langfuse credentials as `/retro`'s `--cost` source. This
+is a **manual, credentialed step** — set up a recurring reminder via
+`/schedule` if you want it refreshed automatically.
 The hook is harmless (fails open) before this file exists; it just won't
 have anything to check against yet.
 

@@ -68,8 +68,8 @@ are concatenated into one `additionalContext` string — neither is dropped.
 
 ## Context Ballast Advisory (fourth, independent axis)
 
-The live counterpart to `/cost-audit`'s `prompt_context_mismatch` and
-`/session-retro`'s `prompt_context_outliers` — same signal (a short new
+The live counterpart to `/retro`'s `prompt_context_mismatch` and
+`prompt_context_outliers` signals — same signal (a short new
 prompt riding on a disproportionately large paid context), checked at submit
 time instead of after the fact. Runs independently of task class and pivot;
 any of the four axes can fire together, and their `additionalContext`
@@ -224,8 +224,8 @@ both hooks together), or add this snippet by hand.
 | Env var | Default | Meaning |
 |---|---|---|
 | `PROMPT_CONTEXT_ROUTER_EXTREME_MODE` | `enforce` | `enforce` denies the first `extreme`-classified prompt per session (then downgrades to advisory); `warn-only` never denies, always advisory-only |
-| `PROMPT_CONTEXT_ROUTER_BALLAST_FACTOR` | `5.0` | Min `context_tokens / prompt_est_tokens` ratio to trigger the context ballast advisory — same default as `/cost-audit`'s `--prompt-context-factor` |
-| `PROMPT_CONTEXT_ROUTER_BALLAST_MIN_TOKENS` | `20000` | Min accumulated context tokens (from the last main-loop assistant message) for a prompt to be eligible for the ballast advisory — same default as `/cost-audit`'s `--prompt-context-min-tokens` |
+| `PROMPT_CONTEXT_ROUTER_BALLAST_FACTOR` | `5.0` | Min `context_tokens / prompt_est_tokens` ratio to trigger the context ballast advisory — same default as `/retro`'s `--prompt-context-factor` |
+| `PROMPT_CONTEXT_ROUTER_BALLAST_MIN_TOKENS` | `20000` | Min accumulated context tokens (from the last main-loop assistant message) for a prompt to be eligible for the ballast advisory — same default as `/retro`'s `--prompt-context-min-tokens` |
 | `PROMPT_CONTEXT_ROUTER_PIVOT_CONTEXT_MIN_TOKENS` | `20000` | Min accumulated context tokens for a pivot to also get the pivot+ballast cross-reference note, independent of the ratio-based ballast check |
 | `PROMPT_CONTEXT_ROUTER_CACHE_TTL_SECONDS` | `300` | Assumed cache TTL in seconds; elapsed time since the last main-loop assistant message beyond this triggers the TTL-miss advisory. Set to `3600` for extended-cache (1hr) sessions |
 | `PROMPT_CONTEXT_ROUTER_CACHE_TTL_MIN_TOKENS` | `20000` | Min accumulated context tokens for the TTL-miss advisory to be worth surfacing |

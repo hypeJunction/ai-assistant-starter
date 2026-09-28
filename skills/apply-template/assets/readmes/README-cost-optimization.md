@@ -34,8 +34,8 @@ window) and expensive-call loops (the same tool called repeatedly with
 near-identical or oversized input). See
 [ai-assistant-starter/hooks/context-circuit-breaker/README.md](https://github.com/hypefi/ai-assistant-starter/blob/main/hooks/context-circuit-breaker/README.md) for the exact thresholds and what
 it does and doesn't do. This is a live, per-session warning layer,
-complementary to the after-the-fact analysis that `cost-audit` and
-`session-retro` already provide from trace/transcript data.
+complementary to the after-the-fact analysis that `/retro` already
+provides from trace/transcript data.
 
 ## Cost-saving env vars
 
@@ -54,9 +54,9 @@ regardless of this setting).
 `/apply-template` offers a second hook the same way, as Step 5.6:
 `cost-guardrail`, a `PreToolUse` hook (matched on `Agent` and `Bash`) that
 compares a requested subagent model tier against historical cost baselines
-`cost-audit` mines from Langfuse (`.claude/cost-audit/cost_baselines.json`),
+`/retro` mines from Langfuse (`.claude/cost-audit/cost_baselines.json`),
 and warns (default `warn-only`) or blocks (`enforce`) when the requested
 tier's historical median cost is a large multiple of the cheapest tracked
 tier's. It fails open until that baseline file exists, so installing it
-before running `/cost-audit`'s baseline-refresh step is harmless. See
+before running `/retro`'s baseline-refresh step is harmless. See
 [ai-assistant-starter/hooks/cost-guardrail/README.md](https://github.com/hypefi/ai-assistant-starter/blob/main/hooks/cost-guardrail/README.md) for configuration and thresholds.

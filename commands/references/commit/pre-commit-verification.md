@@ -122,6 +122,3 @@ Suggest stash when:
 - The user asks to commit specific files but has other modifications
 - Switching to a different task mid-stream
 
-## See Also
-
-- [Task Decomposition](../../implement/references/task-decomposition.md) — Evidence-before-claims pattern and rationalization prevention during implementation

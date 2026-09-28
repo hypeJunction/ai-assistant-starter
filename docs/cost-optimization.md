@@ -69,7 +69,7 @@ behavior.
 
 `DISABLE_TELEMETRY` only turns off Anthropic's own internal usage telemetry —
 it's independent of OpenTelemetry export configuration, so it does not affect
-a Langfuse-based tracing setup (what `cost-audit`/`cost-guardrail` read from).
+a Langfuse-based tracing setup (what `/retro`/`cost-guardrail` read from).
 
 ### 1. Command-level filtering (biggest win on repetitive shell output)
 
@@ -303,8 +303,7 @@ block — once it sees 5+ `Agent`/`Task` spawns or 4+ near-identical/oversized
 calls to the same tool within a 5-minute window. It's installed via
 `/apply-template`'s Step 5.5 as an explicit opt-in, and is complementary to
 this doc's other levers: it catches the pattern live, in-session, where
-`cost-audit`/`session-retro` only see it after the fact in trace or
-transcript data.
+`/retro` only sees it after the fact in trace or transcript data.
 
 ### 5. Historical cost baselines (gates disproportionate spawns)
 
@@ -312,7 +311,7 @@ The circuit breaker above watches call *shape* (fan-out, repeats) — it has
 no notion of dollars. `ai-assistant-starter`'s `cost-guardrail` skill closes
 that gap: it wires a `PreToolUse` hook, matched on `Agent` and `Bash`, that
 compares a requested subagent model tier against historical cost baselines
-`cost-audit` mines from Langfuse trace data (`.claude/cost-audit/cost_baselines.json`,
+`/retro` mines from Langfuse trace data (`.claude/cost-audit/cost_baselines.json`,
 refreshed by `build_cost_baselines.py`), and warns (default) or blocks when
 the requested tier's historical median cost is a large multiple of the
 cheapest tracked tier's. It fails open whenever that baseline is missing,
@@ -321,13 +320,13 @@ before a baseline exists. Like the circuit breaker, it's installed via
 `/apply-template`'s opt-in Step 5.6, uses the same `hookSpecificOutput`
 protocol, and the baseline file itself is refreshed only manually (a
 scheduled job may remind, never run the refresh unattended — see
-`cost-audit`'s "Continuous Baseline Refresh" section).
+`hooks/cost-guardrail/README.md`'s "Refreshing the baseline" section).
 
 A scheduled/cron loop — the same prompt re-run on an interval — has its own
 failure mode the baselines above don't catch: it can silently lose the
 long-lived cache it was relying on partway through a run, then keep paying
 full context-rebuild cost on every later cycle with nothing in the shape of
-the call looking abnormal on its own. `cost-audit`'s
+the call looking abnormal on its own. `/retro`'s
 `references/langfuse_queries.py automation_drift` command detects this by
 comparing a session's cycles against each other, flagging a cache-write
 share that was flat and low and then jumps and stays up, and separately a
@@ -340,7 +339,7 @@ cycles against each other. A separate, cross-session question is whether a
 session's very *first* model call starts from a warm cache at all, or is
 forced to rebuild the system-prompt prefix from scratch because a
 `CLAUDE.md`/`SKILL.md` edit landed between the previous session and this
-one. `cost-audit`'s `references/boot_cache_health.py` measures this
+one. `/retro`'s `references/boot_cache_health.py` measures this
 directly from local transcripts (no Langfuse needed) and buckets sessions by
 whether they booted shortly after such an edit, reporting the cache-miss
 rate and dollar cost in each bucket. Whether an edit to a cache-prefix file

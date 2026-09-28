@@ -53,13 +53,13 @@ detection need visibility across tool types, not just one.
   hook only ever adds a warning, it cannot fail closed or interrupt a call.
 - **Not a cost tracker.** It has no notion of tokens or dollars, only call
   counts and input size as a proxy. For actual post-hoc cost analysis, use
-  `cost-audit` or `session-retro`, which read real trace/transcript data.
+  `/retro`, which reads real trace/transcript data.
 - **Session-scoped only.** The rolling window resets when the session id
   changes; it does not track patterns across sessions.
 
 ## Thresholds
 
-Constants at the top of `references/hook.js` (`WINDOW_MS`,
+Constants at the top of `hook.js` (`WINDOW_MS`,
 `FANOUT_THRESHOLD`, `REPEAT_THRESHOLD`, `LARGE_INPUT_CHARS`). Adjust them
 directly in the file if a project's normal workload trips the warning too
 often or too rarely — there is no separate config file by design, to keep
