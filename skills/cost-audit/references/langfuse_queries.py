@@ -74,11 +74,14 @@ USAGE_CACHE_WRITE = "cache_creation_input_tokens"
 
 # Every Anthropic rate is a fixed multiple of that model's base input rate:
 #   fresh input 1x | 5-min cache write 1.25x | 1-hour cache write 2x
-#   cache read 0.1x | output 5x
-# Expressing cost in "base-input-equivalents" (BIE) therefore gives token-class cost
-# SHARES that are identical for every model and survive any price change — which
-# matters because `model` is null on a lot of instrumentation. Absolute dollars still
-# need RATES below; shares do not.
+#   cache read 0.1x (standard) | output 5x
+# Three current exceptions to the 0.1x cache-read multiplier — Opus 5.5 (0.05x) and
+# Fable/Mythos 5.1 (0.025x) — are tracked in CACHE_READ_MULTIPLIER_OVERRIDE below and
+# deliberately NOT folded into this table: BIE_MULTIPLIER exists to make token-class
+# cost SHARES identical across every model (so they survive `model` being null on a lot
+# of instrumentation and any future price change) — a per-model override here would
+# defeat that. Absolute dollars still need RATES/CACHE_READ_MULTIPLIER_OVERRIDE; shares
+# from BIE_MULTIPLIER do not, and are an approximation for those three models.
 BIE_MULTIPLIER = {
     USAGE_FRESH_INPUT: 1.0,
     USAGE_CACHE_WRITE: 1.25,  # assumes the 5-minute TTL; use 2.0 for the 1-hour TTL
@@ -86,19 +89,25 @@ BIE_MULTIPLIER = {
     USAGE_OUTPUT: 5.0,
 }
 
-# Published USD per million tokens (base input, output). Used only by `reconcile`, to
-# assert that Langfuse's recorded `totalCost` actually matches the token counts.
-# NOTE: Opus 4.8 / Opus 5 are $5/$25 — NOT the older $15/$75. Assuming the old rates
-# inflates an estimate 3x. There is also no long-context premium: the 1M window is
-# served at standard rates. Sonnet 5 is $2/$10 — not the older Sonnet-tier $3/$15.
+# Published USD per million tokens (base input, output), confirmed against
+# https://platform.claude.com/docs/en/about-claude/pricing. Used only by `reconcile`,
+# to assert that Langfuse's recorded `totalCost` actually matches the token counts.
+# NOTE: Opus 4.5 through 4.8 and Opus 5 are $5/$25 — NOT the older $15/$75 (that rate
+# is now Opus 4/4.1, retired except on Bedrock/Google Cloud). There is no long-context
+# premium: the 1M window (Claude 4.6+) is served at standard rates. Sonnet 5 is $2/$10
+# — the $2/$10 introductory rate is now the standard price, not a temporary discount.
 # Dated snapshots (e.g. `-20250929`, `-20251001`) are priced identically to their
 # unsuffixed model — add the snapshot ID as its own key rather than assuming the
 # reconcile lookup falls back to a prefix match. Non-Anthropic models (glm-*, kimi-*,
 # routed through a third-party/local provider) are intentionally absent — this table
 # only carries published Anthropic first-party rates.
 RATES = {
+    "claude-opus-5-5": (4.0, 20.0),
     "claude-opus-5": (5.0, 25.0),
     "claude-opus-4-8": (5.0, 25.0),
+    "claude-opus-4-7": (5.0, 25.0),
+    "claude-opus-4-6": (5.0, 25.0),
+    "claude-opus-4-5": (5.0, 25.0),
     "claude-sonnet-5": (2.0, 10.0),
     "claude-sonnet-4-6": (3.0, 15.0),
     "claude-sonnet-4-5": (3.0, 15.0),
@@ -108,6 +117,17 @@ RATES = {
     "claude-fable-5-1": (10.0, 50.0),
     "claude-fable-5": (10.0, 50.0),
     "claude-mythos-5-1": (10.0, 50.0),
+    "claude-mythos-5": (10.0, 50.0),
+}
+
+# Cache-READ (hit) multiplier for the three models that deviate from the 0.1x standard
+# — Opus 5.5 reads at 0.05x base input, Fable/Mythos 5.1 read at 0.025x. Every other
+# model in RATES uses the 0.1x standard applied inline in `cmd_reconcile`. Cache-WRITE
+# multipliers (1.25x 5-min, 2x 1-hour) have no such exceptions across any current model.
+CACHE_READ_MULTIPLIER_OVERRIDE = {
+    "claude-opus-5-5": 0.05,
+    "claude-fable-5-1": 0.025,
+    "claude-mythos-5-1": 0.025,
 }
 
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".pdf")
@@ -776,10 +796,11 @@ def cmd_reconcile(base_url, headers, from_ts, to_ts, **_):
         if rate:
             base_in, out_rate = rate
             usage = data["usage"]
+            cache_read_mult = CACHE_READ_MULTIPLIER_OVERRIDE.get(model, 0.1)
             computed = round(
                 usage[USAGE_FRESH_INPUT] / 1e6 * base_in
                 + usage[USAGE_CACHE_WRITE] / 1e6 * base_in * 1.25
-                + usage[USAGE_CACHE_READ] / 1e6 * base_in * 0.1
+                + usage[USAGE_CACHE_READ] / 1e6 * base_in * cache_read_mult
                 + usage[USAGE_OUTPUT] / 1e6 * out_rate,
                 4,
             )

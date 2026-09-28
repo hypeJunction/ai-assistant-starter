@@ -335,6 +335,20 @@ per-cycle cost that climbs with no matching growth in tool-call count. It's
 not part of the general `all` sweep — run it targeted at a session known to
 be a scheduled loop, or swept across a window to find candidates.
 
+The cache-TTL check above is intra-session — it compares one session's own
+cycles against each other. A separate, cross-session question is whether a
+session's very *first* model call starts from a warm cache at all, or is
+forced to rebuild the system-prompt prefix from scratch because a
+`CLAUDE.md`/`SKILL.md` edit landed between the previous session and this
+one. `cost-audit`'s `references/boot_cache_health.py` measures this
+directly from local transcripts (no Langfuse needed) and buckets sessions by
+whether they booted shortly after such an edit, reporting the cache-miss
+rate and dollar cost in each bucket. Whether an edit to a cache-prefix file
+actually forces the next boot to miss cache is inferred from prompt-caching
+mechanics, not confirmed by Anthropic documentation — treat the bucket
+comparison as the evidence for or against it on your own data, not as a
+given.
+
 ## Suggested `settings.json` skeleton
 
 ```json
