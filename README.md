@@ -18,7 +18,7 @@ every inclusion and removal here.
 
 ## Installation
 
-Skills, the one command, and the three agents are distributed as a single
+Skills, the two commands, and the three agents are distributed as a single
 Claude Code plugin, `ai-assistant-starter`, at `plugins/ai-assistant-starter/`.
 Runtime hooks (see "Runtime Hooks" below) ship alongside them — they're
 plumbing the plugin wires in, not skills. Install by adding this repo as a
@@ -31,7 +31,7 @@ git clone https://github.com/hypefi/ai-assistant-starter.git
 # Register this repo as a plugin marketplace
 claude plugin marketplace add ./ai-assistant-starter
 
-# Install the plugin (installs every skill, the command, and the agents;
+# Install the plugin (installs every skill, both commands, and the agents;
 # there is no per-skill selection)
 claude plugin install ai-assistant-starter
 ```
@@ -103,11 +103,12 @@ question already recorded rather than asking a second time, and `/done` and
 `/trash` hand the outcome to it at their `record` phase. With the plugin
 absent, every phase still runs; only the goal and rating go unrecorded.
 
-## Command
+## Commands
 
 | Command | Purpose |
 |---------|---------|
 | `/commit` | Review the current diff and create one well-formed commit behind a confirmation gate (`--validate`, `--amend`, `--all`, `--no-gate`) |
+| `/pr` | Create or update the PR for the current branch behind a confirmation gate (`--ready`, `--no-gate`, `--dry-run`) |
 
 ## Agents
 

@@ -91,25 +91,11 @@ as `skipped` with `dry-run` as the detail, and let `plan`'s remaining phases
 run in report-only form.
 
 ### `publish`
-`next` prints this phase's parameters — `BRANCH`, `BASE`, `TICKET`,
-`NEEDS_PUSH`, `PR_ACTION`, and `PR_NUMBER` when one exists. Push when
-`NEEDS_PUSH=1`, then follow `PR_ACTION`: `create` runs `gh pr create --draft`,
-because `/done` is a work-in-progress checkpoint and not a merge signal;
-`update` runs `gh pr edit <PR_NUMBER>`, rewriting the description fresh rather
-than appending. Do not run `gh pr view` to re-derive any of this.
-
-Title is `[component]: description [TICKETS]`. Body: `## Summary` is one
-prose paragraph in plain language, never a jargon dump; `## What changed`
-lists up to five outcome bullets and never file or variable names;
-`## Test Plan` and `## Security` appear only when non-obvious; ticket links
-come last. Use tickets already known from `SS status`; omit the section
-rather than asking. On update, re-derive `## Summary` for the branch's
-current state and add bullets only for genuinely new behavior — a PR
-description is not a changelog. Template and worked example:
-`references/pr-body.md`.
-
-Delegate the body draft to `dispatch` when `DIFF_CLASS` is `large`; it is
-self-contained writing work.
+Invoke `/pr`. `/done` is a work-in-progress checkpoint, not a merge signal,
+so let `/pr`'s own default (draft on create) stand rather than passing
+`--ready`. Under `--dry-run`, report what would be created or updated,
+complete this phase as `skipped` with `dry-run` as the detail, and let
+`plan`'s remaining phases run in report-only form.
 
 ### `record`
 The session-context plugin owns the outcome. Invoke the
@@ -147,4 +133,5 @@ Quote the machine's own skip reasons rather than inventing wording for them.
 ## Related
 
 `/start` opens the session and writes the worktree state `publish` reads;
-`/trash` is the abandon counterpart; `/commit` owns its own approval gate.
+`/trash` is the abandon counterpart; `/commit` and `/pr` each own their own
+approval gate.

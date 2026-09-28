@@ -83,8 +83,9 @@ claude plugin install ai-assistant-starter
 ```
 
 There is no per-skill install — `claude plugin install` installs the whole
-plugin: 6 skills, 1 command (`/commit`), 3 agents (`dispatch`, `verifier`,
-`auditor`), and its runtime hooks (`guard` and `prompt-context-router`).
+plugin: 6 skills, 2 commands (`/commit`, `/pr`), 3 agents (`dispatch`,
+`verifier`, `auditor`), and its runtime hooks (`guard` and
+`prompt-context-router`).
 
 ## The Session State Machine
 
@@ -130,9 +131,14 @@ store or competes for those Langfuse scores.
 | `/stack` | Split a large branch into a resumable series of stacked PRs, one worktree per bucket |
 | `/apply-template` | Apply the standardized CLAUDE.md template sections to an existing installation, with opt-in companion READMEs, the `guard`/`prompt-context-router` hooks, and cost-saving settings.json env vars |
 
-The one command, `commands/commit.md` (`/commit`), reviews the current diff
-and creates a commit behind a confirmation gate, with `--validate`,
-`--amend`, `--all`, and `--no-gate` flags.
+Commands live in `commands/`, are symlinked into
+`plugins/ai-assistant-starter/commands/`, and are declared in the plugin
+manifest as `"commands": ["./commands/"]`.
+
+| Command | Purpose |
+|---------|---------|
+| `/commit` | Review the current diff and create a commit behind a confirmation gate, with `--validate`, `--amend`, `--all`, and `--no-gate` flags |
+| `/pr` | Create or update the PR for the current branch behind a confirmation gate, with `--ready`, `--no-gate`, and `--dry-run` flags |
 
 ## Agents
 
@@ -190,6 +196,19 @@ in this file instead.
 1. Create `agents/<name>.md` with frontmatter (`name`, `description`, `tools`, `model`) and a body describing its task, constraints, and report format
 2. Symlink `plugins/ai-assistant-starter/agents/<name>.md` to `../../../agents/<name>.md`
 3. Update the "Agents" tables in both `README.md` and this file
+
+### Adding a new command
+
+1. Create `commands/<name>.md` with frontmatter (`description`,
+   `argument-hint` only — no `name`/`category`/`triggers`, those are
+   skill-only fields) and a body: purpose line, unrecognized-flags-are-an-error
+   line, `## Flags` table, `## Workflow` steps ending in a `**Report.**` step
+2. Symlink `plugins/ai-assistant-starter/commands/<name>.md` to
+   `../../../commands/<name>.md` — no `plugin.json` edit needed, since
+   `"commands": ["./commands/"]` is a directory glob
+3. Add `commands/references/<name>/` if the command needs lengthy support
+   material (templates, conventions)
+4. Update the Commands tables in both `README.md` and this file
 
 ### Adding a new runtime hook
 

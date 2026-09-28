@@ -1,6 +1,6 @@
 # PR Title and Body Template
 
-Used by `/done` Phase 4 for both `gh pr create` and `gh pr edit`. Write for a
+Used by `/pr` for both `gh pr create` and `gh pr edit`. Write for a
 reviewer with no prior context on the problem or the solution.
 
 ## Title
