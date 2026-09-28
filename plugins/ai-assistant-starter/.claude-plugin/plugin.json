@@ -1,9 +1,9 @@
 {
   "name": "ai-assistant-starter",
-  "description": "Reusable AI coding assistant skills: session lifecycle, quality/testing, git/release workflows, background guideline skills, and runtime enforcement hooks.",
-  "version": "0.1.0",
+  "description": "Session lifecycle skills over a deterministic phase machine, a commit command, cost-aware agents, and runtime enforcement hooks.",
+  "version": "0.2.0",
   "author": { "name": "ai-assistant-starter" },
   "skills": ["./skills/"],
   "commands": ["./commands/"],
-  "agents": ["./agents/"]
+  "agents": ["./agents/auditor.md", "./agents/dispatch.md", "./agents/verifier.md"]
 }

@@ -1,17 +1,17 @@
 {
   "name": "ai-assistant-starter",
-  "description": "Reusable AI coding assistant skills, packaged as an installable Claude Code plugin.",
+  "description": "Session lifecycle skills, commands, agents and enforcement hooks, packaged as an installable Claude Code plugin.",
   "owner": {
     "name": "ai-assistant-starter"
   },
   "plugins": [
     {
       "name": "ai-assistant-starter",
-      "description": "Reusable AI coding assistant skills: session lifecycle, quality/testing, git/release workflows, and background guideline/enforcement skills.",
-      "version": "0.1.1",
+      "description": "Session lifecycle skills over a deterministic phase machine, a commit command, cost-aware agents, and runtime enforcement hooks.",
+      "version": "0.2.0",
       "source": "./plugins/ai-assistant-starter",
       "category": "workflow",
-      "tags": ["session", "lifecycle", "planning", "implementation", "validation", "testing", "security", "guidelines"]
+      "tags": ["session", "lifecycle", "worktree", "commit", "cost", "hooks", "agents"]
     }
   ]
 }
