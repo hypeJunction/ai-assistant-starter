@@ -47,6 +47,11 @@ for section in $SECTIONS; do
     $0 == e {p=0}
   ' "$TEMPLATE" > "$WORKDIR/block.$section"
 
+  if grep -qF "$BEGIN" "$MERGED" && ! grep -qF "$END" "$MERGED"; then
+    echo "error: found begin marker for section '$section' in $TARGET without a matching end marker" >&2
+    exit 1
+  fi
+
   if grep -qF "$BEGIN" "$MERGED"; then
     # Replace the existing block between markers in-place.
     awk -v b="$BEGIN" -v e="$END" -v blockfile="$WORKDIR/block.$section" '
@@ -76,6 +81,10 @@ for section in $RETIRED; do
   END="<!-- ai-assistant-starter:end:${section} -->"
 
   grep -qF "$BEGIN" "$MERGED" || continue
+  if ! grep -qF "$END" "$MERGED"; then
+    echo "warning: found begin marker for retired section '$section' without a matching end marker; leaving it untouched" >&2
+    continue
+  fi
 
   awk -v b="$BEGIN" -v e="$END" '
     $0 == b { p=1; next }
