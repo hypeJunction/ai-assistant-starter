@@ -66,6 +66,25 @@ for section in $SECTIONS; do
   mv -- "$WORKDIR/merged.next" "$MERGED"
 done
 
+# Marker names this template no longer ships. Their blocks are removed from the
+# target so a refresh does not leave superseded guidance installed alongside the
+# section that replaced it. Content outside these markers is never touched.
+RETIRED="task-classification delegation-default verification-reporting response-formatting"
+
+for section in $RETIRED; do
+  BEGIN="<!-- ai-assistant-starter:begin:${section} -->"
+  END="<!-- ai-assistant-starter:end:${section} -->"
+
+  grep -qF "$BEGIN" "$MERGED" || continue
+
+  awk -v b="$BEGIN" -v e="$END" '
+    $0 == b { p=1; next }
+    $0 == e { p=0; next }
+    !p { print }
+  ' "$MERGED" > "$WORKDIR/merged.next"
+  mv -- "$WORKDIR/merged.next" "$MERGED"
+done
+
 if [ "$APPLY" != "--apply" ]; then
   echo "--- dry run: diff of $TARGET (no changes written; pass --apply to write) ---"
   diff -u -- "$TARGET" "$MERGED" || true

@@ -1,195 +1,63 @@
 ---
-description: Review changes and create a git commit with user confirmation. Use when work is ready to commit, changes need staging, or the user says "commit".
-argument-hint: "[--files=<paths>|--uncommitted|--staged] [--validate|--no-validate]"
+description: Review changes and create a git commit with a confirmation gate, via `--validate`, `--amend`, `--all`, `--no-gate`. Use when work is ready to commit, changes need staging, or the user says "commit".
+argument-hint: "[--validate] [--amend] [--all] [--no-gate]"
 ---
 
 # Commit
 
-> **Purpose:** Create a clean, well-documented commit
-> **Mode:** Git operations with user confirmation required
-> **Usage:** `/commit [scope flags]`
+Reviews the current diff and creates one well-formed commit. Unrecognized
+flags are an error — report and stop.
 
-## Iron Laws
-
-1. **NEVER COMMIT WITHOUT EXPLICIT APPROVAL** — Valid approval per `ai-assistant-protocol`, plus `commit` as a domain-specific term. Silence, questions, "okay" are NOT approval.
-2. **NEVER COMMIT SECRETS** — .env, credentials, API keys. Scan before staging.
-3. **ONE CONCERN PER COMMIT** — If changes include both a feature and a refactor, suggest splitting into separate commits.
-
-## Constraints
-
-- **Read + git only** — Do not modify source code
-- **Never force push** without explicit request
-- **Never amend commits you didn't create**
-- **Never skip hooks** without explicit request
-
-## Scope Flags
+## Flags
 
 | Flag | Description |
 |------|-------------|
-| `--files=<paths>` | Commit only specified files |
-| `--uncommitted` | Commit all uncommitted changes (default) |
-| `--staged` | Commit only already-staged files |
-| `--validate` | Run `/validate` before committing (Step 4) |
-| `--no-validate` | Skip `/validate` before committing |
+| `--validate` | run the `verifier` gate (typecheck, lint, scoped tests) before committing (default: off) |
+| `--amend` | amend the previous commit instead of creating a new one |
+| `--all` | stage all tracked modifications (`git add -u`) instead of only the changes identified in the digest |
+| `--no-gate` | skip the confirmation prompt (explicit opt-out only) |
 
-> **Note:** Command examples use `npm` as default. Adapt to the project's package manager per `ai-assistant-protocol` — Project Commands.
-
-### Gate Decision
-
-If neither `--validate` nor `--no-validate` was passed, ask once before Step 0 via `AskUserQuestion`:
-
-```markdown
-header: "Validate gate"
-question: "Run /validate (typecheck, lint, scoped tests) before committing?"
-options: "Yes — run /validate first" | "No — commit without validating"
-```
-
-Record the answer as the effective `--validate`/`--no-validate` flag for the rest of this run — do not ask again at Step 4.
-
-## Change Tiers
-
-The commit workflow scales based on the size of changes:
-
-| Tier | Scope | Validation | Suggestion |
-|------|-------|------------|------------|
-| **nano** | 1-2 files, <20 lines | Security scan only | Direct commit |
-| **small** | 2-4 files, <100 lines | Security scan + typecheck | Direct commit |
-| **medium** | 5-10 files, 100-500 lines | Full validation (Step 4) | Commit, suggest push |
-| **large** | 10+ files, 500+ lines | Full validation | Suggest feature branch + PR |
-
-Auto-classify from `git diff --stat`. The user can override ("just commit it").
+Secrets in staged content are blocked by the repo's `PreToolUse` guard hook
+on `git commit` — this workflow does not duplicate that scan.
 
 ## Workflow
 
-### Step 0: Branch Safety
+1. **Branch/state check.** `git status --porcelain` and `git branch
+   --show-current`. Clean tree → report "Nothing to commit" and exit. On
+   `main`/`master`, note it but continue.
 
-```bash
-CURRENT_BRANCH=$(git branch --show-current)
-git status --porcelain
-MAIN=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
-```
+2. **Delegate diff analysis.** Dispatch a subagent to gather the diff
+   (scoped to `--files=<paths>` if given, else all uncommitted or
+   `--staged` changes) and flag mixed concerns (e.g. feature + refactor in
+   the same set of files). Return a digest only — file list with one-line
+   descriptions, stats, mixed-concern flag — not raw diff text.
 
-**If clean working tree (no staged, unstaged, or untracked changes):** Report "Nothing to commit — working tree is clean" and exit.
+3. **Act on the digest.** If mixed concerns are flagged, ask via
+   `AskUserQuestion` whether to split into separate commits — this is a real
+   decision, not a config default. If uncommitted changes exist and intent
+   is otherwise unclear, stage them and ask rather than guessing.
 
-**If on main/master:** Warn and suggest creating a feature branch. **Wait for response.**
+4. **Validate (gated).** If `--validate` is effective, delegate typecheck/
+   lint/scoped-test runs to a `verifier` subagent (fall back to
+   `general-purpose` if unavailable). Require the exact command, exit code,
+   and raw output back; read it before proceeding. A failure stops the
+   commit until resolved or the user overrides.
 
-### Step 1: Delegate Analysis
+5. **Stage.** `--all` → `git add -u` (tracked modifications only, never
+   `-A`/`.`, so untracked files stay out unless named explicitly).
+   Otherwise stage only the files identified in scope/digest, by name.
+   Verify with `git status` that no unintended files were included.
 
-The diff, mixed-concern classification, and security scan are all read-only and don't require the main session's context — dispatch a single subagent (via the `Agent` tool) to gather all three and return a structured digest, rather than pulling the raw diff into the main agent.
+6. **Confirm.** Unless `--no-gate`, show the suggested commit message and
+   require explicit approval (yes/edit/review/cancel) before committing.
+   Silence, questions, or "okay" are not approval.
 
-Give the subagent: the scope paths, the commands below, and instructions to return only the digest format — not raw diff text (except for any grep matches from the security scan, which must be quoted in full).
+7. **Commit.** `git commit -m "[message]"` (or `git commit --amend -m
+   "[message]"` if `--amend`). Never add a `Co-Authored-By` trailer.
 
-```bash
-git diff $MAIN...HEAD -- [scope-paths]
-git diff -- [scope-paths]
-git diff --staged -- [scope-paths]
-
-# Secrets detection — generic assignment patterns
-grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
-  -E "(api[_-]?key|secret|password|token|credential|private[_-]?key)\s*[:=]" [scope-paths]
-
-# Secrets detection — specific high-confidence patterns
-grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" --include="*.yaml" --include="*.yml" --include="*.env*" \
-  -E "(AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----|ghp_[a-zA-Z0-9]{36}|sk-[a-zA-Z0-9]{48}|Bearer [a-zA-Z0-9_.\\-]{20,})" [scope-paths]
-
-# Secrets detection — passwords and tokens in strings
-grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" \
-  -E "(password|passwd|pwd|token|secret)\s*[:=]\s*[\"'][^\"']{8,}" [scope-paths]
-
-# Insecure patterns
-grep -rn --include="*.ts" --include="*.tsx" --include="*.js" \
-  -E "(eval\(|new Function\(|innerHTML\s*=|dangerouslySetInnerHTML|\.exec\(|rejectUnauthorized:\s*false)" [scope-paths]
-```
-
-**Common secret patterns detected by the scan above:**
-
-| Pattern | Example | Risk |
-|---------|---------|------|
-| AWS access key | `AKIA...` (20 chars) | Full AWS account access |
-| Private key header | `-----BEGIN RSA PRIVATE KEY-----` | TLS/SSH compromise |
-| GitHub PAT | `ghp_...` (36 chars) | Repository access |
-| OpenAI API key | `sk-...` (48 chars) | API billing abuse |
-| Bearer token in code | `Bearer eyJ...` | Auth bypass |
-| Password in string | `password = "hunter2"` | Credential leak |
-
-Exclude test files and example/documentation files from blocking — the subagent should flag them as informational only, not as findings.
-
-**Required digest format returned by the subagent:**
-
-```markdown
-## Changes to Commit
-
-**Branch:** `[current branch]`
-
-**Modified:** `path/to/file.ts` — [brief description]
-**Added:** `path/to/new.ts` — [purpose]
-**Deleted:** `path/to/old.ts` — [reason]
-
-**Stats:** X files changed, +Y insertions, -Z deletions
-
-**Out of scope (unstaged):** `path/to/other.ts`, `path/to/another.ts` — not included in this commit
-
-## Mixed-Concern Check
-[None detected, or:]
-- **Feature:** [files related to new behavior]
-- **Refactor:** [files with structural changes only]
-
-## Security Scan
-[Clean, or the specific file/line/pattern for each finding, quoted in full]
-```
-
-**Unstaged changes:** the subagent must leave unstaged changes alone and never run `git add .` / `git add -A` — it only reads, it does not stage.
-
-### Step 2: Act on the Digest
-
-Read the subagent's digest before proceeding.
-
-**Mixed concerns:** If the digest flags mixed concerns, ask the user via `AskUserQuestion`:
-
-```markdown
-These changes appear to mix concerns:
-- **Feature:** [files related to new behavior]
-- **Refactor:** [files with structural changes only]
-
-Split into separate commits? (yes / no)
-```
-
-**Security findings:** **If secrets detected:** **STOP.** Warn the user with the specific file, line number, and secret type. Do NOT proceed to commit.
-**If insecure patterns detected:** Flag for review — ask user to confirm these are intentional before proceeding.
-
-**Re-scan after a secret fix:** If a secret is found and fixed (moved to environment variable, removed, etc.), dispatch a fresh Step 1 analysis subagent to re-scan. Continue until the scan is clean. **Maximum 3 iterations** — if secrets persist after 3 fix-and-rescan cycles, stop and escalate to the user with a summary of remaining issues. Do NOT proceed to Step 4 until the security scan passes with zero findings.
-
-### Step 4: Validate (Gated)
-
-If the effective flag from the Gate Decision (or `--validate` passed on invocation) is set, invoke `/validate` to run quick validation (typecheck, lint, and scoped tests for uncommitted changes). See `commands/references/commit/pre-commit-verification.md` for tier-specific requirements. If `--no-validate` is effective, skip this step silently.
-
-### Step 5: Confirm
-
-Show the suggested commit message, then use `AskUserQuestion` with options **Yes** (commit as-is), **Edit** (revise the message first), **Review** (show the diff again), **Cancel**.
-
-**GATE: Do NOT run `git commit` until user responds with explicit approval.**
-
-### Step 6: Commit
-
-```bash
-git add [scope-paths]  # Stage files explicitly by name — NEVER use -A or .
-git commit -m "[message]"       # or: git commit -s -m "[message]" if git.dco_signoff is configured
-```
-
-**Staging rule:** Only stage files that are part of the intended commit scope. If there are unstaged changes in other files, they must remain unstaged. Verify with `git status` after staging that no unintended files were included.
-
-### Step 7: Report
-
-```markdown
-**Committed:** `abc1234` — [type](scope): [description]
-**Files:** X changed
-
-**Next:** Push? Create PR? Continue working?
-```
+8. **Report.** Committed SHA, message, and file count.
 
 ## Commit Message Format
-
-See `commands/references/commit/commit-conventions.md` for extended formats (breaking changes, reverts, multi-issue references, scope conventions, good/bad examples).
 
 ```
 [type](scope): [short description]
@@ -198,8 +66,6 @@ See `commands/references/commit/commit-conventions.md` for extended formats (bre
 
 [optional footer: references, breaking changes]
 ```
-
-### Types
 
 | Type | Use |
 |------|-----|
@@ -211,38 +77,12 @@ See `commands/references/commit/commit-conventions.md` for extended formats (bre
 | `chore` | Maintenance, dependencies |
 | `perf` | Performance |
 
-### Rules
+- Imperative mood, lowercase after the type/scope prefix, no trailing
+  period, subject ≤50 chars, body wrapped at 72.
+- Banned: "update code", "fix bug", "changes", "misc", "wip", "stuff".
+- `Fixes #123` / `Closes #123` (closes on merge), `Refs #123` (links only).
+  If the branch name encodes a ticket (`git-conventions` naming), add
+  `Refs TICKET-123` automatically — don't ask each commit.
 
-- Imperative mood ("add" not "added")
-- Lowercase after the type/scope prefix (`feat(auth): add login`, not `feat(auth): Add login`) — see `git-conventions` for the full rationale
-- Subject line ≤50 characters; wrap body text at 72 characters per line (not "72 characters total")
-- No period at end of subject
-- Blank line between subject and body
-- Every message answers: **what** changed and **why**
-
-### Banned Messages
-
-"update code", "fix bug", "changes", "misc", "wip", "stuff", "updates"
-
-### Issue References
-
-`Fixes #123` / `Closes #123` (closes on merge) — `Refs #123` (links without closing)
-
-If the current branch name encodes a ticket (per `git-conventions` branch naming, e.g. `feature/TICKET-123-payment-integration`), add `Refs TICKET-123` to the footer automatically — don't ask the user each commit. This mirrors `/pr`'s ticket handling but stays lightweight since a branch spans many commits; `/pr` still asks once per branch in case the ticket wasn't encoded in the branch name.
-
-### Commit Trailers
-
-- **AI Attribution:** If configured, add an AI co-author trailer to commits where AI wrote most of the code. Follow the project's `config.yaml` setting for `git.ai_attribution`. Default: do not add one.
-- **DCO Sign-off:** If the project requires a Developer Certificate of Origin (the convention used by the Linux kernel, Kubernetes, and many other OSS projects), commit with `git commit -s` to add a `Signed-off-by` trailer. Follow the project's `config.yaml` setting for `git.dco_signoff`; do not add unless configured.
-
-## Acceptance Tests
-
-| ID | Type | Prompt / Condition | Expected |
-|----|------|--------------------|----------|
-| CMT-T1 | Positive | "Commit my changes" | Skill triggers |
-| CMT-T2 | Positive | "Save my work" | Skill triggers |
-| CMT-T3 | Positive | "Stage and commit" | Skill triggers |
-| CMT-T4 | Negative | "Push to remote" | Does NOT trigger (git push, not commit) |
-| CMT-T5 | Negative | "Create a PR" | Does NOT trigger (→ /pr) |
-| CMT-T6 | Negative | "Review my changes" | Does NOT trigger (→ /review) |
-| CMT-T7 | Boundary | "Commit and push" | Triggers (commit portion) |
+See `commands/references/commit/commit-conventions.md` for extended formats
+(breaking changes, reverts, multi-issue references, scope conventions).

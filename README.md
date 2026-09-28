@@ -4,20 +4,25 @@ Reusable skills for AI coding assistants, following the [Agent Skills specificat
 
 ## Why This Exists
 
-AI coding assistants work better with structured guidance. This collection provides:
+AI coding assistants have gotten native at the things a starter kit used to
+paper over — plan mode, code review, exploration. What's left to package is
+narrower and sharper:
 
-- **Workflow skills** for common tasks (implement, debug, refactor, commit)
-- **Domain guidelines** for consistent code style across your team
-- **Approval gates** to prevent unintended changes
-- **Background knowledge** auto-loaded when relevant
+- **Session lifecycle** skills (`/start`, `/done`, `/stack`) for scoping and closing out work
+- **Agent definitions** with fixed model tiers for cost-aware delegation, verification, and auditing
+- **Runtime hooks** that enforce mechanical rules for zero tokens instead of prose that's paid for on every turn
+- **Template installation** (`/apply-template`) to carry the underlying conventions into a consumer project's own `CLAUDE.md`
+
+See `CLAUDE.md`'s "What Belongs In This Repo" for the six-point test behind
+every inclusion and removal here.
 
 ## Installation
 
-All 36 skills are distributed as a single Claude Code plugin,
-`ai-assistant-starter`, at `plugins/ai-assistant-starter/`. 5 additional
-harness-level runtime hooks (see "Runtime Hooks" below) ship alongside them —
-they're plumbing the plugin wires in, not skills. Install by adding this repo
-as a marketplace, then installing the plugin:
+Skills, the one command, and the three agents are distributed as a single
+Claude Code plugin, `ai-assistant-starter`, at `plugins/ai-assistant-starter/`.
+Runtime hooks (see "Runtime Hooks" below) ship alongside them — they're
+plumbing the plugin wires in, not skills. Install by adding this repo as a
+marketplace, then installing the plugin:
 
 ```bash
 # Clone the repo (as a sibling of your project, or anywhere on disk)
@@ -26,238 +31,59 @@ git clone https://github.com/hypefi/ai-assistant-starter.git
 # Register this repo as a plugin marketplace
 claude plugin marketplace add ./ai-assistant-starter
 
-# Install the plugin (installs every skill; there is no per-skill selection)
+# Install the plugin (installs every skill, the command, and the agents;
+# there is no per-skill selection)
 claude plugin install ai-assistant-starter
 ```
 
-Installing the plugin also wires up its runtime hooks —
-`branch-protection`, `destructive-command-protection`,
-`context-circuit-breaker`, `cost-guardrail`, and `prompt-context-router` —
-so those protections are active immediately, with no separate setup step.
+Installing the plugin also wires up its runtime hooks — the consolidated
+`guard` `PreToolUse` entrypoint and `prompt-context-router` — so those
+protections are active immediately, with no separate setup step.
 
 Skills become available as `/name` commands as soon as the plugin is
 installed.
 
 ## Skills
 
-## Ideal Cost-Optimized Workflow
-
-This state machine synthesizes the skills above into one cost-aware workflow: classify every task before acting, route mechanical work to the cheapest model, and gate expensive steps (full review, subagent fan-out) behind explicit checks rather than defaults.
-
-```mermaid
-stateDiagram-v2
-    [*] --> SessionStart
-
-    SessionStart: /start
-    SessionStart --> Classify: scope ticket, worktree, goal
-
-    Classify: Task Classification
-    note right of Classify
-      mechanical / implementation / debugging /
-      architecture / extreme (CLAUDE.md gate)
-    end note
-
-    Classify --> Dispatch: mechanical (lookup, rename, boilerplate)
-    Classify --> Explore: ambiguous scope or unfamiliar code
-    Classify --> Plan: architecture / extreme
-    Classify --> Implement: implementation, scope already clear
-
-    Dispatch: dispatch subagent (cheapest capable model)
-    Dispatch --> Done: result relayed, no further work
-
-    Explore: /explore (read-only, Explore agent)
-    Explore --> Disambiguate: ambiguity found
-    Disambiguate: ask for clarification<br/>(don't broadly search)
-    Disambiguate --> Classify: scope clarified
-    Explore --> Plan: scope needs design
-    Explore --> Implement: scope clear enough
-
-    Plan: /plan (EnterPlanMode)
-    Plan --> ApprovalGate1: plan drafted
-
-    ApprovalGate1: user approves plan?
-    ApprovalGate1 --> Plan: revise
-    ApprovalGate1 --> Implement: approved (ExitPlanMode)
-
-    Implement: /implement<br/>(--debug/--tdd/--scope-locked/--pr-iterate)
-    Implement --> CostGuardrail: each Agent/Bash call
-
-    CostGuardrail: cost-guardrail hook<br/>(checks vs historical baseline)
-    CostGuardrail --> ContextBreaker: within budget
-    CostGuardrail --> Implement: blocked/warned, retry scoped
-
-    ContextBreaker: context-circuit-breaker<br/>(warns on fan-out/loops)
-    ContextBreaker --> Implement: continue coding
-    ContextBreaker --> QuickReview: self-review checkpoint
-
-    QuickReview: /review --quick (in-context)
-    QuickReview --> TestCoverage: issues fixed inline
-
-    TestCoverage: /test-coverage
-    TestCoverage --> Validate
-
-    Validate: /validate (type/lint/test)
-    Validate --> Implement: failures found
-    Validate --> ApprovalGate2: passes
-
-    ApprovalGate2: ask before full /review or /security-review?
-    ApprovalGate2 --> FullReview: yes (ask-first gate)
-    ApprovalGate2 --> Commit: no, proceed
-
-    FullReview: /review or /security-review<br/>(subagent-delegated, full branch)
-    FullReview --> Implement: findings to fix
-    FullReview --> Commit: clean
-
-    Commit: /commit
-    Commit --> Done
-
-    Done: /done<br/>(record outcome, nudge compaction)
-    Done --> [*]
-
-    Done --> Retro: periodically
-    Retro: /session-retro or /cost-audit
-    Retro --> [*]: proposes CLAUDE.md/skill fixes
-```
-
-**Cost-optimization logic embedded in the graph:**
-- Every task hits `Classify` first — mechanical work routes straight to `Dispatch` (cheapest model), never touches Plan/Implement.
-- `cost-guardrail` and `context-circuit-breaker` sit inline on every Agent/Bash call during `Implement`, not just at boundaries.
-- `--quick` review runs in-context before the expensive, subagent-delegated full `/review`/`/security-review` — the costly path is ask-first, not default.
-- `/session-retro` and `/cost-audit` close the loop by feeding waste patterns back into CLAUDE.md/skills.
-
-### Development Workflows
-
 | Skill | Purpose |
 |-------|---------|
-| `/start` | Scope a new work session to a ticket, worktree, and goal, auto-triggering on session start |
-| `/explore` | Understand code (read-only) |
-| `/plan` | Design approach before coding |
-| `/implement` | Execute an approved plan — code, self-review, test, validate, commit, close. Selectable modes (`--debug`, `--tdd`, `--scope-locked`, `--pr-iterate`) handle debugging, strict TDD, scope-locked autonomous work, and PR-feedback iteration.
-| `/refactor` | Multi-file changes with tracking |
-| `/stack` | Split a large branch into a resumable series of stacked PRs |
+| `/start` | Scope a new work session to a ticket, worktree, and goal via flags; auto-triggers on session start |
+| `/done` | Close out a session — code review, verifier gate, commit, create/update the PR, record the outcome, nudge a context compaction |
+| `/retro` | Mine session transcripts, cost traces, and tooling usage evidence for evidence-backed CLAUDE.md/skill/config corrections (`--session`/`--cost`/`--tooling`/`--all`) |
+| `/stack` | Split a large branch into a resumable series of stacked PRs, one worktree per bucket |
+| `/apply-template` | Apply the standardized CLAUDE.md template to an existing installation, with opt-in companion READMEs, hooks, and settings.json env vars |
 
-### Quality & Testing
+## Command
 
-| Skill | Purpose |
-|-------|---------|
-| `/validate` | Run type check, lint, tests |
-| `/test-coverage` | Ensure test coverage for changes |
-| `/e2e` | End-to-end testing with Playwright/Cypress |
-| `/review` | Review current branch against base; `--quick` mode for use as a sub-step within `/implement` or `/done`
-| `/security-review` | Systematic security audit with confidence-based reporting |
+| Command | Purpose |
+|---------|---------|
+| `/commit` | Review the current diff and create one well-formed commit behind a confirmation gate (`--validate`, `--amend`, `--all`, `--no-gate`) |
 
-### Git & Release
+## Agents
 
-| Skill | Purpose |
-|-------|---------|
-| `/commit` | Review and commit with confirmation |
-| `/done` | Close out a session — test coverage, review, validation gate, commit, create/update the PR, record the outcome. Works standalone or for a `/start`-opened session.
-| `/release` | Version bump, changelog, and tagging |
+Agent definitions live in `agents/` and are declared in the plugin manifest
+directly (`"agents": ["./agents/"]`) — each has a fixed model tier and a
+fixed report format, not an instruction telling Claude to delegate.
 
-### Utilities
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `dispatch` | haiku | Cost-aware task router — runs work on the cheapest capable model/effort, escalating only when the worker signals it's out of depth |
+| `verifier` | sonnet | Runs tests, lint, typecheck, build, or any ad-hoc verification command; returns the command, exit code, and raw output |
+| `auditor` | sonnet | Mines an evidence source and returns ranked findings plus a proposed config diff; backs `/retro` |
 
-| Skill | Purpose |
-|-------|---------|
-| `/deps` | Audit, update, and manage dependencies |
-| `/sync` | Align documentation with codebase |
-| `/add-story` | Create Storybook stories |
-| `/add-todo` | Document deferred work |
-| `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
-| `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
-| `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
+## Runtime Hooks (not skills)
 
-### Bootstrap & Setup
+These live under `hooks/<name>/`, not `skills/` — they're plain scripts the
+harness invokes directly via `plugins/ai-assistant-starter/hooks/hooks.json`,
+never instructions Claude reads or executes. Each `hooks/<name>/README.md`
+documents its exact trigger conditions and configuration:
 
-Run once when adopting or upgrading the assistant on a project, not during day-to-day coding:
-
-| Skill | Purpose |
-|-------|---------|
-| `/init` | Bootstrap project configuration |
-| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs and circuit-breaker/cost-guardrail/prompt-context-router hooks |
-
-### Runtime Hooks (not skills)
-
-These live under `hooks/<name>/`, not `skills/` — they're plain scripts the harness
-invokes directly via `plugins/ai-assistant-starter/hooks/hooks.json`, never
-instructions Claude reads or executes. Each `hooks/<name>/README.md` documents
-its exact trigger conditions and configuration:
-
-- **branch-protection** — Blocks force-push, hard reset, branch deletion on main/master
-- **destructive-command-protection** — Blocks rm -rf /, DROP DATABASE, and other destructive commands
-- **context-circuit-breaker** — Warns (never blocks) on subagent fan-out and expensive-call loops
-- **cost-guardrail** — Warns or blocks Agent spawns and Bash calls whose historical cost is disproportionate to the cheapest tracked model tier, using baselines cost-audit refreshes
-- **prompt-context-router** — Classifies each prompt by task class and topic-pivot, and advises treating clear asides as standalone (with a delegation suggestion for cheap ones) instead of re-deriving them from the full session history
-
-### Background Skills (auto-loaded)
-
-These are loaded automatically when relevant — no slash command needed:
-
-- **ai-assistant-protocol** — Core execution protocol, code quality, testing requirements
-- **git-conventions** — Branch naming, commit messages, workflow patterns
-- **security-guidelines** — OWASP top 10, input validation, XSS prevention
-- **documentation-guidelines** — When and how to comment code
-- **communication-guidelines** — Response formatting and status indicators
-- **code-review-guidelines** — Review checklist and feedback patterns
-- **interaction-boundaries** — Human-AI interaction boundaries, non-anthropomorphic communication
-- And more: GitHub Actions, logging, naming, performance, error handling, environment config
-
-## How It Works
-
-```
-Explore → Plan → [Approval] → Code → Test → Validate → Review → [Confirm] → Commit
-```
-
-The skills enforce a disciplined workflow:
-- **Explore before coding** — understand the codebase first
-- **Plan before implementing** — design the approach
-- **Test coverage required** — all code changes need tests
-- **Validate before commit** — type check, lint, tests must pass
-- **Review before merge** — self-review catches issues
-- **Confirm before commit** — explicit user approval required
-
-## Project Setup
-
-After installing skills, run `/init` to scaffold project-specific configuration:
-
-```
-your-project/
-├── .claude/skills/          # Installed skills
-├── CLAUDE.md                # Project context (tech stack, conventions)
-└── .ai-project/             # Project state (created by /init)
-    ├── .memory.md           # Architecture overview
-    ├── .context.md          # Patterns and imports
-    ├── config.yaml          # Structured settings with defaults
-    ├── project/             # Project configuration
-    │   ├── commands.md      # Build/test/lint commands
-    │   ├── structure.md     # Directory layout
-    │   ├── patterns.md      # Code patterns and conventions
-    │   └── stack.md         # Technology stack
-    ├── domains/             # Stack-specific domain rules
-    │   └── *.instructions.md
-    ├── todos/               # Technical debt tracking
-    ├── decisions/           # Architecture decision records
-    └── history/             # Work history
-```
-
-The system uses two layers, with project-specific context taking precedence:
-
-| Layer | Source | Purpose |
-|-------|--------|---------|
-| **Base skills** | `skills/<name>/SKILL.md` | Reusable workflows and domain guidelines |
-| **Project context** | `.ai-project/` | Project-specific overrides, patterns, and state |
-
-`/init` detects your tech stack from `package.json` and config files, generates project-specific context, copies relevant domain instruction files, and creates a `CLAUDE.md` with project-level instructions.
-
-To add project-specific domain rules, create files in `.ai-project/domains/`:
-
-```markdown
-<!-- .ai-project/domains/my-api.instructions.md -->
-# My API Conventions
-
-- All endpoints return `{ data, error, meta }` envelope
-- Use `zod` for request validation
-- Rate limiting: 100 req/min per API key
-```
+- **guard** — Single `PreToolUse` entrypoint. Reads hook stdin once and dispatches to `destructive-command`, `branch-protection`, `secret-scan` (on `git commit`), `main-shell-run` (advisory notice when a test/lint/build run happens in the main agent's own shell), `cost-guardrail`, and `circuit-breaker`, in that order; most-restrictive decision wins and a `deny` short-circuits everything after it
+- **branch-protection** — Blocks force-push, hard reset, branch deletion on protected branches; wrapped by `guard`, still runnable standalone
+- **destructive-command-protection** — Blocks `rm -rf /`, `DROP DATABASE`, and other destructive commands; wrapped by `guard`, still runnable standalone
+- **cost-guardrail** — Warns or blocks Agent spawns and Bash calls whose historical cost is disproportionate to the cheapest tracked model tier, using baselines `/retro` refreshes; wrapped by `guard`, still runnable standalone
+- **context-circuit-breaker** — Warns (never blocks) on subagent fan-out and expensive-call loops; wrapped by `guard`, still runnable standalone
+- **prompt-context-router** — Classifies each prompt by task class and topic-pivot on `UserPromptSubmit`, and advises treating clear asides as standalone (with a delegation suggestion for cheap ones); a companion `PostToolUse` hook denies a pivot away from a just-implemented plan until `EnterPlanMode` is called again
 
 ## Specification Compatibility
 
@@ -268,7 +94,10 @@ Skills follow the [Agent Skills specification](https://agentskills.io/specificat
 - Progressive disclosure: metadata loaded at startup, full instructions on activation
 - Optional `references/` and `assets/` directories for supplementary content
 
-Background skills use `user-invocable: false` in frontmatter — a runtime extension not part of the base spec.
+Every skill in this repo is user-invocable — there are no background,
+auto-loading skills; reference knowledge that isn't a deliberate,
+human-started procedure belongs in `CLAUDE.md` or `docs/` instead (see
+`CLAUDE.md`'s "What Belongs In This Repo").
 
 ## Updating
 
@@ -280,9 +109,6 @@ git pull
 # Update the marketplace and the plugin in your project
 claude plugin marketplace update ai-assistant-starter
 claude plugin update ai-assistant-starter
-
-# Then refresh project config
-/init --update
 ```
 
 ## Further Reading

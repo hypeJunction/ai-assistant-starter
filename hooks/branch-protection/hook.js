@@ -138,23 +138,28 @@ function detectClean(cmd) {
   return null;
 }
 
-async function main() {
-  const input = await getInput();
+// Importable entrypoint for hooks/guard/hook.js — same detection chain as the CLI path.
+function evaluate(input) {
   const cmd = extractCommand(input);
-  if (!cmd || !/\bgit\b/.test(cmd)) {
-    process.exit(0);
-  }
+  if (!cmd || !/\bgit\b/.test(cmd)) return null;
 
   const cwd = (input && input.cwd) || process.cwd();
   const protected_ = protectedBranches();
   const currentBranch = getCurrentBranch(cwd);
 
-  const result =
+  return (
     detectForcePush(cmd, currentBranch, protected_) ||
     detectHardReset(cmd, currentBranch, protected_) ||
     detectBranchDelete(cmd, protected_) ||
     detectCheckoutRestoreDot(cmd, currentBranch, protected_) ||
-    detectClean(cmd);
+    detectClean(cmd) ||
+    null
+  );
+}
+
+async function main() {
+  const input = await getInput();
+  const result = evaluate(input);
 
   if (result) {
     console.log(JSON.stringify({
@@ -173,6 +178,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  evaluate,
   detectForcePush,
   detectHardReset,
   detectBranchDelete,

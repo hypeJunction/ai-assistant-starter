@@ -9,7 +9,9 @@ skills/                          # All skills live here
 ├── <name>/
 │   ├── SKILL.md                 # Skill definition (frontmatter + instructions)
 │   ├── references/              # Optional support docs (templates, detection rules)
-│   └── assets/                  # Optional scaffolding templates (rare; mainly init)
+│   └── assets/                  # Optional scaffolding templates
+commands/                         # Slash commands (frontmatter + instructions, not skills)
+agents/                           # Agent definitions (frontmatter: name, description, tools, model)
 hooks/                            # Runtime hooks (not skills) — harness-invoked scripts
 ├── <name>/
 │   ├── hook.js                  # Script the harness calls directly via hooks.json
@@ -17,6 +19,17 @@ hooks/                            # Runtime hooks (not skills) — harness-invok
 CLAUDE.md                        # This file (project instructions)
 README.md                        # User-facing documentation
 ```
+
+## What Belongs In This Repo
+
+Before adding anything, check it against these criteria — this is what keeps the repo from re-growing:
+
+1. If a current-generation agent already does it natively, it does not belong here. That is why `plan`, `implement`, `explore`, `review`, `security-review`, `e2e`, `test-coverage`, `validate`, `refactor`, `init`, `sync`, `deps`, and `release` are gone — the harness has native plan mode, `/code-review`, `/security-review`, and does the rest unaided.
+2. If it is a rule that can be checked mechanically, it is a hook, not prose. Prose is paid for on every turn and obeyed probabilistically; a hook costs zero tokens and is obeyed always.
+3. If it is work with its own context and a fixed output contract, it is an agent definition with an explicit model tier, not an instruction telling Claude to delegate.
+4. If it is a procedure a human deliberately starts with options, it is a command with CLI flags — never a chatbot that interrogates the user mid-run.
+5. If it is reference knowledge the model genuinely lacks, it is one line in CLAUDE.md or a file in `docs/` that a command points at. Never a background skill.
+6. Otherwise it does not exist.
 
 ## Change Tracking
 
@@ -35,11 +48,10 @@ Each skill is a `skills/<name>/SKILL.md` file with YAML frontmatter:
 ---
 name: skill-name              # Must match directory name
 description: One-line summary  # Used in skill discovery
-category: process             # process | meta | guideline | protocol
-triggers:                      # Intent keywords for auto-routing (workflow skills only)
+category: process             # process | meta
+triggers:                      # Intent keywords for auto-routing
   - keyword phrase
   - another phrase
-user-invocable: false          # Only for background skills (omit for workflow skills)
 ---
 
 # Skill Title
@@ -47,14 +59,18 @@ user-invocable: false          # Only for background skills (omit for workflow s
 Instructions follow...
 ```
 
-- **Workflow skills** (user-invocable): Triggered via `/name` commands or matched by intent triggers
-- **Background skills**: Add `user-invocable: false` — auto-loaded when relevant, no slash command
+All current skills are user-invocable — there are no background skills in
+this repo (see "What Belongs In This Repo," point 5: reference knowledge
+that isn't tied to a deliberate, human-started procedure goes in CLAUDE.md
+or `docs/`, not a skill that auto-loads on every relevant turn).
+
+- **Workflow skills**: Triggered via `/name` commands or matched by intent triggers
 - `references/` directory: Support docs that guide execution (templates, detection rules)
-- `assets/` directory: Scaffolding templates with `{{PLACEHOLDER}}` variables (only used by `/init`)
+- `assets/` directory: Scaffolding templates, where a skill needs them
 
 ## Installation
 
-All skills are distributed as a single Claude Code plugin, `ai-assistant-starter`, at `plugins/ai-assistant-starter/`. It's a manifest over the canonical skill files (symlinks into `skills/`), not a separate copy.
+All skills are distributed as a single Claude Code plugin, `ai-assistant-starter`, at `plugins/ai-assistant-starter/`. It's a manifest over the canonical skill, command, and agent files (symlinks into `skills/`, `commands/`, and `agents/`), not a separate copy.
 
 ```bash
 # Clone the repo
@@ -65,119 +81,80 @@ claude plugin marketplace add ./ai-assistant-starter
 claude plugin install ai-assistant-starter
 ```
 
-There is no per-skill install — `claude plugin install` installs the whole plugin, including its runtime hooks (`branch-protection`, `destructive-command-protection`, `context-circuit-breaker`, `cost-guardrail`, `prompt-context-router`).
-
+There is no per-skill install — `claude plugin install` installs the whole
+plugin: 5 skills, 1 command (`/commit`), 3 agents (`dispatch`, `verifier`,
+`auditor`), and its runtime hooks (`guard` and `prompt-context-router`).
 
 ## Available Skills
 
-### Workflow Skills (23 total, categories: process + meta)
-
-**Development Workflows**
-
 | Skill | Purpose |
 |-------|---------|
-| `/start` | Scope a new work session to a ticket, worktree, and goal, auto-triggering on session start |
-| `/explore` | Understand code (read-only) |
-| `/plan` | Design approach before coding |
-| `/implement` | Execute an approved plan — code, self-review, test, validate, commit, close. Selectable modes (`--debug`, `--tdd`, `--scope-locked`, `--pr-iterate`) handle debugging, strict TDD, scope-locked autonomous work, and PR-feedback iteration. Gate flags (`--review`/`--no-review`, `--validate`/`--no-validate`) pick the optional checks upfront instead of asking mid-run. |
-| `/refactor` | Multi-file changes with tracking |
-| `/stack` | Split a large branch into a resumable series of stacked PRs |
+| `/start` | Scope a new work session to a ticket, worktree, and goal via flags; auto-triggers on session start |
+| `/done` | Close out a session — code review, verifier gate, commit, create/update the PR, record the outcome, nudge a context compaction |
+| `/retro` | Mine session transcripts, cost traces, and tooling usage evidence (`--session`/`--cost`/`--tooling`/`--all`) for evidence-backed CLAUDE.md/skill/config corrections |
+| `/stack` | Split a large branch into a resumable series of stacked PRs, one worktree per bucket |
+| `/apply-template` | Apply the standardized CLAUDE.md template sections to an existing installation, with opt-in companion READMEs, the `guard`/`prompt-context-router` hooks, and cost-saving settings.json env vars |
 
-**Quality & Testing**
+The one command, `commands/commit.md` (`/commit`), reviews the current diff
+and creates a commit behind a confirmation gate, with `--validate`,
+`--amend`, `--all`, and `--no-gate` flags.
 
-| Skill | Purpose |
-|-------|---------|
-| `/validate` | Run type check, lint, tests |
-| `/test-coverage` | Ensure test coverage for changes |
-| `/e2e` | End-to-end testing with Playwright/Cypress |
-| `/review` | Review current branch against base; `--quick` mode for use as a sub-step within `/implement` or `/done`
-| `/security-review` | Systematic security audit with confidence-based reporting |
+## Agents
 
-**Git & Release**
+Agent definitions live in `agents/`, are symlinked into
+`plugins/ai-assistant-starter/agents/`, and are declared in the plugin
+manifest as `"agents": ["./agents/"]`. Each carries an explicit model tier —
+this is what point 3 of "What Belongs In This Repo" means by a fixed output
+contract instead of a delegation instruction.
 
-| Skill | Purpose |
-|-------|---------|
-| `/commit` | Review and commit with confirmation. `--validate`/`--no-validate` picks the pre-commit validate gate upfront. |
-| `/done` | Close out a session — test coverage, review, validation gate, commit, create/update the PR, record the outcome. Works standalone or for a `/start`-opened session. `--review`/`--no-review` and `--validate`/`--no-validate` pick the optional gates upfront.
-| `/release` | Version bump, changelog, and tagging |
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `dispatch` | haiku | Cost-aware task router — runs work on the cheapest capable model/effort, escalating only when the worker signals it's out of depth |
+| `verifier` | sonnet | Runs tests, lint, typecheck, build, or any ad-hoc verification command; returns the command, exit code, and raw output |
+| `auditor` | sonnet | Mines an evidence source (session transcripts, cost traces, usage counters) and returns ranked findings plus a proposed diff; backs `/retro` |
 
-**Utilities**
-
-| Skill | Purpose |
-|-------|---------|
-| `/deps` | Audit, update, and manage dependencies |
-| `/sync` | Align documentation with codebase |
-| `/add-story` | Create Storybook stories |
-| `/add-todo` | Document deferred work |
-| `/cost-audit` | Audit Langfuse traces for token-cost waste and propose evidence-backed fixes |
-| `/session-retro` | Analyze the current session for behavioral issues and propose fixes plus prompt tips |
-| `/tooling-audit` | Audit installed plugins, MCP servers, skills, and permissions against usage evidence |
-
-**Bootstrap & Setup** (run once when adopting or upgrading, not during day-to-day coding)
-
-| Skill | Purpose |
-|-------|---------|
-| `/init` | Bootstrap project configuration |
-| `/apply-template` | Apply the standardized CLAUDE.md template (task classification, search-relevance, process hygiene) to an existing installation, with opt-in companion READMEs, circuit-breaker/cost-guardrail/prompt-context-router hooks, and cost-saving settings.json env vars |
-
-### Runtime Hooks (5 total, not skills)
+## Runtime Hooks
 
 These live under `hooks/<name>/`, not `skills/`. Each is a plain script the
 harness invokes directly via `plugins/ai-assistant-starter/hooks/hooks.json` —
 never a `SKILL.md` Claude reads or executes. `hooks/<name>/README.md`
-documents each one's exact trigger conditions and configuration:
+documents each one's exact trigger conditions and configuration.
 
 | Hook | Domain |
 |-------|--------|
-| `branch-protection` | Blocks force-push, hard reset on protected branches |
-| `destructive-command-protection` | Blocks rm -rf, DROP DATABASE, and other destructive commands |
-| `context-circuit-breaker` | Warns (never blocks) on subagent fan-out and expensive-call loops |
-| `cost-guardrail` | Warns/blocks Agent spawns and Bash calls whose historical cost is disproportionate, using cost-audit-derived baselines |
-| `prompt-context-router` | Classifies each prompt by task class and topic-pivot, advising standalone treatment (and subagent delegation for cheap asides) instead of re-deriving from full session history; with a companion PostToolUse hook, denies a pivot away from a just-implemented plan until EnterPlanMode is called again |
-
-### Background Skills (13 total)
-
-Auto-loaded when relevant — no slash command needed:
-
-**Protocol Skills** (category: protocol)
-
-| Skill | Domain |
-|-------|--------|
-| `ai-assistant-protocol` | Core execution protocol, code quality, testing requirements |
-| `communication-guidelines` | Response formatting and status indicators |
-| `code-review-guidelines` | Review checklist and feedback patterns |
-| `interaction-boundaries` | Human-AI interaction boundaries, non-anthropomorphic communication |
-
-**Guideline Skills** (category: guideline)
-
-| Skill | Domain |
-|-------|--------|
-| `git-conventions` | Branch naming, commit messages, workflow patterns |
-| `security-guidelines` | OWASP top 10, input validation, XSS prevention |
-| `documentation-guidelines` | When and how to comment code |
-| `naming-guidelines` | Naming conventions for variables, functions, files |
-| `error-handling-guidelines` | Custom error classes, try-catch, error boundaries |
-| `logging-guidelines` | Structured logging, log levels, correlation IDs |
-| `performance-guidelines` | Frontend/backend optimization, caching, profiling |
-| `github-actions-guidelines` | CI/CD pipelines, caching, secrets, deployment |
-| `env-config-guidelines` | Environment variables, type-safe config, feature flags |
+| `guard` | Single `PreToolUse` entrypoint (`matcher: "*"`) that reads hook stdin once and dispatches, in order, to `destructive-command`, `branch-protection`, `secret-scan` (on `git commit`), `main-shell-run` (advisory notice when a test/lint/build runs in the main agent's shell), `cost-guardrail`, and `circuit-breaker` — most restrictive decision wins, `deny` short-circuits the rest |
+| `branch-protection` | Blocks force-push, hard reset on protected branches — wrapped by `guard`, also runnable standalone |
+| `destructive-command-protection` | Blocks rm -rf, DROP DATABASE, and other destructive commands — wrapped by `guard`, also runnable standalone |
+| `cost-guardrail` | Warns/blocks Agent spawns and Bash calls whose historical cost is disproportionate, using cost-baseline data — wrapped by `guard`, also runnable standalone |
+| `context-circuit-breaker` | Warns (never blocks) on subagent fan-out and expensive-call loops — wrapped by `guard`, also runnable standalone |
+| `prompt-context-router` | Unchanged: classifies each prompt by task class and topic-pivot on `UserPromptSubmit`, advising standalone treatment (and subagent delegation for cheap asides); a companion `PostToolUse` hook denies a pivot away from a just-implemented plan until `EnterPlanMode` is called again |
 
 ## Contributing a Skill
 
 A skill is instructions Claude reads and executes. A harness-invoked script
 that the plugin's `hooks.json` calls directly — never read by Claude as
-instructions — is a **hook**, not a skill; see "Adding a new runtime hook"
-below instead.
+instructions — is a **hook**, not a skill. A fixed-model, fixed-output-contract
+worker invoked via the `Agent` tool is an **agent**, not a skill either. See
+the relevant section below instead.
 
 ### Adding a new skill
 
+Before adding one, check it against "What Belongs In This Repo" above —
+most candidates turn out to be a hook, an agent, a command flag, or a line
+in this file instead.
+
 1. Create `skills/<name>/SKILL.md` with frontmatter (`name`, `description`, `category`)
 2. Name must be lowercase, hyphen-separated, and match the directory name
-3. Add `category:` — one of: `process`, `meta`, `guideline`, `protocol`
-4. For workflow skills, add `triggers` with 4-8 short keyword phrases (developer perspective, distinct across skills)
-5. For background skills, add `user-invocable: false` to frontmatter
-6. Add `references/` directory if the skill needs support docs (templates, rules)
-7. Update the skill tables in both `README.md` and this file
+3. Add `category:` — `process` or `meta`
+4. Add `triggers` with 4-8 short keyword phrases (developer perspective, distinct across skills)
+5. Add `references/` directory if the skill needs support docs (templates, rules)
+6. Update the skill tables in both `README.md` and this file
+
+### Adding a new agent
+
+1. Create `agents/<name>.md` with frontmatter (`name`, `description`, `tools`, `model`) and a body describing its task, constraints, and report format
+2. Symlink `plugins/ai-assistant-starter/agents/<name>.md` to `../../../agents/<name>.md`
+3. Update the "Agents" tables in both `README.md` and this file
 
 ### Adding a new runtime hook
 
@@ -199,25 +176,5 @@ below instead.
 
 - Skill instructions use progressive disclosure: frontmatter is loaded at startup, full body on activation
 - Workflow skills should define clear phases with approval gates where user confirmation is needed
-- Background skills should state when they auto-load (e.g., "Auto-loaded when working with TypeScript files")
 - Descriptions are single-line and start with an action or noun (not "This skill...")
 - Triggers are short (1-4 words), written from the developer's perspective, and distinct across skills
-
-## Project Setup (for consumers)
-
-After installing skills, run `/init` to scaffold project-specific configuration:
-
-```
-your-project/
-├── .claude/skills/          # Installed skills
-├── CLAUDE.md                # Project context (tech stack, conventions)
-└── .ai-project/             # Project state (created by /init)
-    ├── .memory.md           # Architecture overview
-    ├── .context.md          # Patterns and imports
-    ├── config.yaml          # Structured settings with defaults
-    ├── project/             # Detected project config (commands, structure, stack)
-    ├── domains/             # Stack-specific domain rules (*.instructions.md)
-    ├── todos/               # Technical debt tracking
-    ├── decisions/           # Architecture decision records
-    └── history/             # Work history
-```

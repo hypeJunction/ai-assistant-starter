@@ -13,37 +13,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/destructive-command-protection/hook.js"
-          },
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/branch-protection/hook.js"
-          },
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/cost-guardrail/hook.js"
-          }
-        ]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/cost-guardrail/hook.js"
-          }
-        ]
-      },
-      {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/context-circuit-breaker/hook.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/guard/hook.js"
           }
         ]
       }

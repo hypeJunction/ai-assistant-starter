@@ -1,194 +1,38 @@
-<!-- ai-assistant-starter:begin:task-classification -->
-## Task Classification
 
-Before acting on a request, or before spawning any subagent, classify it into
-one class and act (or delegate) accordingly. Do not default everything to
-your most capable model or skip classification because a task "looks small."
+<!-- ai-assistant-starter:begin:delegation -->
+## Delegation
 
-| Class | Model tier | Effort | Examples |
-|---|---|---|---|
-| mechanical | cheapest/fastest | none/low | git ops, renames, formatting, lookups, version bumps |
-| implementation | mid-tier | medium | writing/editing code, standard feature work, tests |
-| debugging | mid-tier | high | diagnosing failures, races, regressions, bisecting |
-| architecture | top-tier | high | redesigns, tradeoff analysis, multi-file reasoning |
-| extreme | top-tier, long-horizon | high | codebase-wide rewrites, multi-system migrations, RFCs |
+Route deterministic, self-contained work to a subagent rather than doing it inline; hold only routing decisions, judgment calls, and cross-cutting synthesis yourself. Three agents cover the recurring roles: `dispatch` classifies a task and runs it on the cheapest capable model, escalating only when the worker signals it is out of depth; `verifier` runs tests, lint, typecheck, and build, and returns the command, exit code, and raw output; `auditor` mines an evidence source and returns ranked findings plus a proposed diff.
 
-Rules:
-- When spawning a subagent, pass the model tier matching the task class —
-  never default all subagents to the most expensive model.
-- If a task doesn't clearly match one class, don't force it — abstain and
-  leave the current model/effort unchanged rather than guessing a tier.
-- Re-classify mid-task if scope changes (a "mechanical" rename that turns
-  into an API redesign is now "architecture").
-<!-- ai-assistant-starter:end:task-classification -->
-
-<!-- ai-assistant-starter:begin:delegation-default -->
-## Delegation as Default
-
-Treat delegation as the default for atomic, well-scoped, low-judgment steps
-— not something reserved for tasks that are already "big enough" (many
-files, a full verification run). The question to ask is "does this step
-need my own judgment," not "is this step big enough to bother delegating."
-
-- **No thinking for deterministic work.** Classification itself, lookups,
-  boilerplate, relaying a command's output, and applying an already-decided
-  pattern to one target are all mechanical — route them to the cheapest
-  capable model (the `mechanical` tier above), never to your own reasoning
-  because it felt quicker to just do it inline.
-- **Escalate on signal, not by default.** Start every delegated task at the
-  cheapest tier that could plausibly handle it. Escalate the model tier
-  only when the worker itself signals it's out of depth — ambiguous scope,
-  an unanticipated judgment call, contradictory instructions — never
-  pre-assign a top-tier model as a precaution.
-- **Swarm framing.** You are one orchestrator directing many single-purpose
-  specialists. Your job is to hold as little as possible in your own
-  context — routing decisions, judgment calls, and cross-cutting synthesis
-  only. Every deterministic, self-contained piece of work — one task or one
-  of many independent parts of a larger change — runs on its own worker, so
-  your context stays flat regardless of how many such pieces exist.
-- **Applies to single tasks too, not just fan-out.** A single lookup or a
-  single mechanical edit is as much a delegation candidate as twenty
-  independent ones — the trigger is atomicity and low judgment, not volume.
-<!-- ai-assistant-starter:end:delegation-default -->
+Never run tests, lint, typecheck, build, ad-hoc verification scripts, or dev-server process management in your own shell — delegate to `verifier` and read its raw output before reporting any result. A pass/fail summary is not evidence on its own.
+<!-- ai-assistant-starter:end:delegation -->
 
 <!-- ai-assistant-starter:begin:search-relevance -->
-## Search & Relevance Protocol
+## Search & Relevance
 
-Relevance is judged by the model reading results in-context, not by a
-separate classifier — so the quality of what you retrieve directly gates the
-quality of what you can judge. Apply this before trusting search output:
-
-- **Narrow before broad.** Prefer a scoped Grep/Glob (specific pattern, path,
-  file type) over a wide fishing query — every false positive returned is a
-  token the model must personally triage.
-- **Classify raw hits before acting on them.** A grep/glob match is a
-  syntactic hit, not a semantic one — confirm relevance by reading enough
-  context around the match before treating it as an answer.
-- **Match the tool to the query shape.** Known pattern/symbol → direct
-  Grep/Glob. Fuzzy or exploratory ("how does X work," "where is Y handled")
-  → a read-only search subagent that returns a distilled answer, not raw
-  matches, into your context.
-- **Delegate wide-net searches.** If a search would return more than a
-  screenful of undifferentiated matches, delegate the search-and-filter step
-  to a subagent instead of paging through raw output inline — this keeps the
-  relevance judgment out of your own context budget.
-- **Prefer structural filters over content filters when available.** A path
-  or file-type constraint you already know is true costs nothing and cuts
-  the candidate set before any content matching runs.
+Scope searches before running them: a known symbol or pattern goes to a direct Grep or Glob with a path or file-type constraint, while a fuzzy or exploratory question goes to a read-only search subagent that returns a distilled answer instead of raw matches. A match is a syntactic hit, not a semantic one — read enough surrounding context to confirm relevance before treating it as an answer.
 <!-- ai-assistant-starter:end:search-relevance -->
 
 <!-- ai-assistant-starter:begin:process-hygiene -->
-## Context & Process Hygiene
+## Process Hygiene
 
-- **Clear stale sessions.** When resuming work after a long gap (new
-  calendar day, or wall-clock time much greater than active work time),
-  checkpoint progress into a short handoff note and start fresh rather than
-  continuing in an old session's accumulated context — this holds even for a
-  direct continuation of the same task.
-- **Delegate long sequential traces.** If a single turn is running long
-  (dozens of sequential exploration/verification calls against the same
-  project) — including checking status/log/diff or reading files across
-  multiple git worktrees of the same repo — delegate the remaining work to a
-  subagent instead of continuing inline.
-- **Avoid redundant verification calls.** Before re-fetching state you
-  already have (re-navigating a tab, re-reading a file you just wrote,
-  re-running a check you just ran), check whether you already know the
-  answer from earlier in the session. This applies to any file read
-  earlier in the same session, not only ones you wrote or edited — before
-  re-reading a file already in this session's context, check whether it
-  changed since (by you or externally); if not, reuse what you already
-  have instead of re-fetching it.
-- **Avoid blind bulk edits on structured files.** Use targeted, verified
-  edits on config/source files instead of regex/sed sweeps — a broken bulk
-  edit triggers an expensive diagnose-fix-rebuild loop.
-- **Audit periodically, don't guess.** If trace/observability data is
-  available, periodically audit real sessions for waste (duplicate calls,
-  retry loops, outlier-cost sessions) and turn confirmed patterns into rules
-  here rather than optimizing on intuition.
+Before re-fetching state you already have — re-reading a file, re-navigating a tab, re-running a check — confirm it actually changed since you last saw it, and reuse what you have if it did not. Use targeted, verified edits on config and source files rather than regex or `sed` sweeps; a broken bulk edit costs far more than the edit saved. When a single turn runs long against the same project, or when resuming after a long gap, checkpoint into a short handoff note and delegate or restart rather than accumulating context.
 <!-- ai-assistant-starter:end:process-hygiene -->
-
-<!-- ai-assistant-starter:begin:verification-reporting -->
-## Verification Reporting
-
-Never run tests, typecheck, lint, build, ad-hoc verification scripts (e.g.
-Playwright/Node one-offs), or process management (starting, stopping, or
-killing dev servers) directly in the main agent's own shell — always delegate
-the run to an independent subagent (via the Agent tool) and read its full raw
-output before reporting a result, even for a single quick check. This applies
-to every project and every skill, not just one. A subagent's pass/fail
-summary is not evidence on its own — always read the raw command output it
-returns before claiming success. Size what you ask the subagent to report to
-the outcome:
-- On any failure or ambiguous result, require the complete raw output
-  (stdout/stderr, exit code) — you cannot diagnose from a summary.
-- On a clean pass, ask only for the command(s) run, the exit code, a
-  one-line result, and one representative raw-output sample per distinct
-  scenario — never a dump of every repeated call in a passing loop or
-  threshold test.
-<!-- ai-assistant-starter:end:verification-reporting -->
 
 <!-- ai-assistant-starter:begin:scope-discipline -->
 ## Scope Discipline
 
-Do exactly what was asked, no more.
-
-- Do not add selectors, tests, refactors, or documentation sections that were not requested — including things that seem obviously useful.
-- Never delete an existing exported symbol, selector, or function unless the user explicitly asked, or you have proven it is dead code and stated the evidence for that claim.
-- Do not create commits that were not requested. If uncommitted changes exist and it's unclear whether to commit, stage them and ask rather than committing.
-- If you notice something else worth changing while working, note it separately (a `proposed-additions` list, a follow-up suggestion) instead of doing it inline.
+Do exactly what was asked. Do not add selectors, tests, refactors, or documentation that were not requested, even when they seem obviously useful — note them separately as a follow-up instead. Never delete an existing exported symbol, selector, or function unless asked, or unless you can prove it is dead code and state the evidence. Never create commits that were not requested; if uncommitted changes exist and the intent is unclear, stage them and ask.
 <!-- ai-assistant-starter:end:scope-discipline -->
 
 <!-- ai-assistant-starter:begin:repo-preflight -->
 ## Repo & Branch Pre-Flight
 
-Before running an install/apply-template step, or before rebasing or picking a base branch for a PR or PR stack:
-
-- State the resolved target directory and confirm via `git rev-parse --show-toplevel` which repo you're actually operating in — do not assume the current working directory matches the intended target.
-- Re-fetch remote refs (`git fetch origin`) before computing divergence, merge-base, or a rebase/PR base branch. Never trust a stale local ref for this.
-- When multiple worktrees or stacked branches exist, confirm the active worktree before editing.
+Before an install step, a rebase, or picking a PR base branch: state the resolved target directory and confirm the repo with `git rev-parse --show-toplevel` rather than assuming the working directory is the intended target, then `git fetch origin` before computing any divergence, merge-base, or base branch — never trust a stale local ref. When multiple worktrees or stacked branches exist, confirm the active worktree before editing.
 <!-- ai-assistant-starter:end:repo-preflight -->
 
 <!-- ai-assistant-starter:begin:ai-generated-text -->
-## AI-Generated Text Conventions
+## AI-Generated Text
 
-All AI-generated text — code comments, docstrings, PR/commit descriptions,
-generated docs — is written for a real person reading the current codebase,
-not for a changelog or a future auditor of what changed.
-
-- **Audience is a person, not a diff.** Write for someone who wants to
-  understand what the code does and why, right now — never "used by X",
-  "added for the Y fix", or "handles the case from issue #123."
-- **Never narrate history.** Describe the current state only. No "previously
-  this did X, now it does Y," no changelog-style entries embedded in code,
-  docs, or comments, and no explaining the sequence of changes that produced
-  the current state.
-- **One paragraph per concept.** A single explanation (docstring, comment
-  block, section of generated docs) covers one concept in one paragraph. If
-  a second paragraph feels needed, it's a second concept — split it or cut
-  it.
-- **Comments have a length ceiling.** A variable/method/function comment is
-  one line. If the reasoning needs more than a line, question whether the
-  code itself should be clearer instead of leaning on prose.
-- **Verbosity is capped throughout.** Default to the shortest text that
-  fully conveys the point — this applies to comments, generated docs, and
-  agent-authored prose alike, not just user-facing chat responses.
+All generated text — comments, docstrings, commit and PR descriptions, generated docs — is written for a person reading the current codebase, not for an auditor of what changed. Describe the current state only: no "previously this did X", no "added for the Y fix", no changelog-style entries embedded in code or docs. One concept per paragraph, and a comment on a variable or function is one line — if the reasoning needs more, make the code clearer instead. PR descriptions are clear human-readable prose, never dense jargon dumps.
 <!-- ai-assistant-starter:end:ai-generated-text -->
-
-<!-- ai-assistant-starter:begin:response-formatting -->
-## Response Formatting
-
-Use markdown structure in chat responses whenever it improves scannability —
-this is about how answers are presented, not how much is said.
-
-- **Highlight key terms and identifiers.** Bold the load-bearing nouns (file
-  names, flags, decisions) so a skimming reader catches them.
-- **Use tables for comparisons or multi-attribute lists.** Options,
-  tradeoffs, before/after states — anything with 2+ rows and 2+ columns of
-  structured data.
-- **Use headers only for multi-section answers.** A single short answer
-  doesn't need a header; a response covering several distinct points does.
-- **Prefer structure over prose density**, but do not pad — a one-line
-  answer stays one line. This section governs formatting choices, not
-  response length; length/verbosity limits (e.g. an active Concise output
-  style) still take precedence.
-<!-- ai-assistant-starter:end:response-formatting -->

@@ -106,19 +106,15 @@ function checkRepeat(calls, toolName, sig, inputLen) {
   return null;
 }
 
-async function main() {
-  const input = await getInput();
-  if (!input) {
-    process.exit(0);
-  }
+// Importable entrypoint for hooks/guard/hook.js — same state read/check/write as the CLI path; always advisory (allow).
+function evaluate(input) {
+  if (!input) return null;
 
   const toolName = input.tool_name || '';
   const toolInput = input.tool_input || input.input || {};
   const sessionId = input.session_id || 'unknown';
 
-  if (!toolName) {
-    process.exit(0);
-  }
+  if (!toolName) return null;
 
   const toolInputStr = JSON.stringify(toolInput);
   const inputLen = toolInputStr.length;
@@ -141,12 +137,19 @@ async function main() {
   saveState(filePath, state);
 
   const reason = [fanOutWarning, repeatWarning].filter(Boolean).join(' ');
-  if (reason) {
+  return reason ? { decision: 'allow', reason } : null;
+}
+
+async function main() {
+  const input = await getInput();
+  const result = evaluate(input);
+
+  if (result) {
     console.log(JSON.stringify({
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
-        permissionDecision: 'allow',
-        permissionDecisionReason: reason,
+        permissionDecision: result.decision,
+        permissionDecisionReason: result.reason,
       },
     }));
   }
@@ -158,4 +161,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { checkFanOut, checkRepeat, signatureFor, pruneToWindow, statePath };
+module.exports = { evaluate, checkFanOut, checkRepeat, signatureFor, pruneToWindow, statePath };

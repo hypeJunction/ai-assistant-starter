@@ -10,13 +10,21 @@
  * - Background skills have user-invocable: false
  * - Workflow skills have triggers array
  * - Referenced files in references/ exist
+ *
+ * Also validates agents/*.md frontmatter and checks that every symlink under
+ * plugins/ai-assistant-starter/{skills,commands,agents}/ resolves to an existing target.
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
 
 const SKILLS_DIR = path.join(__dirname, '..', '..', 'skills');
+const AGENTS_DIR = path.join(__dirname, '..', '..', 'agents');
+const PLUGIN_DIR = path.join(__dirname, '..', '..', 'plugins', 'ai-assistant-starter');
 const VALID_CATEGORIES = ['process', 'meta', 'guideline', 'protocol', 'enforcement'];
+// Filenames mentioned in skill prose as examples of files that live elsewhere (e.g. a
+// runtime hook's own references/ dir), not as a link into this skill's own references/.
+const NON_REFERENCE_FILENAMES = new Set(['hook.js']);
 
 let errors = 0;
 let warnings = 0;
@@ -140,7 +148,7 @@ function validateSkill(dirName) {
     const checkedRefs = new Set();
     while ((match = refsPattern.exec(bodyText)) !== null) {
       const refFile = match[1];
-      if (checkedRefs.has(refFile)) continue;
+      if (checkedRefs.has(refFile) || NON_REFERENCE_FILENAMES.has(refFile)) continue;
       checkedRefs.add(refFile);
       const refPath = path.join(refsDir, refFile);
       if (!fs.existsSync(refPath)) {
@@ -150,6 +158,49 @@ function validateSkill(dirName) {
   }
 
   skillCount++;
+}
+
+function validateAgent(fileName) {
+  const label = `agents/${fileName}`;
+  const agentPath = path.join(AGENTS_DIR, fileName);
+  const content = fs.readFileSync(agentPath, 'utf8');
+  const frontmatter = parseFrontmatter(content);
+
+  if (!frontmatter) {
+    error(label, 'Missing or invalid YAML frontmatter');
+    return;
+  }
+
+  const expectedName = fileName.replace(/\.md$/, '');
+  if (!frontmatter.name) {
+    error(label, 'Missing required field: name');
+  } else if (frontmatter.name !== expectedName) {
+    error(label, `name "${frontmatter.name}" does not match filename "${expectedName}"`);
+  }
+
+  if (!frontmatter.description) {
+    error(label, 'Missing required field: description');
+  }
+
+  if (!frontmatter.model) {
+    error(label, 'Missing required field: model');
+  }
+}
+
+function validatePluginSymlinks() {
+  for (const sub of ['skills', 'commands', 'agents']) {
+    const dir = path.join(PLUGIN_DIR, sub);
+    if (!fs.existsSync(dir)) continue;
+
+    for (const entryName of fs.readdirSync(dir)) {
+      const entryPath = path.join(dir, entryName);
+      const label = `plugins/ai-assistant-starter/${sub}/${entryName}`;
+      const stat = fs.lstatSync(entryPath);
+      if (stat.isSymbolicLink() && !fs.existsSync(entryPath)) {
+        error(label, `Broken symlink: target "${fs.readlinkSync(entryPath)}" does not exist`);
+      }
+    }
+  }
 }
 
 // Main
@@ -165,10 +216,22 @@ for (const dir of dirs) {
   validateSkill(dir);
 }
 
-console.log(`\nResults: ${skillCount} skills validated, ${errors} errors, ${warnings} warnings`);
+console.log(`\nResults: ${skillCount} skills validated (${dirs.join(', ')})`);
+
+console.log('\nValidating agents...\n');
+const agentFiles = fs.readdirSync(AGENTS_DIR).filter(f => f.endsWith('.md')).sort();
+for (const fileName of agentFiles) {
+  validateAgent(fileName);
+}
+console.log(`\nResults: ${agentFiles.length} agents validated (${agentFiles.join(', ')})`);
+
+console.log('\nValidating plugin symlinks...\n');
+validatePluginSymlinks();
+
+console.log(`\nTotal: ${errors} errors, ${warnings} warnings`);
 
 if (errors > 0) {
   process.exit(1);
 } else {
-  console.log('All skills passed validation.');
+  console.log('All skills, agents, and plugin symlinks passed validation.');
 }

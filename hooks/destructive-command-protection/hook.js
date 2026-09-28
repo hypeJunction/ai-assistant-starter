@@ -262,16 +262,22 @@ function decide(cmd) {
   return checkDirect(cmd) || checkBypass(cmd);
 }
 
-async function main() {
-  const input = await getInput();
+// Importable entrypoint for hooks/guard/hook.js — same decision as the CLI path, normalized to {decision, reason}.
+function evaluate(input) {
   const cmd = extractCommand(input);
   const result = decide(cmd);
+  return result ? { decision: 'deny', reason: result.reason } : null;
+}
+
+async function main() {
+  const input = await getInput();
+  const result = evaluate(input);
 
   if (result) {
     console.log(JSON.stringify({
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
+        permissionDecision: result.decision,
         permissionDecisionReason: result.reason,
       },
     }));
@@ -284,6 +290,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  evaluate,
   decide,
   checkFilesystem,
   checkDatabase,

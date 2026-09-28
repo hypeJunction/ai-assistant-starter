@@ -177,8 +177,8 @@ function checkHeavyBashPattern(cmd, byTool, opts) {
   };
 }
 
-async function main() {
-  const input = await getInput();
+// Importable entrypoint for hooks/guard/hook.js — same dispatch as the CLI path, normalized to {decision, reason}.
+function evaluate(input) {
   const toolName = (input && (input.tool_name || input.tool)) || '';
 
   const baselinePath = process.env.COST_GUARDRAIL_BASELINE_PATH || DEFAULT_BASELINE_PATH;
@@ -196,9 +196,25 @@ async function main() {
   } else if (toolName === 'Bash') {
     result = checkHeavyBashPattern(extractCommand(input), baselines && baselines.by_tool, { mode, factor });
   }
+  if (!result) return null;
+  return {
+    decision: result.hookSpecificOutput.permissionDecision,
+    reason: result.hookSpecificOutput.permissionDecisionReason,
+  };
+}
+
+async function main() {
+  const input = await getInput();
+  const result = evaluate(input);
 
   if (result) {
-    console.log(JSON.stringify(result));
+    console.log(JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: result.decision,
+        permissionDecisionReason: result.reason,
+      },
+    }));
   }
   process.exit(0);
 }
@@ -208,6 +224,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  evaluate,
   decide,
   checkHeavyBashPattern,
   loadBaselines,
